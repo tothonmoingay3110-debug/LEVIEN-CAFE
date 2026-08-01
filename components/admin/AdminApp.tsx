@@ -112,15 +112,40 @@ export default function AdminApp() {
     }
     setLoggedIn(sessionStorage.getItem("levien-admin-session") === "1");
   }, []);
-  useEffect(() => { localStorage.setItem("levien-admin-v1", JSON.stringify(db)); writeOrders(db.orders); window.dispatchEvent(new Event("levien-admin-updated")); }, [db]);
+  useEffect(() => {
+    localStorage.setItem("levien-admin-v1", JSON.stringify(db));
+    window.dispatchEvent(new Event("levien-admin-updated"));
+  }, [db]);
+
   useEffect(() => {
     const syncOrders = () => {
       const placedOrders = readOrders().map(normalizeOrder);
-      setDb((current) => ({ ...current, orders: [...placedOrders, ...current.orders.filter((order) => !placedOrders.some((placed) => placed.id === order.id))] }));
+      setDb((current) => ({
+        ...current,
+        orders: [
+          ...placedOrders,
+          ...current.orders.filter(
+            (order) => !placedOrders.some((placed) => placed.id === order.id),
+          ),
+        ],
+      }));
     };
+
+    const syncWhenVisible = () => {
+      if (document.visibilityState === "visible") syncOrders();
+    };
+
     window.addEventListener("storage", syncOrders);
     window.addEventListener("levien-orders-updated", syncOrders);
-    return () => { window.removeEventListener("storage", syncOrders); window.removeEventListener("levien-orders-updated", syncOrders); };
+    window.addEventListener("focus", syncOrders);
+    document.addEventListener("visibilitychange", syncWhenVisible);
+
+    return () => {
+      window.removeEventListener("storage", syncOrders);
+      window.removeEventListener("levien-orders-updated", syncOrders);
+      window.removeEventListener("focus", syncOrders);
+      document.removeEventListener("visibilitychange", syncWhenVisible);
+    };
   }, []);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(""), 2400); return () => clearTimeout(timer); }, [toast]);
 
@@ -177,7 +202,17 @@ function QuickAction({ icon, title, text, onClick }: { icon: AdminIconName; titl
 
 function Orders({ db, orders, filter, setFilter, update, openModal }: { db: DB; orders: Order[]; filter: "All" | OrderStatus; setFilter: (v: "All" | OrderStatus) => void; update: (d: DB, m?: string) => void; openModal: (m: { type: string; id?: string }) => void }) {
   const statuses: ("All" | OrderStatus)[] = ["All", "New", "Preparing", "Ready", "Completed", "Cancelled"];
-  return <div className="adminStack"><section className="adminToolbar"><div className="adminTabs">{statuses.map(s => <button key={s} className={filter === s ? "active" : ""} onClick={() => setFilter(s)}>{s}<span>{s === "All" ? db.orders.length : db.orders.filter(o => o.status === s).length}</span></button>)}</div></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Online ordering</span><h3>Order queue</h3></div><span className="adminHint">Status updates are saved locally</span></div><div className="adminTableWrap"><table className="adminTable"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>{orders.map(o => <tr key={o.id}><td><strong>{o.id}</strong><small>{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></td><td><strong>{o.customer}</strong><small>{o.phone}</small></td><td>{o.type}</td><td><strong>{money(o.total)}</strong></td><td><select className={`orderStatusSelect status-${o.status.toLowerCase()}`} value={o.status} onChange={e => update({ ...db, orders: db.orders.map(item => item.id === o.id ? { ...item, status: e.target.value as OrderStatus } : item) }, `Order ${o.id} updated`)}>{["New", "Preparing", "Ready", "Completed", "Cancelled"].map(s => <option key={s}>{s}</option>)}</select></td><td><button className="adminIconAction" onClick={() => openModal({ type: "order", id: o.id })}>View</button></td></tr>)}</tbody></table></div></section></div>;
+
+  function changeOrderStatus(orderId: string, status: OrderStatus) {
+    const nextOrders = db.orders.map((order) =>
+      order.id === orderId ? { ...order, status } : order,
+    );
+
+    writeOrders(nextOrders);
+    update({ ...db, orders: nextOrders }, `Order ${orderId} updated`);
+  }
+
+  return <div className="adminStack"><section className="adminToolbar"><div className="adminTabs">{statuses.map(s => <button key={s} className={filter === s ? "active" : ""} onClick={() => setFilter(s)}>{s}<span>{s === "All" ? db.orders.length : db.orders.filter(o => o.status === s).length}</span></button>)}</div></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Online ordering</span><h3>Order queue</h3></div><span className="adminHint">Status updates are saved locally</span></div><div className="adminTableWrap"><table className="adminTable"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>{orders.map(o => <tr key={o.id}><td><strong>{o.id}</strong><small>{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></td><td><strong>{o.customer}</strong><small>{o.phone}</small></td><td>{o.type}</td><td><strong>{money(o.total)}</strong></td><td><select className={`orderStatusSelect status-${o.status.toLowerCase()}`} value={o.status} onChange={e => changeOrderStatus(o.id, e.target.value as OrderStatus)}>{["New", "Preparing", "Ready", "Completed", "Cancelled"].map(s => <option key={s}>{s}</option>)}</select></td><td><button className="adminIconAction" onClick={() => openModal({ type: "order", id: o.id })}>View</button></td></tr>)}</tbody></table></div></section></div>;
 }
 function OrderRows({ orders }: { orders: Order[] }) { return <div className="adminOrderRows">{orders.map(o => <div key={o.id}><span className={`adminOrderDot status-${o.status.toLowerCase()}`}></span><div><strong>{o.id} · {o.customer}</strong><small>{o.items.map(orderItemLabel).join(", ")}</small></div><b>{money(o.total)}</b><em>{o.status}</em></div>)}</div>; }
 
