@@ -1,0 +1,22 @@
+LEVIEN CAFE — SPRINT 4.2 UPDATE
+
+1. Stop the development server with Ctrl + C.
+2. Copy these folders/files into the existing LEVIEN-CAFE project and replace existing files:
+   app
+   components
+   lib
+   types
+   docs
+   package.json
+3. Run: npm.cmd run dev
+4. Test:
+   http://localhost:3000
+   http://localhost:3000/menu
+   http://localhost:3000/admin
+
+Admin product setup:
+Products > Edit > Customer Options
+- Allow Ice Level
+- Allow Sugar Level
+- Allow Toppings
+Then select the applicable toppings under Available Toppings.

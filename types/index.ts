@@ -1,0 +1,81 @@
+export type ProductBadge = "best-seller" | "must-try" | "featured" | "new";
+
+export type ProductTopping = {
+  id: string;
+  name: string;
+  price: number;
+};
+
+export type Product = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  image: string;
+  emoji: string;
+  badges: ProductBadge[];
+  soldOut?: boolean;
+  allowIce?: boolean;
+  allowSugar?: boolean;
+  allowToppings?: boolean;
+  toppings?: ProductTopping[];
+};
+
+export type Promotion = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  priceText: string;
+  image: string;
+};
+
+export type CartItem = {
+  lineId: string;
+  productId: string;
+  name: string;
+  basePrice: number;
+  unitPrice: number;
+  quantity: number;
+  emoji: string;
+  ice?: string;
+  sugar?: string;
+  toppings: ProductTopping[];
+  note?: string;
+};
+
+export type ProductSelection = {
+  quantity?: number;
+  ice?: string;
+  sugar?: string;
+  toppings?: ProductTopping[];
+  note?: string;
+};
+
+export type OrderStatus = "New" | "Preparing" | "Ready" | "Completed" | "Cancelled";
+export type FulfillmentType = "Pickup" | "Delivery";
+
+export type CustomerOrder = {
+  id: string;
+  customer: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email?: string;
+  type: FulfillmentType;
+  pickupTime?: string;
+  address?: string;
+  city?: string;
+  zip?: string;
+  apartment?: string;
+  payment: string;
+  subtotal: number;
+  tax: number;
+  deliveryFee: number;
+  total: number;
+  status: OrderStatus;
+  createdAt: string;
+  note: string;
+  items: CartItem[];
+};
