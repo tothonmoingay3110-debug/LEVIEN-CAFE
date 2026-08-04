@@ -147,22 +147,22 @@ export default function CheckoutPage() {
             <div className="checkoutCardHead"><span>01</span><div><h2>Customer information</h2><p>We will use your phone number for order updates.</p></div></div>
             <div className="checkoutFields twoColumns">
               <label>
-                First name <span className="requiredMark">*</span>
+                <span className="fieldLabel">First name <span className="requiredMark">*</span></span>
                 <input name="firstName" autoComplete="given-name" aria-invalid={Boolean(errors.firstName)} aria-describedby={errors.firstName ? "firstName-error" : undefined} onChange={() => clearError("firstName")} />
                 {errors.firstName && <span className="fieldError" id="firstName-error">{errors.firstName}</span>}
               </label>
               <label>
-                Last name <span className="requiredMark">*</span>
+                <span className="fieldLabel">Last name <span className="requiredMark">*</span></span>
                 <input name="lastName" autoComplete="family-name" aria-invalid={Boolean(errors.lastName)} aria-describedby={errors.lastName ? "lastName-error" : undefined} onChange={() => clearError("lastName")} />
                 {errors.lastName && <span className="fieldError" id="lastName-error">{errors.lastName}</span>}
               </label>
               <label>
-                Phone number <span className="requiredMark">*</span>
+                <span className="fieldLabel">Phone number <span className="requiredMark">*</span></span>
                 <input name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(215) 555-0123" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "phone-error" : undefined} onChange={() => clearError("phone")} />
                 {errors.phone && <span className="fieldError" id="phone-error">{errors.phone}</span>}
               </label>
               <label>
-                Email <small>Optional</small>
+                <span className="fieldLabel">Email <small className="optionalLabel">Optional</small></span>
                 <input name="email" type="email" autoComplete="email" aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "email-error" : undefined} onChange={() => clearError("email")} />
                 {errors.email && <span className="fieldError" id="email-error">{errors.email}</span>}
               </label>
@@ -180,21 +180,21 @@ export default function CheckoutPage() {
             </div>
             {type === "Pickup" ? <div className="checkoutFields"><label>Pickup time<select name="pickupTime" defaultValue="ASAP"><option>ASAP</option><option>In 15 minutes</option><option>In 30 minutes</option><option>In 45 minutes</option></select></label></div> : <div className="checkoutFields twoColumns deliveryFields">
               <label className="wide">
-                Street address <span className="requiredMark">*</span>
+                <span className="fieldLabel">Street address <span className="requiredMark">*</span></span>
                 <input name="address" autoComplete="street-address" aria-invalid={Boolean(errors.address)} aria-describedby={errors.address ? "address-error" : undefined} onChange={() => clearError("address")} />
                 {errors.address && <span className="fieldError" id="address-error">{errors.address}</span>}
               </label>
               <label>
-                City <span className="requiredMark">*</span>
+                <span className="fieldLabel">City <span className="requiredMark">*</span></span>
                 <input name="city" defaultValue="Philadelphia" autoComplete="address-level2" aria-invalid={Boolean(errors.city)} aria-describedby={errors.city ? "city-error" : undefined} onChange={() => clearError("city")} />
                 {errors.city && <span className="fieldError" id="city-error">{errors.city}</span>}
               </label>
               <label>
-                ZIP code <span className="requiredMark">*</span>
+                <span className="fieldLabel">ZIP code <span className="requiredMark">*</span></span>
                 <input name="zip" inputMode="numeric" autoComplete="postal-code" aria-invalid={Boolean(errors.zip)} aria-describedby={errors.zip ? "zip-error" : undefined} onChange={() => clearError("zip")} />
                 {errors.zip && <span className="fieldError" id="zip-error">{errors.zip}</span>}
               </label>
-              <label className="wide">Apartment / unit <small>Optional</small><input name="apartment" /></label>
+              <label className="wide"><span className="fieldLabel">Apartment / unit <small className="optionalLabel">Optional</small></span><input name="apartment" /></label>
             </div>}
           </section>
 
@@ -202,18 +202,17 @@ export default function CheckoutPage() {
             <div className="checkoutCardHead"><span>03</span><div><h2>Payment & notes</h2><p>Online card payment will be connected in a later release.</p></div></div>
             <div className="checkoutFields twoColumns">
               <label>Payment method<select name="payment"><option>Pay at Store</option><option>Cash on Delivery</option><option>Card at Pickup</option></select></label>
-              <label className="wide">Order note <small>Optional</small><textarea name="note" rows={4} placeholder="Allergies, delivery instructions, or anything we should know" /></label>
+              <label className="wide"><span className="fieldLabel">Order note <small className="optionalLabel">Optional</small></span><textarea name="note" rows={4} placeholder="Allergies, delivery instructions, or anything we should know" /></label>
             </div>
           </section>
         </div>
 
         <aside className="checkoutSummary">
           <div className="checkoutSummaryHead"><div><span className="sectionLabel">Your selection</span><h2>Order summary</h2></div><Link href="/menu">Add more</Link></div>
-          <div className="checkoutSummaryItems">{cart.map((item) => <article key={item.lineId}>
-            <div className="checkoutItemIcon">{item.emoji}</div>
+          <div className="checkoutSummaryItems">{cart.map((item) => <article className={item.itemType === "combo" ? "checkoutComboItem" : ""} key={item.lineId}>
+            <div className="checkoutItemIcon">{item.itemType === "combo" ? "🎁" : item.emoji}</div>
             <div><strong>{item.quantity} × {item.name}</strong><small>{money(item.unitPrice)} each</small>
-              <div className="checkoutItemOptions">{item.ice && <span>Ice {item.ice}</span>}{item.sugar && <span>Sugar {item.sugar}</span>}{item.toppings.map((topping) => <span key={topping.id}>+ {topping.name}</span>)}</div>
-              {item.note && <em>{item.note}</em>}
+              {item.itemType === "combo" && item.comboItems?.length ? <div className="checkoutComboItems">{item.comboItems.map((comboItem) => <div key={comboItem.productId}><b>{comboItem.emoji} {comboItem.name}</b><div className="checkoutItemOptions">{comboItem.ice && <span>Ice {comboItem.ice}</span>}{comboItem.sugar && <span>Sugar {comboItem.sugar}</span>}{comboItem.toppings.map((topping) => <span key={topping.id}>+ {topping.name}</span>)}</div>{comboItem.note && <em>{comboItem.note}</em>}</div>)}</div> : <><div className="checkoutItemOptions">{item.ice && <span>Ice {item.ice}</span>}{item.sugar && <span>Sugar {item.sugar}</span>}{item.toppings.map((topping) => <span key={topping.id}>+ {topping.name}</span>)}</div>{item.note && <em>{item.note}</em>}</>}
             </div>
             <b>{money(item.unitPrice * item.quantity)}</b>
           </article>)}</div>

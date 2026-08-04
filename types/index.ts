@@ -22,6 +22,16 @@ export type Product = {
   toppings?: ProductTopping[];
 };
 
+export type Combo = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  productIds: string[];
+  image: string;
+  active: boolean;
+};
+
 export type Promotion = {
   id: string;
   eyebrow: string;
@@ -31,9 +41,29 @@ export type Promotion = {
   image: string;
 };
 
+export type ProductSelection = {
+  quantity?: number;
+  ice?: string;
+  sugar?: string;
+  toppings?: ProductTopping[];
+  note?: string;
+};
+
+export type ComboProductSelection = {
+  productId: string;
+  name: string;
+  emoji: string;
+  ice?: string;
+  sugar?: string;
+  toppings: ProductTopping[];
+  note?: string;
+};
+
 export type CartItem = {
   lineId: string;
+  itemType?: "product" | "combo";
   productId: string;
+  comboId?: string;
   name: string;
   basePrice: number;
   unitPrice: number;
@@ -43,14 +73,7 @@ export type CartItem = {
   sugar?: string;
   toppings: ProductTopping[];
   note?: string;
-};
-
-export type ProductSelection = {
-  quantity?: number;
-  ice?: string;
-  sugar?: string;
-  toppings?: ProductTopping[];
-  note?: string;
+  comboItems?: ComboProductSelection[];
 };
 
 export type OrderStatus = "New" | "Preparing" | "Ready" | "Completed" | "Cancelled";

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { products as fallbackProducts, promotions as fallbackPromotions } from "@/lib/data";
-import type { Product, Promotion } from "@/types";
+import type { Combo, Product, Promotion } from "@/types";
 
 type SiteContent = {
   storeName: string;
@@ -22,7 +22,6 @@ type SiteContent = {
 
 type SiteCategory = { id: string; name: string; icon: string; active: boolean };
 type SiteTopping = { id: string; name: string; price: number; active: boolean };
-type SiteCombo = { id: string; name: string; description: string; price: number; productIds: string[]; image: string; active: boolean };
 
 type AdminDB = {
   categories?: SiteCategory[];
@@ -32,7 +31,7 @@ type AdminDB = {
     toppingIds: string[]; allowIce?: boolean; allowSugar?: boolean; allowToppings?: boolean;
     bestSeller: boolean; mustTry: boolean; featured: boolean; isNew: boolean; soldOut: boolean; active: boolean;
   }>;
-  combos?: SiteCombo[];
+  combos?: Combo[];
   promotions?: Array<Promotion & { order?: number; active?: boolean }>;
   content?: Partial<SiteContent>;
 };
@@ -58,7 +57,7 @@ type SiteDataContextValue = {
   products: Product[];
   promotions: Promotion[];
   categories: SiteCategory[];
-  combos: SiteCombo[];
+  combos: Combo[];
   ready: boolean;
   refresh: () => void;
 };
@@ -141,7 +140,17 @@ export function SiteDataProvider({ children }: { children: React.ReactNode }) {
         { id: "c4", name: "Bánh Mì", icon: "🥖", active: true },
         { id: "c5", name: "Chicken & More", icon: "🍗", active: true },
       ],
-      combos: (db?.combos || []).filter((item) => item.active !== false),
+      combos: db?.combos?.length
+        ? db.combos.filter((item) => item.active !== false)
+        : [{
+            id: "combo-breakfast",
+            name: "Coffee & Bánh Mì Combo",
+            description: "Vietnamese milk coffee paired with a fresh grilled pork bánh mì.",
+            price: 10.99,
+            productIds: ["1", "7"],
+            image: "",
+            active: true,
+          }],
       ready,
       refresh,
     };
