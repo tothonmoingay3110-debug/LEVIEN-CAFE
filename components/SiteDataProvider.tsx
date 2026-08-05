@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { products as fallbackProducts, promotions as fallbackPromotions } from "@/lib/data";
+import { readSupabaseCatalog, type SupabaseCatalog } from "@/lib/supabase/catalog";
 import type { Combo, Product, Promotion } from "@/types";
 
 type SiteContent = {
@@ -59,12 +60,13 @@ type SiteDataContextValue = {
   categories: SiteCategory[];
   combos: Combo[];
   ready: boolean;
-  refresh: () => void;
+  source: "supabase" | "local" | "fallback";
+  refresh: () => Promise<void>;
 };
 
 const SiteDataContext = createContext<SiteDataContextValue | null>(null);
 
-function loadSiteData() {
+function loadLocalSiteData() {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem("levien-admin-v1");
@@ -74,21 +76,92 @@ function loadSiteData() {
   }
 }
 
-export function SiteDataProvider({ children }: { children: React.ReactNode }) {
-  const [db, setDb] = useState<AdminDB | null>(null);
-  const [ready, setReady] = useState(false);
+function localCatalog(db: AdminDB | null): SupabaseCatalog | null {
+  if (!db) return null;
+  const categories = (db.categories || []).filter((item) => item.active !== false);
+  const categoryMap = new Map(categories.map((item) => [item.id, item.name]));
+  const activeToppings = (db.toppings || []).filter((item) => item.active !== false);
+  const toppingMap = new Map(activeToppings.map((item) => [item.id, item]));
+  const products = db.products?.length ? db.products.filter((item) => item.active !== false).map<Product>((item) => ({
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    price: Number(item.price),
+    category: categoryMap.get(item.categoryId) || "Other",
+    image: item.image || "",
+    emoji: item.emoji || "☕",
+    badges: [item.bestSeller ? "best-seller" : null, item.mustTry ? "must-try" : null, item.featured ? "featured" : null, item.isNew ? "new" : null].filter(Boolean) as Product["badges"],
+    soldOut: item.soldOut,
+    allowIce: item.allowIce ?? true,
+    allowSugar: item.allowSugar ?? true,
+    allowToppings: item.allowToppings ?? (item.toppingIds || []).length > 0,
+    toppings: (item.toppingIds || []).map((id) => toppingMap.get(id)).filter(Boolean).map((topping) => ({ id: topping!.id, name: topping!.name, price: Number(topping!.price) })),
+  })) : [];
+  const promotions = db.promotions?.length
+    ? db.promotions.filter((item) => item.active !== false).sort((a, b) => (a.order || 0) - (b.order || 0)).map(({ order: _order, active: _active, ...item }) => item)
+    : [];
+  return {
+    content: db.content || {},
+    categories,
+    toppings: activeToppings,
+    products,
+    combos: (db.combos || []).filter((item) => item.active !== false),
+    promotions,
+  };
+}
 
-  const refresh = () => {
-    setDb(loadSiteData());
-    setReady(true);
+const fallbackCategories: SiteCategory[] = [
+  { id: "c1", name: "Vietnamese Coffee", icon: "☕", active: true },
+  { id: "c2", name: "Milk Tea", icon: "🧋", active: true },
+  { id: "c3", name: "Smoothies", icon: "🥤", active: true },
+  { id: "c4", name: "Bánh Mì", icon: "🥖", active: true },
+  { id: "c5", name: "Chicken & More", icon: "🍗", active: true },
+];
+const fallbackCombos: Combo[] = [{
+  id: "combo-breakfast",
+  name: "Coffee & Bánh Mì Combo",
+  description: "Vietnamese milk coffee paired with a fresh grilled pork bánh mì.",
+  price: 10.99,
+  productIds: ["1", "7"],
+  image: "",
+  active: true,
+}];
+
+export function SiteDataProvider({ children }: { children: React.ReactNode }) {
+  const [catalog, setCatalog] = useState<SupabaseCatalog | null>(null);
+  const [ready, setReady] = useState(false);
+  const [source, setSource] = useState<SiteDataContextValue["source"]>("fallback");
+
+  const refresh = async () => {
+    try {
+      const cloud = await readSupabaseCatalog();
+      if (cloud) {
+        setCatalog(cloud);
+        setSource("supabase");
+        return;
+      }
+    } catch (error) {
+      console.warn("Unable to load Supabase catalog:", error);
+    } finally {
+      setReady(true);
+    }
+
+    const local = localCatalog(loadLocalSiteData());
+    if (local?.products.length) {
+      setCatalog(local);
+      setSource("local");
+    } else {
+      setCatalog(null);
+      setSource("fallback");
+    }
   };
 
   useEffect(() => {
-    refresh();
+    void refresh();
     const onStorage = (event: StorageEvent) => {
-      if (!event.key || event.key === "levien-admin-v1") refresh();
+      if (!event.key || event.key === "levien-admin-v1") void refresh();
     };
-    const onCustom = () => refresh();
+    const onCustom = () => void refresh();
     window.addEventListener("storage", onStorage);
     window.addEventListener("levien-admin-updated", onCustom);
     return () => {
@@ -97,64 +170,16 @@ export function SiteDataProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const value = useMemo<SiteDataContextValue>(() => {
-    const categories = (db?.categories || []).filter((item) => item.active !== false);
-    const categoryMap = new Map(categories.map((item) => [item.id, item.name]));
-    const activeToppings = (db?.toppings || []).filter((item) => item.active !== false);
-    const toppingMap = new Map(activeToppings.map((item) => [item.id, item]));
-    const products = db?.products?.length
-      ? db.products.filter((item) => item.active !== false).map<Product>((item) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description,
-          price: Number(item.price),
-          category: categoryMap.get(item.categoryId) || "Other",
-          image: item.image || "",
-          emoji: item.emoji || "☕",
-          badges: [
-            item.bestSeller ? "best-seller" : null,
-            item.mustTry ? "must-try" : null,
-            item.featured ? "featured" : null,
-            item.isNew ? "new" : null,
-          ].filter(Boolean) as Product["badges"],
-          soldOut: item.soldOut,
-          allowIce: item.allowIce ?? true,
-          allowSugar: item.allowSugar ?? true,
-          allowToppings: item.allowToppings ?? (item.toppingIds || []).length > 0,
-          toppings: (item.toppingIds || []).map((id) => toppingMap.get(id)).filter(Boolean).map((topping) => ({ id: topping!.id, name: topping!.name, price: Number(topping!.price) })),
-        }))
-      : fallbackProducts;
-
-    const promotions = db?.promotions?.length
-      ? db.promotions.filter((item) => item.active !== false).sort((a, b) => (a.order || 0) - (b.order || 0)).map(({ order: _order, active: _active, ...item }) => item)
-      : fallbackPromotions;
-
-    return {
-      content: { ...defaults, ...(db?.content || {}) },
-      products,
-      promotions,
-      categories: categories.length ? categories : [
-        { id: "c1", name: "Vietnamese Coffee", icon: "☕", active: true },
-        { id: "c2", name: "Milk Tea", icon: "🧋", active: true },
-        { id: "c3", name: "Smoothies", icon: "🥤", active: true },
-        { id: "c4", name: "Bánh Mì", icon: "🥖", active: true },
-        { id: "c5", name: "Chicken & More", icon: "🍗", active: true },
-      ],
-      combos: db?.combos?.length
-        ? db.combos.filter((item) => item.active !== false)
-        : [{
-            id: "combo-breakfast",
-            name: "Coffee & Bánh Mì Combo",
-            description: "Vietnamese milk coffee paired with a fresh grilled pork bánh mì.",
-            price: 10.99,
-            productIds: ["1", "7"],
-            image: "",
-            active: true,
-          }],
-      ready,
-      refresh,
-    };
-  }, [db, ready]);
+  const value = useMemo<SiteDataContextValue>(() => ({
+    content: { ...defaults, ...(catalog?.content || {}) },
+    products: catalog?.products.length ? catalog.products : fallbackProducts,
+    promotions: catalog?.promotions.length ? catalog.promotions : fallbackPromotions,
+    categories: catalog?.categories.length ? catalog.categories : fallbackCategories,
+    combos: catalog?.combos.length ? catalog.combos : fallbackCombos,
+    ready,
+    source,
+    refresh,
+  }), [catalog, ready, source]);
 
   return <SiteDataContext.Provider value={value}>{children}</SiteDataContext.Provider>;
 }
