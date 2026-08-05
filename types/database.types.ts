@@ -145,7 +145,17 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      create_checkout_order: {
+        Args: {
+          p_first_name: string; p_last_name: string; p_phone: string;
+          p_phone_normalized: string; p_email: string | null;
+          p_fulfillment_type: "Pickup" | "Delivery"; p_pickup_time: string | null;
+          p_address: string | null; p_city: string | null; p_zip: string | null;
+          p_apartment: string | null; p_payment_method: string; p_subtotal: number;
+          p_tax: number; p_delivery_fee: number; p_total: number; p_note: string;
+        };
+        Returns: { order_number: string }[];
+      };
     };
     Enums: {
       [_ in never]: never;

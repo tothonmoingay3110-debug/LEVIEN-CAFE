@@ -6,7 +6,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useStore } from "@/components/StoreProvider";
-import { createOrderNumber, readOrders, saveOrder } from "@/lib/orders";
+import { saveOrder } from "@/lib/orders";
 import type { FulfillmentType } from "@/types";
 
 const money = (value: number) => `$${value.toFixed(2)}`;
@@ -34,7 +34,7 @@ export default function CheckoutPage() {
     });
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!cart.length || submitting) return;
 
@@ -89,30 +89,32 @@ export default function CheckoutPage() {
     setSubmitting(true);
 
     try {
-      const existing = readOrders();
-      const id = createOrderNumber(existing);
-
-      saveOrder({
-        id,
-        customer: `${firstName} ${lastName}`.trim(),
-        firstName,
-        lastName,
-        phone,
-        email,
-        type,
+      const orderDetails = {
+        firstName, lastName, phone, email, type,
         pickupTime: type === "Pickup" ? String(data.get("pickupTime") || "ASAP") : undefined,
         address: type === "Delivery" ? address : undefined,
         city: type === "Delivery" ? city : undefined,
         zip: type === "Delivery" ? zip : undefined,
         apartment: type === "Delivery" ? String(data.get("apartment") || "").trim() : undefined,
         payment: String(data.get("payment") || "Pay at Store"),
-        subtotal,
-        tax,
-        deliveryFee,
-        total,
+        subtotal, tax, deliveryFee, total,
+        note: String(data.get("note") || "").trim(),
+      };
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderDetails),
+      });
+      const result = (await response.json()) as { orderNumber?: string; error?: string };
+      if (!response.ok || !result.orderNumber) throw new Error(result.error || "Unable to place order.");
+      const id = result.orderNumber;
+
+      saveOrder({
+        id,
+        customer: `${firstName} ${lastName}`.trim(),
+        ...orderDetails,
         status: "New",
         createdAt: new Date().toISOString(),
-        note: String(data.get("note") || "").trim(),
         items: cart,
       });
 
