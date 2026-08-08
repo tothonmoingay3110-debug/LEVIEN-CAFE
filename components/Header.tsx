@@ -29,7 +29,7 @@ export function Header() {
       <header className="siteHeader">
         <div className="navWrap">
           <Link className="brand" href="/">
-            <span className="logo">
+            <span className={`logo ${content.logo ? "hasUploadedLogo" : ""}`}>
               {content.logo ? <img src={content.logo} alt={`${content.storeName} logo`} /> : <b>LV</b>}
             </span>
             <span className="brandText">{content.storeName}<small>{content.tagline}</small></span>

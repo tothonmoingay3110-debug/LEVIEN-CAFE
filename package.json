@@ -1,6 +1,6 @@
 {
   "name": "levien-cafe",
-  "version": "0.4.3",
+  "version": "0.5.2",
   "private": true,
   "scripts": {
     "dev": "next dev",

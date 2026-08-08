@@ -9,10 +9,14 @@ import type { CustomerOrder } from "@/types";
 
 export default function OrderSuccessPage() {
   const [order, setOrder] = useState<CustomerOrder | null>(null);
+  const [trackingToken, setTrackingToken] = useState("");
 
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("order");
-    if (id) setOrder(readOrders().find((item) => item.id === id) || null);
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("order");
+    const storedOrder = id ? readOrders().find((item) => item.id === id) || null : null;
+    setOrder(storedOrder);
+    setTrackingToken(params.get("token") || storedOrder?.trackingToken || "");
   }, []);
 
   return <>
@@ -30,7 +34,7 @@ export default function OrderSuccessPage() {
           <div><span>Total</span><strong>{order ? `$${order.total.toFixed(2)}` : "—"}</strong></div>
         </div>
         <div className="orderResultActions">
-          <Link className="button primary" href={order ? `/order/track?order=${encodeURIComponent(order.id)}` : "/menu"}>Track Order</Link>
+          <Link className="button primary" href={order && trackingToken ? `/order/track?order=${encodeURIComponent(order.id)}&token=${encodeURIComponent(trackingToken)}` : "/menu"}>Track Order</Link>
           <Link className="button secondary" href="/">Back Home</Link>
         </div>
       </section>

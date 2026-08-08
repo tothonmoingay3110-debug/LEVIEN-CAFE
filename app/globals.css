@@ -131,3 +131,623 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .orderItemList>div{display:grid;grid-template-columns:1fr auto;gap:4px 15px;align-items:center}.orderItemList>div small{grid-column:1;color:var(--muted);font-size:10px}.orderItemList>div b{grid-column:2;grid-row:1/3}.adminOrderMeta{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin:16px 0}.adminOrderMeta span{display:grid;gap:4px;background:#f3f7f4;border-radius:12px;padding:12px;font-size:12px}.adminOrderMeta span b{font-size:9px;text-transform:uppercase;color:var(--muted);letter-spacing:.08em}
 @media(max-width:980px){.checkoutLayout{grid-template-columns:1fr}.checkoutSummary{position:static}.checkoutSummary{order:-1}.checkoutPage{padding-top:38px}}
 @media(max-width:650px){.checkoutPage{padding:32px 15px 65px}.checkoutHeading h1,.orderResultCard h1,.trackOrderCard>h1{font-size:43px}.checkoutCard,.checkoutSummary{padding:18px;border-radius:18px}.checkoutFields.twoColumns,.fulfillmentOptions,.orderResultDetails,.trackOrderHeader{grid-template-columns:1fr}.checkoutFields .wide{grid-column:auto}.checkoutSummaryItems article{grid-template-columns:38px 1fr auto}.orderResultCard,.trackOrderCard{padding:27px 18px;border-radius:20px}.orderTimeline{grid-template-columns:1fr;gap:4px;margin-left:4px}.orderTimeline:before{left:20px;right:auto;top:20px;bottom:20px;width:2px;height:auto}.orderTimeline>div{display:grid;grid-template-columns:46px 1fr;text-align:left;align-items:start;padding:5px 0}.timelineDot{grid-row:1/3;margin:0}.orderTimeline>div strong{align-self:end}.orderTimeline>div small{grid-column:2}.adminOrderMeta{grid-template-columns:1fr}}
+/* Checkout validation — append this block to app/globals.css */
+.requiredMark {
+  color: #b42318;
+  margin-left: 2px;
+}
+
+.fieldError {
+  display: block;
+  margin-top: 6px;
+  color: #b42318;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.checkoutFields input[aria-invalid="true"],
+.checkoutFields select[aria-invalid="true"],
+.checkoutFields textarea[aria-invalid="true"] {
+  border-color: #d92d20;
+  box-shadow: 0 0 0 3px rgba(217, 45, 32, 0.1);
+}
+
+.checkoutFields input[aria-invalid="true"]:focus,
+.checkoutFields select[aria-invalid="true"]:focus,
+.checkoutFields textarea[aria-invalid="true"]:focus {
+  border-color: #b42318;
+  box-shadow: 0 0 0 4px rgba(217, 45, 32, 0.14);
+}
+
+/* Sprint 4.4 — Fixed Combo Engine */
+.comboIncludes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 10px;
+}
+.comboIncludes span {
+  border: 1px solid rgba(20, 78, 56, 0.16);
+  background: rgba(250, 248, 243, 0.72);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.comboSavings {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+}
+.comboSavings span { text-decoration: line-through; opacity: 0.62; }
+.comboSavings strong { color: #9a6b00; }
+.comboSoldOut { opacity: 0.72; }
+.comboBottom button:disabled,
+.customizerFooter button:disabled { cursor: not-allowed; opacity: 0.55; }
+.comboCustomizerModal { width: min(920px, calc(100vw - 28px)); }
+.comboCustomizerBody { display: grid; gap: 18px; }
+.comboUnavailable {
+  padding: 14px 16px;
+  border: 1px solid #f0b4ad;
+  border-radius: 12px;
+  background: #fff2f0;
+  color: #9b241b;
+  font-weight: 700;
+}
+.comboProductBlock {
+  border: 1px solid rgba(20, 78, 56, 0.14);
+  border-radius: 18px;
+  padding: 18px;
+  background: #fff;
+}
+.comboProductHeading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.comboProductHeading > span {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #f5f2e9;
+  font-size: 1.55rem;
+}
+.comboProductHeading img { width: 100%; height: 100%; object-fit: cover; }
+.comboProductHeading div { flex: 1; }
+.comboProductHeading small { color: #758078; font-weight: 700; }
+.comboProductHeading h3 { margin: 2px 0 0; }
+.comboProductHeading > b { color: #b42318; font-size: 0.78rem; }
+.comboItemNote { margin-top: 14px; }
+.comboItemNote small { color: #758078; font-weight: 500; }
+.comboQuantityRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid rgba(20, 78, 56, 0.12);
+  padding-top: 18px;
+}
+.comboQuantityRow > div:first-child { display: grid; gap: 3px; }
+.comboQuantityRow small { color: #758078; }
+.customizerFooter > div { display: grid; }
+.customizerFooter > div small { color: #758078; font-size: 0.72rem; }
+.comboCartLine { align-items: flex-start; }
+.cartComboItems {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0 2px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #f7f5ee;
+}
+.cartComboItems > div { display: grid; gap: 4px; }
+.cartComboItems b { font-size: 0.78rem; }
+.checkoutComboItems {
+  display: grid;
+  gap: 9px;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #f7f5ee;
+}
+.checkoutComboItems > div { display: grid; gap: 4px; }
+.checkoutComboItems b { font-size: 0.78rem; }
+.adminComboChildren {
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 9px;
+  border-radius: 10px;
+  background: #f7f5ee;
+}
+.adminComboChildren span { display: grid; gap: 2px; }
+.adminComboChildren b { font-size: 0.78rem; }
+@media (max-width: 680px) {
+  .comboProductBlock { padding: 14px; }
+  .comboQuantityRow { align-items: flex-start; }
+}
+.trackComboChildren {
+  display: grid;
+  gap: 7px;
+  margin-top: 9px;
+  padding: 9px;
+  border-radius: 10px;
+  background: #f7f5ee;
+}
+.trackComboChildren span { display: grid; gap: 2px; }
+.trackComboChildren b { font-size: 0.78rem; }
+
+.fieldLabel { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 8px; font-size: .82rem; font-weight: 700; line-height: 1.2; }
+.optionalLabel { display: inline; margin-left: 3px; color: #68736d; font-size: .72rem; font-weight: 500; }
+
+
+/* Sprint 4.4.1 — Combo Builder polish */
+.comboBuilderForm {
+  align-items: start;
+}
+
+.comboBuilderSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e5e9e5;
+  border-radius: 16px;
+  background: #f8faf8;
+}
+
+.comboBuilderSummary > div {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.comboBuilderSummary span {
+  color: #748078;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.comboBuilderSummary strong {
+  color: #193b2e;
+  font-size: 1.08rem;
+}
+
+.comboBuilderSummary .positive {
+  background: #edf8f1;
+}
+
+.comboBuilderSummary .positive strong {
+  color: #147044;
+}
+
+.comboProductPicker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.comboProductPicker legend {
+  grid-column: 1 / -1;
+}
+
+.comboProductPicker legend small {
+  margin-left: 6px;
+  color: #7a847e;
+  font-weight: 500;
+}
+
+.comboProductChoice {
+  display: grid !important;
+  grid-template-columns: auto 44px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 11px !important;
+  border: 1px solid #e0e5e1;
+  border-radius: 13px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.comboProductChoice:hover,
+.comboProductChoice.selected {
+  border-color: #1b6849;
+  background: #f4faf6;
+  box-shadow: 0 7px 22px rgba(20, 78, 56, 0.08);
+}
+
+.comboProductChoice input {
+  width: 17px;
+  height: 17px;
+  accent-color: #144e38;
+}
+
+.comboProductChoiceIcon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 11px;
+  background: #f1eee7;
+  font-size: 1.35rem;
+}
+
+.comboProductChoiceIcon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.comboProductChoiceCopy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.comboProductChoiceCopy strong,
+.comboProductChoiceCopy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comboProductChoiceCopy small {
+  color: #748078;
+}
+
+.comboProductChoice > b {
+  color: #b42318;
+  font-size: 0.7rem;
+}
+
+.comboBuilderItems {
+  display: grid;
+  gap: 7px;
+  padding: 14px 16px;
+  border-radius: 15px;
+  background: #f8f5ee;
+}
+
+.comboBuilderItems > div {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.comboBuilderItems > div > span {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #144e38;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.comboBuilderItems > div > b {
+  color: #144e38;
+}
+
+@media (max-width: 760px) {
+  .comboBuilderSummary,
+  .comboProductPicker {
+    grid-template-columns: 1fr;
+  }
+
+  .comboProductPicker legend {
+    grid-column: auto;
+  }
+}
+
+/* Uploaded catalog images keep their full composition inside product cards. */
+.productImage > img {
+  box-sizing: border-box;
+  object-fit: contain;
+  padding: 16px;
+}
+
+
+/* Sprint 4.5 — Customers */
+.customerToolbar {
+  align-items: center;
+}
+
+.customerTable td:nth-child(3),
+.customerTable td:nth-child(4),
+.customerTable td:nth-child(5) {
+  white-space: nowrap;
+}
+
+.customerEmpty {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 42px 20px;
+  color: #6f7c74;
+}
+
+.customerEmpty strong {
+  color: #20372d;
+  font-size: 1rem;
+}
+
+.customerDetailSummary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.customerDetailSummary > div,
+.customerMetricGrid > div {
+  display: grid;
+  gap: 5px;
+  padding: 15px 16px;
+  border: 1px solid #e2e7e3;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.customerDetailSummary span,
+.customerMetricGrid span {
+  color: #718078;
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.customerDetailSummary strong {
+  overflow-wrap: anywhere;
+}
+
+.customerMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.customerMetricGrid strong {
+  color: #144e38;
+  font-size: 1.25rem;
+}
+
+.customerOrderHistory {
+  overflow: hidden;
+  border: 1px solid #e2e7e3;
+  border-radius: 16px;
+}
+
+.customerOrderHistory .adminCardHead {
+  padding: 16px 18px;
+  border-bottom: 1px solid #e8ece9;
+}
+
+.customerOrderHistory > div:not(.adminCardHead) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 18px;
+  border-bottom: 1px solid #edf0ee;
+}
+
+.customerOrderHistory > div:last-child {
+  border-bottom: 0;
+}
+
+.customerOrderHistory > div > div {
+  display: grid;
+  gap: 3px;
+}
+
+.customerOrderHistory small {
+  color: #718078;
+}
+
+@media (max-width: 760px) {
+  .customerDetailSummary,
+  .customerMetricGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .customerOrderHistory > div:not(.adminCardHead) {
+    grid-template-columns: 1fr auto;
+  }
+
+  .customerOrderHistory > div:not(.adminCardHead) > b {
+    grid-column: 2;
+  }
+}
+
+
+/* Sprint 4.5.1 — customer purchases and CSV export */
+.customerExportButton {
+  min-height: 44px;
+  padding-inline: 18px;
+  white-space: nowrap;
+}
+.customerProductsCell {
+  min-width: 260px;
+}
+.customerProductsCell strong,
+.customerProductsCell small {
+  display: block;
+}
+.customerProductsCell small {
+  max-width: 340px;
+  margin-top: 4px;
+  color: #66716b;
+  line-height: 1.45;
+}
+.customerProductSummary {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid rgba(20, 78, 56, 0.12);
+  border-radius: 18px;
+  background: #faf8f3;
+}
+.customerProductChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.customerProductChips > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border: 1px solid rgba(20, 78, 56, 0.13);
+  border-radius: 999px;
+  background: #fff;
+}
+.customerProductChips b {
+  color: #144e38;
+}
+.customerOrderHistoryDetailed {
+  margin-top: 20px;
+}
+.customerHistoryOrder {
+  padding: 17px 0;
+  border-bottom: 1px solid rgba(20, 78, 56, 0.1);
+}
+.customerHistoryOrder:last-child {
+  border-bottom: 0;
+}
+.customerHistoryOrder > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+}
+.customerHistoryOrder > header div strong,
+.customerHistoryOrder > header div small {
+  display: block;
+}
+.customerHistoryOrder > header div small {
+  margin-top: 4px;
+  color: #6a746f;
+}
+.customerHistoryItems {
+  display: grid;
+  gap: 10px;
+  margin-top: 13px;
+  padding: 13px;
+  border-radius: 14px;
+  background: #faf8f3;
+}
+.customerHistoryItems > div {
+  display: grid;
+  gap: 7px;
+}
+.customerHistoryItems > div > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.customerHistoryItems small {
+  color: #68736d;
+}
+.customerItemOptions {
+  display: block;
+}
+.customerComboItems {
+  display: grid;
+  gap: 6px;
+  padding-left: 13px;
+  border-left: 2px solid rgba(20, 78, 56, 0.18);
+}
+.customerComboItems span,
+.customerComboItems b,
+.customerComboItems small {
+  display: block;
+}
+
+/* Sprint 5.4D: uploaded brand marks keep their natural proportions. */
+.logo.hasUploadedLogo {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.logo.hasUploadedLogo img {
+  object-fit: contain;
+  border-radius: 0;
+}
+.footerBrand {
+  align-items: center;
+}
+.footerLogo {
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
+}
+.footerBrandCopy {
+  min-width: 0;
+}
+.footerBrandCopy > strong {
+  display: block;
+  line-height: 1.15;
+}
+.footerBrandCopy > p {
+  max-width: 470px;
+  margin: 8px 0 0;
+}
+.adminLogoPreview img,
+.adminImagePreview.logoPreview img {
+  object-fit: contain;
+  padding: 5px;
+}
+.adminImagePreview.logoPreview {
+  width: 100px;
+  height: 100px;
+}
+.adminLiveBadge.sync-connecting,
+.adminLiveBadge.sync-polling {
+  background: #fff0c7;
+  color: #7a5704;
+}
+.trackSyncWarning {
+  margin: -17px 0 24px;
+  padding: 11px 13px;
+  border: 1px solid #ead9a4;
+  border-radius: 12px;
+  background: #fff9e8;
+  color: #775d16;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.trackRefreshNote.sync-live {
+  color: #24734e;
+}
+@media (max-width: 760px) {
+  .customerToolbar {
+    align-items: stretch;
+  }
+  .customerExportButton {
+    width: 100%;
+  }
+  .customerHistoryOrder > header {
+    grid-template-columns: 1fr auto;
+  }
+  .customerHistoryOrder > header > b {
+    grid-column: 1 / -1;
+  }
+}
