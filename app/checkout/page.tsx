@@ -103,14 +103,15 @@ export default function CheckoutPage() {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(orderDetails),
+        body: JSON.stringify({ ...orderDetails, items: cart }),
       });
-      const result = (await response.json()) as { orderNumber?: string; error?: string };
-      if (!response.ok || !result.orderNumber) throw new Error(result.error || "Unable to place order.");
+      const result = (await response.json()) as { orderNumber?: string; trackingToken?: string; error?: string };
+      if (!response.ok || !result.orderNumber || !result.trackingToken) throw new Error(result.error || "Unable to place order.");
       const id = result.orderNumber;
 
       saveOrder({
         id,
+        trackingToken: result.trackingToken,
         customer: `${firstName} ${lastName}`.trim(),
         ...orderDetails,
         status: "New",
@@ -119,11 +120,11 @@ export default function CheckoutPage() {
       });
 
       clearCart();
-      router.push(`/order/success?order=${encodeURIComponent(id)}`);
+      router.push(`/order/success?order=${encodeURIComponent(id)}&token=${encodeURIComponent(result.trackingToken)}`);
     } catch (error) {
       console.error("Unable to place order:", error);
       setSubmitting(false);
-      window.alert("We could not place your order. Please try again.");
+      window.alert(error instanceof Error ? error.message : "We could not place your order. Please try again.");
     }
   }
 

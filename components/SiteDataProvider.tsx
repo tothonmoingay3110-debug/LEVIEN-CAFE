@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { products as fallbackProducts, promotions as fallbackPromotions } from "@/lib/data";
 import { readSupabaseCatalog, type SupabaseCatalog } from "@/lib/supabase/catalog";
+import { createClient } from "@/lib/supabase/client";
 import type { Combo, Product, Promotion } from "@/types";
 
 type SiteContent = {
@@ -132,7 +133,7 @@ export function SiteDataProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [source, setSource] = useState<SiteDataContextValue["source"]>("fallback");
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       const cloud = await readSupabaseCatalog();
       if (cloud) {
@@ -154,21 +155,55 @@ export function SiteDataProvider({ children }: { children: React.ReactNode }) {
       setCatalog(null);
       setSource("fallback");
     }
-  };
+  }, []);
 
   useEffect(() => {
     void refresh();
-    const onStorage = (event: StorageEvent) => {
-      if (!event.key || event.key === "levien-admin-v1") void refresh();
+
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => void refresh(), 300);
     };
-    const onCustom = () => void refresh();
+    let unsubscribeRealtime = () => {};
+    try {
+      const supabase = createClient();
+      const channel = [
+        "site_content", "categories", "toppings", "products",
+        "product_toppings", "combos", "combo_products", "promotions",
+      ].reduce(
+        (current, table) => current.on(
+          "postgres_changes",
+          { event: "*", schema: "public", table },
+          scheduleRefresh,
+        ),
+        supabase.channel("storefront-catalog-sync"),
+      ).subscribe();
+      unsubscribeRealtime = () => void supabase.removeChannel(channel);
+    } catch (error) {
+      console.warn("Unable to start Supabase catalog sync:", error);
+    }
+
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || event.key === "levien-admin-v1") scheduleRefresh();
+    };
+    const onCustom = () => scheduleRefresh();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") scheduleRefresh();
+    };
     window.addEventListener("storage", onStorage);
     window.addEventListener("levien-admin-updated", onCustom);
+    window.addEventListener("online", scheduleRefresh);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("levien-admin-updated", onCustom);
+      window.removeEventListener("online", scheduleRefresh);
+      document.removeEventListener("visibilitychange", onVisible);
+      unsubscribeRealtime();
     };
-  }, []);
+  }, [refresh]);
 
   const value = useMemo<SiteDataContextValue>(() => ({
     content: { ...defaults, ...(catalog?.content || {}) },

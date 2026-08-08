@@ -1,8 +1,8 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { readOrders, writeOrders } from "@/lib/orders";
+import { readOrders } from "@/lib/orders";
 import type { CustomerOrder, OrderStatus } from "@/types";
 
 type AdminView = "dashboard" | "orders" | "customers" | "products" | "categories" | "toppings" | "combos" | "promotions" | "content";
@@ -76,6 +76,53 @@ const viewLabels: Record<AdminView, string> = {
   toppings: "Toppings", combos: "Combos", promotions: "Promotions", content: "Website Content",
 };
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+const catalogId = () => crypto.randomUUID();
+type ImageKind = "product" | "combo" | "promotion" | "logo" | "about";
+const imageFrames: Record<ImageKind, { width: number; height: number; padding: number }> = {
+  product: { width: 1200, height: 1200, padding: 90 },
+  combo: { width: 1600, height: 1000, padding: 80 },
+  promotion: { width: 1200, height: 1400, padding: 80 },
+  logo: { width: 800, height: 800, padding: 20 },
+  about: { width: 1600, height: 1100, padding: 70 },
+};
+async function optimizeImage(file: File, kind: ImageKind) {
+  if (file.size > 20 * 1024 * 1024) throw new Error("Choose an image smaller than 20 MB.");
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  const frame = imageFrames[kind];
+  const canvas = document.createElement("canvas");
+  canvas.width = frame.width;
+  canvas.height = frame.height;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    bitmap.close();
+    throw new Error("Your browser cannot optimize this image.");
+  }
+  const availableWidth = frame.width - frame.padding * 2;
+  const availableHeight = frame.height - frame.padding * 2;
+  const scale = Math.min(availableWidth / bitmap.width, availableHeight / bitmap.height);
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(bitmap, Math.round((frame.width - width) / 2), Math.round((frame.height - height) / 2), width, height);
+  bitmap.close();
+  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(
+    (result) => result ? resolve(result) : reject(new Error("Unable to optimize image.")),
+    "image/webp",
+    0.88,
+  ));
+  return new File([blob], `${kind}-${Date.now()}.webp`, { type: "image/webp" });
+}
+async function uploadAdminImage(file: File, scope: ImageKind) {
+  const optimizedFile = await optimizeImage(file, scope);
+  const formData = new FormData();
+  formData.set("file", optimizedFile);
+  formData.set("scope", scope);
+  const response = await fetch("/api/admin/uploads", { method: "POST", body: formData });
+  const result = (await response.json()) as { url?: string; error?: string };
+  if (!response.ok || !result.url) throw new Error(result.error || "Unable to upload image.");
+  return result.url;
+}
 const money = (value: number) => `$${Number(value || 0).toFixed(2)}`;
 const normalizePhone = (phone: string) => String(phone || "").replace(/\D/g, "");
 const formatCustomerPhone = (phone: string) => {
@@ -234,14 +281,6 @@ function normalizeOrder(order: any): CustomerOrder {
   };
 }
 
-function readImage(event: ChangeEvent<HTMLInputElement>, done: (value: string) => void) {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => done(String(reader.result || ""));
-  reader.readAsDataURL(file);
-}
-
 export default function AdminApp() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [view, setView] = useState<AdminView>("dashboard");
@@ -251,6 +290,8 @@ export default function AdminApp() {
   const [query, setQuery] = useState("");
   const [customerQuery, setCustomerQuery] = useState("");
   const [orderFilter, setOrderFilter] = useState<"All" | OrderStatus>("All");
+  const [orderSyncStatus, setOrderSyncStatus] = useState<"connecting" | "live" | "polling">("connecting");
+  const orderRefreshPromise = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("levien-admin-v1");
@@ -268,7 +309,16 @@ export default function AdminApp() {
       const placedOrders = readOrders().map(normalizeOrder);
       if (placedOrders.length) setDb({ ...seed, orders: [...placedOrders, ...seed.orders.filter((order) => !placedOrders.some((placed) => placed.id === order.id))] });
     }
-    setLoggedIn(sessionStorage.getItem("levien-admin-session") === "1");
+    void fetch("/api/admin/session", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((result: { authenticated?: boolean }) => {
+        if (result.authenticated) {
+          setLoggedIn(true);
+          void refreshCloudOrders();
+          void refreshCloudCatalog();
+        }
+      })
+      .catch((error) => console.error("Unable to restore admin session:", error));
   }, []);
   useEffect(() => {
     localStorage.setItem("levien-admin-v1", JSON.stringify(db));
@@ -276,35 +326,31 @@ export default function AdminApp() {
   }, [db]);
 
   useEffect(() => {
-    const syncOrders = () => {
-      const placedOrders = readOrders().map(normalizeOrder);
-      setDb((current) => ({
-        ...current,
-        orders: [
-          ...placedOrders,
-          ...current.orders.filter(
-            (order) => !placedOrders.some((placed) => placed.id === order.id),
-          ),
-        ],
-      }));
-    };
+    if (!loggedIn) return;
+    const syncOrders = () => void refreshCloudOrders();
+    const eventSource = new EventSource("/api/admin/orders/stream");
+    eventSource.addEventListener("ready", () => setOrderSyncStatus("live"));
+    eventSource.addEventListener("orders", syncOrders);
+    eventSource.addEventListener("unavailable", () => setOrderSyncStatus("polling"));
+    eventSource.onerror = () => setOrderSyncStatus("polling");
 
     const syncWhenVisible = () => {
       if (document.visibilityState === "visible") syncOrders();
     };
 
-    window.addEventListener("storage", syncOrders);
-    window.addEventListener("levien-orders-updated", syncOrders);
     window.addEventListener("focus", syncOrders);
+    window.addEventListener("online", syncOrders);
     document.addEventListener("visibilitychange", syncWhenVisible);
+    const timer = window.setInterval(syncOrders, 30000);
 
     return () => {
-      window.removeEventListener("storage", syncOrders);
-      window.removeEventListener("levien-orders-updated", syncOrders);
+      eventSource.close();
       window.removeEventListener("focus", syncOrders);
+      window.removeEventListener("online", syncOrders);
       document.removeEventListener("visibilitychange", syncWhenVisible);
+      window.clearInterval(timer);
     };
-  }, []);
+  }, [loggedIn]);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(""), 2400); return () => clearTimeout(timer); }, [toast]);
 
   const todayOrders = db.orders.filter(o => new Date(o.createdAt).toDateString() === new Date().toDateString());
@@ -319,15 +365,90 @@ export default function AdminApp() {
     return fullName.includes(term) || normalizePhone(customer.phone).includes(normalizePhone(term)) || customer.email.toLowerCase().includes(term);
   });
 
-  function update(next: DB, message = "Saved successfully") { setDb(next); setToast(message); }
-  function login(event: React.FormEvent<HTMLFormElement>) {
+  function update(next: DB, message = "Saved successfully") {
+    const catalogChanged = next.categories !== db.categories || next.toppings !== db.toppings ||
+      next.products !== db.products || next.combos !== db.combos ||
+      next.promotions !== db.promotions || next.content !== db.content;
+    setDb(next);
+    setToast(message);
+    if (catalogChanged) void saveCloudCatalog(next);
+  }
+  function refreshCloudOrders() {
+    if (orderRefreshPromise.current) return orderRefreshPromise.current;
+    const refreshRequest = (async () => {
+      try {
+        const response = await fetch("/api/admin/orders", { cache: "no-store" });
+        if (response.status === 401) {
+          setLoggedIn(false);
+          return;
+        }
+        const result = (await response.json()) as { orders?: CustomerOrder[]; error?: string };
+        if (!response.ok || !result.orders) throw new Error(result.error || "Unable to load orders.");
+        setDb((current) => ({ ...current, orders: result.orders || [] }));
+      } catch (error) {
+        console.error("Unable to sync Supabase orders:", error);
+        setOrderSyncStatus("polling");
+        setToast("Unable to sync Supabase orders");
+      }
+    })();
+    orderRefreshPromise.current = refreshRequest;
+    void refreshRequest.finally(() => {
+      if (orderRefreshPromise.current === refreshRequest) orderRefreshPromise.current = null;
+    });
+    return refreshRequest;
+  }
+  async function refreshCloudCatalog() {
+    try {
+      const response = await fetch("/api/admin/catalog", { cache: "no-store" });
+      if (response.status === 401) {
+        setLoggedIn(false);
+        return;
+      }
+      const result = (await response.json()) as { catalog?: Omit<DB, "orders">; error?: string };
+      if (!response.ok || !result.catalog) throw new Error(result.error || "Unable to load catalog.");
+      setDb((current) => ({ ...current, ...result.catalog }));
+    } catch (error) {
+      console.error("Unable to sync Supabase catalog:", error);
+      setToast("Unable to sync Supabase catalog");
+    }
+  }
+  async function saveCloudCatalog(next: DB) {
+    try {
+      const { orders: _orders, ...catalog } = next;
+      const response = await fetch("/api/admin/catalog", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ catalog }),
+      });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Unable to save catalog.");
+      window.dispatchEvent(new Event("levien-admin-updated"));
+    } catch (error) {
+      console.error("Unable to save Supabase catalog:", error);
+      setToast(error instanceof Error ? error.message : "Unable to save Supabase catalog");
+    }
+  }
+  async function login(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    if (form.get("username") === "admin" && form.get("password") === "123") {
-      sessionStorage.setItem("levien-admin-session", "1"); setLoggedIn(true);
-    } else setToast("Incorrect username or password");
+    try {
+      const response = await fetch("/api/admin/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: form.get("username"), password: form.get("password") }),
+      });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Unable to sign in.");
+      setLoggedIn(true);
+      await Promise.all([refreshCloudOrders(), refreshCloudCatalog()]);
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "Unable to sign in");
+    }
   }
-  function logout() { sessionStorage.removeItem("levien-admin-session"); setLoggedIn(false); }
+  function logout() {
+    void fetch("/api/admin/session", { method: "DELETE" });
+    setLoggedIn(false);
+  }
 
   if (!loggedIn) return <AdminLogin onLogin={login} toast={toast} />;
 
@@ -339,7 +460,7 @@ export default function AdminApp() {
         <div className="adminSidebarBottom"><Link href="/"><AdminIcon name="external" /><span>View Store</span></Link><button onClick={logout}><AdminIcon name="logout" /><span>Sign out</span></button></div>
       </aside>
       <main className="adminWorkspace">
-        <header className="adminTopbar"><div><span className="adminBreadcrumb">LEVIEN CAFE / {viewLabels[view]}</span><h1>{viewLabels[view]}</h1></div><div className="adminTopActions"><span className="adminLiveBadge">● Local demo</span><button className="adminAvatar">HT</button></div></header>
+        <header className="adminTopbar"><div><span className="adminBreadcrumb">LEVIEN CAFE / {viewLabels[view]}</span><h1>{viewLabels[view]}</h1></div><div className="adminTopActions"><span className={`adminLiveBadge sync-${orderSyncStatus}`}>● {orderSyncStatus === "live" ? "Orders live" : orderSyncStatus === "polling" ? "Auto reconnecting" : "Connecting"}</span><button className="adminAvatar">HT</button></div></header>
         {view === "dashboard" && <Dashboard db={db} revenue={revenue} todayOrders={todayOrders} openView={setView} openModal={setModal} />}
         {view === "orders" && <Orders db={db} orders={filteredOrders} filter={orderFilter} setFilter={setOrderFilter} update={update} openModal={setModal} />}
         {view === "customers" && <Customers customers={filteredCustomers} allCustomers={customers} orders={db.orders} query={customerQuery} setQuery={setCustomerQuery} openModal={setModal} />}
@@ -357,7 +478,7 @@ export default function AdminApp() {
 }
 
 function AdminLogin({ onLogin, toast }: { onLogin: (e: React.FormEvent<HTMLFormElement>) => void; toast: string }) {
-  return <div className="adminLoginPage"><div className="adminLoginVisual"><span>LEVIEN CAFE</span><h1>Your café,<br/>beautifully managed.</h1><p>Products, promotions, website content and online orders in one clean workspace.</p></div><form className="adminLoginCard" onSubmit={onLogin}><div className="adminLoginLogo">LV</div><span className="adminEyebrow">Back office</span><h2>Welcome back</h2><p>Sign in to manage LEVIEN CAFE.</p><label>Username<input name="username" defaultValue="admin" /></label><label>Password<input name="password" type="password" defaultValue="123" /></label><button className="adminPrimary" type="submit">Sign in</button><small>Demo credentials: admin / 123</small>{toast && <div className="adminLoginError">{toast}</div>}</form></div>;
+  return <div className="adminLoginPage"><div className="adminLoginVisual"><span>LEVIEN CAFE</span><h1>Your café,<br/>beautifully managed.</h1><p>Products, promotions, website content and online orders in one clean workspace.</p></div><form className="adminLoginCard" onSubmit={onLogin}><div className="adminLoginLogo">LV</div><span className="adminEyebrow">Back office</span><h2>Welcome back</h2><p>Sign in to manage LEVIEN CAFE.</p><label>Username<input name="username" defaultValue="admin" /></label><label>Password<input name="password" type="password" /></label><button className="adminPrimary" type="submit">Sign in</button><small>Credentials are verified securely by the server.</small>{toast && <div className="adminLoginError">{toast}</div>}</form></div>;
 }
 
 function Dashboard({ db, revenue, todayOrders, openView, openModal }: { db: DB; revenue: number; todayOrders: Order[]; openView: (v: AdminView) => void; openModal: (m: { type: string; id?: string }) => void }) {
@@ -369,16 +490,27 @@ function QuickAction({ icon, title, text, onClick }: { icon: AdminIconName; titl
 function Orders({ db, orders, filter, setFilter, update, openModal }: { db: DB; orders: Order[]; filter: "All" | OrderStatus; setFilter: (v: "All" | OrderStatus) => void; update: (d: DB, m?: string) => void; openModal: (m: { type: string; id?: string }) => void }) {
   const statuses: ("All" | OrderStatus)[] = ["All", "New", "Preparing", "Ready", "Completed", "Cancelled"];
 
-  function changeOrderStatus(orderId: string, status: OrderStatus) {
+  async function changeOrderStatus(orderId: string, status: OrderStatus) {
+    const previousOrders = db.orders;
     const nextOrders = db.orders.map((order) =>
       order.id === orderId ? { ...order, status } : order,
     );
 
-    writeOrders(nextOrders);
     update({ ...db, orders: nextOrders }, `Order ${orderId} updated`);
+    try {
+      const response = await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNumber: orderId, status }),
+      });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Unable to update order.");
+    } catch (error) {
+      update({ ...db, orders: previousOrders }, error instanceof Error ? error.message : "Unable to update order");
+    }
   }
 
-  return <div className="adminStack"><section className="adminToolbar"><div className="adminTabs">{statuses.map(s => <button key={s} className={filter === s ? "active" : ""} onClick={() => setFilter(s)}>{s}<span>{s === "All" ? db.orders.length : db.orders.filter(o => o.status === s).length}</span></button>)}</div></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Online ordering</span><h3>Order queue</h3></div><span className="adminHint">Status updates are saved locally</span></div><div className="adminTableWrap"><table className="adminTable"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>{orders.map(o => <tr key={o.id}><td><strong>{o.id}</strong><small>{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></td><td><strong>{o.customer}</strong><small>{o.phone}</small></td><td>{o.type}</td><td><strong>{money(o.total)}</strong></td><td><select className={`orderStatusSelect status-${o.status.toLowerCase()}`} value={o.status} onChange={e => changeOrderStatus(o.id, e.target.value as OrderStatus)}>{["New", "Preparing", "Ready", "Completed", "Cancelled"].map(s => <option key={s}>{s}</option>)}</select></td><td><button className="adminIconAction" onClick={() => openModal({ type: "order", id: o.id })}>View</button></td></tr>)}</tbody></table></div></section></div>;
+  return <div className="adminStack"><section className="adminToolbar"><div className="adminTabs">{statuses.map(s => <button key={s} className={filter === s ? "active" : ""} onClick={() => setFilter(s)}>{s}<span>{s === "All" ? db.orders.length : db.orders.filter(o => o.status === s).length}</span></button>)}</div></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Online ordering</span><h3>Order queue</h3></div><span className="adminHint">Status updates are saved to Supabase</span></div><div className="adminTableWrap"><table className="adminTable"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>{orders.map(o => <tr key={o.id}><td><strong>{o.id}</strong><small>{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></td><td><strong>{o.customer}</strong><small>{o.phone}</small></td><td>{o.type}</td><td><strong>{money(o.total)}</strong></td><td><select className={`orderStatusSelect status-${o.status.toLowerCase()}`} value={o.status} onChange={e => void changeOrderStatus(o.id, e.target.value as OrderStatus)}>{["New", "Preparing", "Ready", "Completed", "Cancelled"].map(s => <option key={s}>{s}</option>)}</select></td><td><button className="adminIconAction" onClick={() => openModal({ type: "order", id: o.id })}>View</button></td></tr>)}</tbody></table></div></section></div>;
 }
 function OrderRows({ orders }: { orders: Order[] }) { return <div className="adminOrderRows">{orders.map(o => <div key={o.id}><span className={`adminOrderDot status-${o.status.toLowerCase()}`}></span><div><strong>{o.id} · {o.customer}</strong><small>{o.items.map(orderItemLabel).join(", ")}</small></div><b>{money(o.total)}</b><em>{o.status}</em></div>)}</div>; }
 
@@ -442,6 +574,8 @@ function WebsiteContent({ db, openModal }: { db: DB; openModal: (m: { type: stri
 
 function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: string }; db: DB; close: () => void; update: (d: DB, m?: string) => void }) {
   const [image, setImage] = useState("");
+  const [logoImage, setLogoImage] = useState(db.content.logo);
+  const [aboutImage, setAboutImage] = useState(db.content.aboutImage);
   const [selectedComboProductIds, setSelectedComboProductIds] = useState<string[]>([]);
   const [comboPricePreview, setComboPricePreview] = useState(0);
   const entity = useMemo(() => {
@@ -480,9 +614,13 @@ function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: 
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); const f=new FormData(e.currentTarget);
-    if(modal.type==="product") { const old=entity as Product|undefined; const item:Product={id:old?.id||uid("p"),name:String(f.get("name")),categoryId:String(f.get("categoryId")),price:Number(f.get("price")),description:String(f.get("description")),image:image||old?.image||"",emoji:String(f.get("emoji")||"☕"),toppingIds:f.getAll("toppings").map(String),allowIce:f.get("allowIce")==="on",allowSugar:f.get("allowSugar")==="on",allowToppings:f.get("allowToppings")==="on",bestSeller:f.get("bestSeller")==="on",mustTry:f.get("mustTry")==="on",featured:f.get("featured")==="on",isNew:f.get("isNew")==="on",soldOut:f.get("soldOut")==="on",active:f.get("active")==="on"}; update({...db,products:old?db.products.map(x=>x.id===old.id?item:x):[item,...db.products]},old?"Product updated":"Product created"); }
-    if(modal.type==="category") { const old=entity as Category|undefined; const item:Category={id:old?.id||uid("c"),name:String(f.get("name")),icon:String(f.get("icon")||"☕"),active:f.get("active")==="on"}; update({...db,categories:old?db.categories.map(x=>x.id===old.id?item:x):[...db.categories,item]},"Category saved"); }
-    if(modal.type==="topping") { const old=entity as Topping|undefined; const item:Topping={id:old?.id||uid("t"),name:String(f.get("name")),price:Number(f.get("price")),active:f.get("active")==="on"}; update({...db,toppings:old?db.toppings.map(x=>x.id===old.id?item:x):[...db.toppings,item]},"Topping saved"); }
+    if (f.getAll("_imageUploading").includes("1")) {
+      update(db, "Wait for image optimization to finish");
+      return;
+    }
+    if(modal.type==="product") { const old=entity as Product|undefined; const item:Product={id:old?.id||catalogId(),name:String(f.get("name")),categoryId:String(f.get("categoryId")),price:Number(f.get("price")),description:String(f.get("description")),image:image||old?.image||"",emoji:String(f.get("emoji")||"☕"),toppingIds:f.getAll("toppings").map(String),allowIce:f.get("allowIce")==="on",allowSugar:f.get("allowSugar")==="on",allowToppings:f.get("allowToppings")==="on",bestSeller:f.get("bestSeller")==="on",mustTry:f.get("mustTry")==="on",featured:f.get("featured")==="on",isNew:f.get("isNew")==="on",soldOut:f.get("soldOut")==="on",active:f.get("active")==="on"}; update({...db,products:old?db.products.map(x=>x.id===old.id?item:x):[item,...db.products]},old?"Product updated":"Product created"); }
+    if(modal.type==="category") { const old=entity as Category|undefined; const item:Category={id:old?.id||catalogId(),name:String(f.get("name")),icon:String(f.get("icon")||"☕"),active:f.get("active")==="on"}; update({...db,categories:old?db.categories.map(x=>x.id===old.id?item:x):[...db.categories,item]},"Category saved"); }
+    if(modal.type==="topping") { const old=entity as Topping|undefined; const item:Topping={id:old?.id||catalogId(),name:String(f.get("name")),price:Number(f.get("price")),active:f.get("active")==="on"}; update({...db,toppings:old?db.toppings.map(x=>x.id===old.id?item:x):[...db.toppings,item]},"Topping saved"); }
     if (modal.type === "combo") {
       const old = entity as Combo | undefined;
       const name = String(f.get("name") || "").trim();
@@ -513,7 +651,7 @@ function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: 
       }
 
       const item: Combo = {
-        id: old?.id || uid("cb"),
+        id: old?.id || catalogId(),
         name,
         description,
         price,
@@ -526,8 +664,8 @@ function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: 
         old ? "Combo updated" : "Combo created",
       );
     }
-    if(modal.type==="promotion") { const old=entity as Promotion|undefined; const item:Promotion={id:old?.id||uid("pr"),title:String(f.get("title")),eyebrow:String(f.get("eyebrow")),description:String(f.get("description")),priceText:String(f.get("priceText")),order:Number(f.get("order")),image:image||old?.image||"",active:f.get("active")==="on"}; update({...db,promotions:old?db.promotions.map(x=>x.id===old.id?item:x):[...db.promotions,item]},"Promotion saved"); }
-    if(modal.type==="content") { const c=db.content; const next={...c,storeName:String(f.get("storeName")),tagline:String(f.get("tagline")),announcement:String(f.get("announcement")),aboutTitle:String(f.get("aboutTitle")),aboutText:String(f.get("aboutText")),address:String(f.get("address")),phone:String(f.get("phone")),email:String(f.get("email")),hours:String(f.get("hours")),footerText:String(f.get("footerText")),mapUrl:String(f.get("mapUrl")),logo:String(f.get("logoValue")||c.logo),aboutImage:String(f.get("aboutImageValue")||c.aboutImage)}; update({...db,content:next},"Website content saved"); }
+    if(modal.type==="promotion") { const old=entity as Promotion|undefined; const item:Promotion={id:old?.id||catalogId(),title:String(f.get("title")),eyebrow:String(f.get("eyebrow")),description:String(f.get("description")),priceText:String(f.get("priceText")),order:Number(f.get("order")),image:image||old?.image||"",active:f.get("active")==="on"}; update({...db,promotions:old?db.promotions.map(x=>x.id===old.id?item:x):[...db.promotions,item]},"Promotion saved"); }
+    if(modal.type==="content") { const c=db.content; const next={...c,storeName:String(f.get("storeName")),tagline:String(f.get("tagline")),announcement:String(f.get("announcement")),aboutTitle:String(f.get("aboutTitle")),aboutText:String(f.get("aboutText")),address:String(f.get("address")),phone:String(f.get("phone")),email:String(f.get("email")),hours:String(f.get("hours")),footerText:String(f.get("footerText")),mapUrl:String(f.get("mapUrl")),logo:logoImage,aboutImage}; update({...db,content:next},"Website content saved"); }
     close();
   }
   if (modal.type === "customer") {
@@ -575,7 +713,7 @@ function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: 
     </ModalShell>;
   }
   if(modal.type==="order") { const o=entity as Order; return <ModalShell title={o.id} subtitle="Order details" close={close}><div className="orderDetailHeader"><div><strong>{o.customer}</strong><span>{o.phone} · {o.type}</span></div><b>{money(o.total)}</b></div><div className="orderItemList">{o.items.map(i=><div className={i.itemType === "combo" ? "adminComboOrderItem" : ""} key={i.lineId}><strong>{i.quantity} × {i.name}</strong>{i.itemType === "combo" && i.comboItems?.length ? <div className="adminComboChildren">{i.comboItems.map(child=><span key={child.productId}><b>{child.emoji} {child.name}</b><small>{comboChildOptions(child)}</small></span>)}</div> : <small>{orderItemOptions(i)}</small>}<b>{money(i.unitPrice * i.quantity)}</b></div>)}</div><div className="adminOrderMeta"><span><b>Payment</b>{o.payment}</span>{o.pickupTime && <span><b>Pickup time</b>{o.pickupTime}</span>}{o.address && <span><b>Delivery address</b>{[o.address,o.apartment,o.city,o.zip].filter(Boolean).join(", ")}</span>}</div><div className="adminNote"><strong>Customer note</strong><p>{o.note||"No special note."}</p></div></ModalShell>; }
-  if(modal.type==="content") { const c=db.content; return <ModalShell title="Website Content" subtitle="Logo, story, contact and map" close={close}><form onSubmit={submit} className="adminForm"><FormInput label="Store name" name="storeName" defaultValue={c.storeName}/><FormInput label="Brand tagline" name="tagline" defaultValue={c.tagline||"CAFE & EATERY"}/><FormInput label="Announcement bar" name="announcement" defaultValue={c.announcement} wide/><div className="adminUploadField wide"><label>Logo image</label><div className="adminUploadRow"><div className="adminImagePreview">{c.logo?<img src={c.logo} alt=""/>:"LV"}</div><input type="file" accept="image/*" onChange={e=>readImage(e,v=>{const input=document.querySelector<HTMLInputElement>('[name=logoValue]'); if(input) input.value=v;})}/><input type="hidden" name="logoValue" defaultValue={c.logo}/></div></div><FormInput label="Our Story title" name="aboutTitle" defaultValue={c.aboutTitle} wide/><FormTextarea label="Our Story text" name="aboutText" defaultValue={c.aboutText}/><div className="adminUploadField wide"><label>About Us image</label><div className="adminUploadRow"><div className="adminImagePreview landscape">{c.aboutImage?<img src={c.aboutImage} alt=""/>:"☕"}</div><input type="file" accept="image/*" onChange={e=>readImage(e,v=>{const input=document.querySelector<HTMLInputElement>('[name=aboutImageValue]'); if(input) input.value=v;})}/><input type="hidden" name="aboutImageValue" defaultValue={c.aboutImage}/></div></div><FormInput label="Address" name="address" defaultValue={c.address} wide/><FormInput label="Phone" name="phone" defaultValue={c.phone}/><FormInput label="Email" name="email" defaultValue={c.email}/><FormInput label="Opening hours" name="hours" defaultValue={c.hours} wide/><FormInput label="Footer note" name="footerText" defaultValue={c.footerText||"Made with care in Philadelphia"} wide/><FormInput label="Google Maps link" name="mapUrl" defaultValue={c.mapUrl} wide/><FormActions close={close}/></form></ModalShell>; }
+  if(modal.type==="content") { const c=db.content; return <ModalShell title="Website Content" subtitle="Logo, story, contact and map" close={close}><form onSubmit={submit} className="adminForm"><FormInput label="Store name" name="storeName" defaultValue={c.storeName}/><FormInput label="Brand tagline" name="tagline" defaultValue={c.tagline||"CAFE & EATERY"}/><FormInput label="Announcement bar" name="announcement" defaultValue={c.announcement} wide/><ImageUpload kind="logo" label="Logo image" image={logoImage} setImage={setLogoImage}/><FormInput label="Our Story title" name="aboutTitle" defaultValue={c.aboutTitle} wide/><FormTextarea label="Our Story text" name="aboutText" defaultValue={c.aboutText}/><ImageUpload kind="about" label="About Us image" image={aboutImage} setImage={setAboutImage}/><FormInput label="Address" name="address" defaultValue={c.address} wide/><FormInput label="Phone" name="phone" defaultValue={c.phone}/><FormInput label="Email" name="email" defaultValue={c.email}/><FormInput label="Opening hours" name="hours" defaultValue={c.hours} wide/><FormInput label="Footer note" name="footerText" defaultValue={c.footerText||"Made with care in Philadelphia"} wide/><FormInput label="Google Maps link" name="mapUrl" defaultValue={c.mapUrl} wide/><FormActions close={close}/></form></ModalShell>; }
   if(modal.type==="product") { const p=entity as Product|undefined; return <ModalShell title={p?"Edit product":"New product"} subtitle="Menu item details and customization" close={close}><form onSubmit={submit} className="adminForm"><FormInput label="Product name" name="name" defaultValue={p?.name||""}/><label>Category<select name="categoryId" defaultValue={p?.categoryId||db.categories[0]?.id}>{db.categories.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></label><FormInput label="Price" name="price" type="number" step="0.01" defaultValue={String(p?.price||0)}/><FormInput label="Emoji fallback" name="emoji" defaultValue={p?.emoji||"☕"}/><FormTextarea label="Description" name="description" defaultValue={p?.description||""}/><ImageUpload image={image||p?.image||""} setImage={setImage}/><fieldset className="adminChecklist wide"><legend>Customer Options</legend><Check name="allowIce" label="Allow Ice Level" checked={p?.allowIce??true}/><Check name="allowSugar" label="Allow Sugar Level" checked={p?.allowSugar??true}/><Check name="allowToppings" label="Allow Toppings" checked={p?.allowToppings??((p?.toppingIds.length||0)>0)}/></fieldset><fieldset className="adminChecklist wide"><legend>Available Toppings</legend>{db.toppings.map(t=><Check key={t.id} name="toppings" value={t.id} label={`${t.name} (+${money(t.price)})`} checked={p?.toppingIds.includes(t.id)}/>)}</fieldset><fieldset className="adminChecklist wide"><legend>Badges & Visibility</legend><Check name="bestSeller" label="Best Seller" checked={p?.bestSeller}/><Check name="mustTry" label="Must Try" checked={p?.mustTry}/><Check name="featured" label="Featured" checked={p?.featured}/><Check name="isNew" label="New" checked={p?.isNew}/><Check name="soldOut" label="Sold Out" checked={p?.soldOut}/><Check name="active" label="Published" checked={p?.active??true}/></fieldset><FormActions close={close}/></form></ModalShell>; }
   if(modal.type==="category") { const c=entity as Category|undefined; return <SimpleEntityForm title={c?"Edit category":"New category"} submit={submit} close={close}><FormInput label="Category name" name="name" defaultValue={c?.name||""}/><FormInput label="Icon" name="icon" defaultValue={c?.icon||"☕"}/><Check name="active" label="Active" checked={c?.active??true}/></SimpleEntityForm>; }
   if(modal.type==="topping") { const t=entity as Topping|undefined; return <SimpleEntityForm title={t?"Edit topping":"New topping"} submit={submit} close={close}><FormInput label="Topping name" name="name" defaultValue={t?.name||""}/><FormInput label="Additional price" name="price" type="number" step="0.01" defaultValue={String(t?.price||0)}/><Check name="active" label="Active" checked={t?.active??true}/></SimpleEntityForm>; }
@@ -597,7 +735,7 @@ function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: 
           />
         </label>
         <FormTextarea label="Description" name="description" defaultValue={combo?.description || ""} />
-        <ImageUpload image={image || combo?.image || ""} setImage={setImage} />
+        <ImageUpload kind="combo" image={image || combo?.image || ""} setImage={setImage} />
 
         <section className="comboBuilderSummary wide" aria-live="polite">
           <div>
@@ -656,14 +794,31 @@ function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: 
       </form>
     </ModalShell>;
   }
-  const p=entity as Promotion|undefined; return <ModalShell title={p?"Edit promotion":"New promotion"} subtitle="Homepage slider content" close={close}><form onSubmit={submit} className="adminForm"><FormInput label="Headline" name="title" defaultValue={p?.title||""}/><FormInput label="Eyebrow" name="eyebrow" defaultValue={p?.eyebrow||""}/><FormInput label="Price text" name="priceText" defaultValue={p?.priceText||""}/><FormInput label="Slide order" name="order" type="number" defaultValue={String(p?.order||db.promotions.length+1)}/><FormTextarea label="Description" name="description" defaultValue={p?.description||""}/><ImageUpload image={image||p?.image||""} setImage={setImage}/><Check name="active" label="Active on homepage" checked={p?.active??true}/><FormActions close={close}/></form></ModalShell>;
+  const p=entity as Promotion|undefined; return <ModalShell title={p?"Edit promotion":"New promotion"} subtitle="Homepage slider content" close={close}><form onSubmit={submit} className="adminForm"><FormInput label="Headline" name="title" defaultValue={p?.title||""}/><FormInput label="Eyebrow" name="eyebrow" defaultValue={p?.eyebrow||""}/><FormInput label="Price text" name="priceText" defaultValue={p?.priceText||""}/><FormInput label="Slide order" name="order" type="number" defaultValue={String(p?.order||db.promotions.length+1)}/><FormTextarea label="Description" name="description" defaultValue={p?.description||""}/><ImageUpload kind="promotion" image={image||p?.image||""} setImage={setImage}/><Check name="active" label="Active on homepage" checked={p?.active??true}/><FormActions close={close}/></form></ModalShell>;
 }
 function ModalShell({title,subtitle,close,children}:{title:string;subtitle:string;close:()=>void;children:React.ReactNode}){return <div className="adminModalBackdrop" onMouseDown={e=>{if(e.currentTarget===e.target)close()}}><div className="adminModal"><header><div><span className="adminEyebrow">{subtitle}</span><h2>{title}</h2></div><button onClick={close}>×</button></header>{children}</div></div>}
 function SimpleEntityForm({title,submit,close,children}:{title:string;submit:(e:React.FormEvent<HTMLFormElement>)=>void;close:()=>void;children:React.ReactNode}){return <ModalShell title={title} subtitle="Quick setup" close={close}><form onSubmit={submit} className="adminForm compact">{children}<FormActions close={close}/></form></ModalShell>}
 function FormInput({label,name,defaultValue,type="text",step,wide=false}:{label:string;name:string;defaultValue:string;type?:string;step?:string;wide?:boolean}){return <label className={wide?"wide":""}>{label}<input required name={name} type={type} step={step} defaultValue={defaultValue}/></label>}
 function FormTextarea({label,name,defaultValue}:{label:string;name:string;defaultValue:string}){return <label className="wide">{label}<textarea name={name} rows={4} defaultValue={defaultValue}/></label>}
 function Check({name,label,checked=false,value}:{name:string;label:string;checked?:boolean;value?:string}){return <label className="adminCheck"><input type="checkbox" name={name} value={value} defaultChecked={checked}/><span>{label}</span></label>}
-function ImageUpload({image,setImage}:{image:string;setImage:(v:string)=>void}){return <div className="adminUploadField wide"><label>Image</label><div className="adminUploadRow"><div className="adminImagePreview landscape">{image?<img src={image} alt="Preview"/>:<span>Upload</span>}</div><div><input type="file" accept="image/*" onChange={e=>readImage(e,setImage)}/><small>PNG or JPG. Preview is saved locally.</small></div></div></div>}
+function ImageUpload({image,setImage,label="Image",kind="product"}:{image:string;setImage:(v:string)=>void;label?:string;kind?:ImageKind}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const upload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      setImage(await uploadAdminImage(file, kind));
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Unable to upload image.");
+    } finally {
+      setUploading(false);
+    }
+  };
+  return <div className="adminUploadField wide"><label>{label}</label><input type="hidden" name="_imageUploading" value={uploading ? "1" : "0"}/><div className="adminUploadRow"><div className={`adminImagePreview landscape ${kind === "logo" ? "logoPreview" : ""}`}>{image?<img src={image} alt="Preview"/>:<span>Upload</span>}</div><div><input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={e=>void upload(e)}/><small>{error || (uploading ? "Auto-fitting and uploading…" : "Automatically fitted, resized and compressed to WebP.")}</small></div></div></div>;
+}
 function FormActions({close}:{close:()=>void}){return <div className="adminFormActions wide"><button type="button" className="adminSecondary" onClick={close}>Cancel</button><button type="submit" className="adminPrimary">Save changes</button></div>}
 function AdminIcon({ name }: { name: AdminIconName }) {
   const common = { width: 19, height: 19, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };

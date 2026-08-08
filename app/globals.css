@@ -456,6 +456,13 @@ button,input,textarea,select{font-family:var(--font-ui)}
   }
 }
 
+/* Uploaded catalog images keep their full composition inside product cards. */
+.productImage > img {
+  box-sizing: border-box;
+  object-fit: contain;
+  padding: 16px;
+}
+
 
 /* Sprint 4.5 — Customers */
 .customerToolbar {
@@ -672,6 +679,63 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .customerComboItems b,
 .customerComboItems small {
   display: block;
+}
+
+/* Sprint 5.4D: uploaded brand marks keep their natural proportions. */
+.logo.hasUploadedLogo {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.logo.hasUploadedLogo img {
+  object-fit: contain;
+  border-radius: 0;
+}
+.footerBrand {
+  align-items: center;
+}
+.footerLogo {
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
+}
+.footerBrandCopy {
+  min-width: 0;
+}
+.footerBrandCopy > strong {
+  display: block;
+  line-height: 1.15;
+}
+.footerBrandCopy > p {
+  max-width: 470px;
+  margin: 8px 0 0;
+}
+.adminLogoPreview img,
+.adminImagePreview.logoPreview img {
+  object-fit: contain;
+  padding: 5px;
+}
+.adminImagePreview.logoPreview {
+  width: 100px;
+  height: 100px;
+}
+.adminLiveBadge.sync-connecting,
+.adminLiveBadge.sync-polling {
+  background: #fff0c7;
+  color: #7a5704;
+}
+.trackSyncWarning {
+  margin: -17px 0 24px;
+  padding: 11px 13px;
+  border: 1px solid #ead9a4;
+  border-radius: 12px;
+  background: #fff9e8;
+  color: #775d16;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.trackRefreshNote.sync-live {
+  color: #24734e;
 }
 @media (max-width: 760px) {
   .customerToolbar {

@@ -81,6 +81,7 @@ export type FulfillmentType = "Pickup" | "Delivery";
 
 export type CustomerOrder = {
   id: string;
+  trackingToken?: string;
   customer: string;
   firstName: string;
   lastName: string;

@@ -153,8 +153,13 @@ export type Database = {
           p_address: string | null; p_city: string | null; p_zip: string | null;
           p_apartment: string | null; p_payment_method: string; p_subtotal: number;
           p_tax: number; p_delivery_fee: number; p_total: number; p_note: string;
+          p_items: Json;
         };
         Returns: { order_number: string }[];
+      };
+      save_admin_catalog: {
+        Args: { p_catalog: Json };
+        Returns: undefined;
       };
     };
     Enums: {
