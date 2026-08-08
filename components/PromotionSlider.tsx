@@ -27,7 +27,7 @@ export function PromotionSlider() {
       <button className="sliderArrow left" onClick={() => move(-1)} aria-label="Previous promotion">‹</button>
       <div className="heroCopy" key={`copy-${promotion.id}`}>
         <span className="eyebrow">{promotion.eyebrow}</span>
-        <h1>{promotion.title}<br /><em>{promotion.priceText}</em></h1>
+        <h1><span className="heroTitle">{promotion.title}</span><em>{promotion.priceText}</em></h1>
         <p>{promotion.description}</p>
         <div className="heroActions"><a className="button gold" href="/menu">Order Now</a><a className="button ghost" href="/menu">View Menu</a></div>
         <div className="heroTrust"><span>✓ Made to order</span><span>✓ Pickup & delivery</span></div>

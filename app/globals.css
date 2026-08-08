@@ -737,6 +737,43 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .trackRefreshNote.sync-live {
   color: #24734e;
 }
+
+/* Keep every promotion slide the same height as content rotates. */
+.heroTitle {
+  display: -webkit-box;
+  min-height: 2.02em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.heroCopy h1 em {
+  display: block;
+  min-height: 1.01em;
+}
+.heroCopy > p {
+  display: -webkit-box;
+  min-height: 3.36em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.promoInfoCard {
+  height: 196px;
+  animation: none;
+}
+.promoInfoCard strong {
+  display: -webkit-box;
+  min-height: 2.35em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.promoInfoCard small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
 @media (max-width: 760px) {
   .customerToolbar {
     align-items: stretch;
@@ -749,5 +786,10 @@ button,input,textarea,select{font-family:var(--font-ui)}
   }
   .customerHistoryOrder > header > b {
     grid-column: 1 / -1;
+  }
+}
+@media (max-width: 650px) {
+  .promoInfoCard {
+    height: 180px;
   }
 }
