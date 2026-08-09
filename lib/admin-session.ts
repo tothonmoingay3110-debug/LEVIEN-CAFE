@@ -10,6 +10,12 @@ function settings() {
   if (!username || !password || !secret || secret.length < 32) {
     throw new Error("Missing ADMIN_USERNAME, ADMIN_PASSWORD, or a 32+ character ADMIN_SESSION_SECRET.");
   }
+  if (process.env.NODE_ENV === "production") {
+    const weakPasswords = new Set(["123", "admin", "password", "changeme", "levien"]);
+    if (password.length < 12 || weakPasswords.has(password.toLowerCase())) {
+      throw new Error("ADMIN_PASSWORD must be at least 12 characters and non-default in production.");
+    }
+  }
   return { username, password, secret };
 }
 

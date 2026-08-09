@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "verify:production": "node scripts/verify-production.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "latest",
