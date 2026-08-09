@@ -18,6 +18,8 @@
 ## Application
 
 - Run `npm.cmd run build` and deploy the generated Next.js application.
+- Run `npm.cmd run smoke:production -- https://your-production-domain.com`.
+- Confirm `/api/health` returns HTTP `200` without exposing configuration details.
 - Test storefront catalog loading and live catalog updates.
 - Place one pickup order and one delivery order.
 - Test Admin login, catalog image upload, order status updates, and logout.
