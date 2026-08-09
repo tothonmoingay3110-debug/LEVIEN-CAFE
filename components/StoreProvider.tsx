@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { CartItem, Combo, ComboProductSelection, Product, ProductSelection } from "@/types";
 
 const CART_STORAGE_KEY = "levien-cart-v1";
@@ -40,7 +40,9 @@ function comboSelectionKey(comboId: string, selections: ComboProductSelection[])
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [cartNotice, setCartNotice] = useState("");
   const [ready, setReady] = useState(false);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     try {
@@ -56,6 +58,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!ready) return;
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
   }, [cart, ready]);
+
+  useEffect(() => () => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+  }, []);
+
+  const showCartNotice = (name: string, quantity: number) => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    setCartNotice(quantity > 1 ? `${quantity} × ${name}` : name);
+    noticeTimer.current = setTimeout(() => setCartNotice(""), 3200);
+  };
 
   const addProduct = (product: Product, selection: ProductSelection = {}) => {
     if (product.soldOut) return;
@@ -84,7 +96,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         note: selection.note?.trim() || "",
       }];
     });
-    setCartOpen(true);
+    showCartNotice(product.name, quantity);
   };
 
   const addCombo = (combo: Combo, selections: ComboProductSelection[], quantity = 1) => {
@@ -116,7 +128,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         comboItems: selections,
       }];
     });
-    setCartOpen(true);
+    showCartNotice(combo.name, safeQuantity);
   };
 
   const changeQuantity = (lineId: string, delta: number) => setCart((current) => current.map((item) => item.lineId === lineId ? { ...item, quantity: item.quantity + delta } : item).filter((item) => item.quantity > 0));
@@ -126,7 +138,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
   const value = useMemo(() => ({ cart, cartOpen, totalItems, subtotal, ready, addProduct, addCombo, changeQuantity, removeItem, clearCart, openCart: () => setCartOpen(true), closeCart: () => setCartOpen(false) }), [cart, cartOpen, totalItems, subtotal, ready]);
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+  return <StoreContext.Provider value={value}>
+    {children}
+    {cartNotice && <div className="cartNotice" role="status" aria-live="polite" aria-atomic="true">
+      <span className="cartNoticeCheck" aria-hidden="true">✓</span>
+      <span className="cartNoticeCopy"><strong>Added to your order</strong><small>{cartNotice}</small></span>
+      <button type="button" onClick={() => { setCartNotice(""); setCartOpen(true); }}>View order</button>
+    </div>}
+  </StoreContext.Provider>;
 }
 
 export function useStore() {
