@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomUUID } from "node:crypto";
 import { ADMIN_SESSION_COOKIE, verifyAdminSession } from "@/lib/admin-session";
+import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const BUCKET = "catalog-images";
@@ -14,6 +15,10 @@ const extensions: Record<string, string> = {
 
 export async function POST(request: Request) {
   try {
+    if (!isSameOriginRequest(request)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    if (requestBodyExceeds(request, 6 * 1024 * 1024)) {
+      return NextResponse.json({ error: "Image upload is too large." }, { status: 413 });
+    }
     const cookieStore = await cookies();
     if (!verifyAdminSession(cookieStore.get(ADMIN_SESSION_COOKIE)?.value)) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });

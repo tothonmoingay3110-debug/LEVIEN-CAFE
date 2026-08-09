@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { ADMIN_SESSION_COOKIE, verifyAdminSession } from "@/lib/admin-session";
+import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { readSupabaseOrders } from "@/lib/supabase/order-reader";
 import type { OrderStatus } from "@/types";
@@ -25,8 +26,15 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    if (!isSameOriginRequest(request)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     if (!(await isAuthenticated())) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    const body = (await request.json()) as { orderNumber?: unknown; status?: unknown };
+    if (requestBodyExceeds(request, 8 * 1024)) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
+    let body: { orderNumber?: unknown; status?: unknown };
+    try {
+      body = (await request.json()) as { orderNumber?: unknown; status?: unknown };
+    } catch {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
     const orderNumber = typeof body.orderNumber === "string" ? body.orderNumber.trim() : "";
     const status = typeof body.status === "string" ? body.status as OrderStatus : null;
     if (!orderNumber || !status || !statuses.includes(status)) {

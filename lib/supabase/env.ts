@@ -8,8 +8,18 @@ export function getSupabaseEnvironment() {
     );
   }
 
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(supabaseUrl);
+  } catch {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL must be a valid URL.");
+  }
+  if (process.env.NODE_ENV === "production" && parsedUrl.protocol !== "https:") {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL must use HTTPS in production.");
+  }
+
   return {
-    url: supabaseUrl,
+    url: parsedUrl.origin,
     publishableKey: supabasePublishableKey,
   };
 }

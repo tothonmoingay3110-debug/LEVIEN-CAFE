@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { ADMIN_SESSION_COOKIE, verifyAdminSession } from "@/lib/admin-session";
+import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/types/database.types";
 
@@ -67,8 +68,15 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
+    if (!isSameOriginRequest(request)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     if (!(await isAuthenticated())) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    const body = (await request.json()) as { catalog?: unknown };
+    if (requestBodyExceeds(request, 1024 * 1024)) return NextResponse.json({ error: "Catalog request is too large." }, { status: 413 });
+    let body: { catalog?: unknown };
+    try {
+      body = (await request.json()) as { catalog?: unknown };
+    } catch {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
     if (!body.catalog || typeof body.catalog !== "object" || Array.isArray(body.catalog)) {
       return NextResponse.json({ error: "Invalid catalog." }, { status: 400 });
     }

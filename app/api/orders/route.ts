@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { InvalidCheckoutCatalogError, validateAndPriceOrderItems } from "@/lib/supabase/checkout-pricing";
 import type { CartItem, FulfillmentType, ProductTopping } from "@/types";
@@ -101,8 +102,10 @@ function normalizeItems(value: unknown): CartItem[] | null {
 }
 
 export async function POST(request: Request) {
-  const contentLength = Number(request.headers.get("content-length") || 0);
-  if (Number.isFinite(contentLength) && contentLength > 256 * 1024) {
+  if (!isSameOriginRequest(request)) {
+    return NextResponse.json({ error: "Cross-origin order requests are not allowed." }, { status: 403 });
+  }
+  if (requestBodyExceeds(request, 256 * 1024)) {
     return NextResponse.json({ error: "Order request is too large." }, { status: 413 });
   }
 
