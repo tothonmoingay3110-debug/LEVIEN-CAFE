@@ -2,11 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { readOrders } from "@/lib/orders";
+import {
+  roleHasPermission,
+  staffRoleLabels,
+  type StaffPermission,
+  type StaffRole,
+  type StaffSessionSummary,
+} from "@/lib/staff-permissions";
 import type { CustomerOrder, OrderStatus } from "@/types";
 
-type AdminView = "dashboard" | "orders" | "customers" | "products" | "categories" | "toppings" | "combos" | "promotions" | "content";
-type AdminIconName = "dashboard" | "orders" | "customers" | "products" | "categories" | "toppings" | "combos" | "promotions" | "content" | "external" | "logout" | "arrow";
+type AdminView = "dashboard" | "orders" | "customers" | "products" | "categories" | "toppings" | "combos" | "promotions" | "content" | "account";
+type AdminIconName = AdminView | "external" | "logout" | "arrow";
 type Category = { id: string; name: string; icon: string; active: boolean };
 type Topping = { id: string; name: string; price: number; active: boolean };
 type Product = {
@@ -59,10 +65,7 @@ const seed: DB = {
     { id: "pr1", title: "Vietnamese Milk Coffee", eyebrow: "Morning special", description: "Available every day from 7 AM to 9 AM.", priceText: "Only $4.99", image: "", order: 1, active: true },
     { id: "pr2", title: "Coffee & Bánh Mì", eyebrow: "Combo deal", description: "A satisfying Vietnamese pairing.", priceText: "$10.99", image: "", order: 2, active: true },
   ],
-  orders: [
-    { id: "LV250802001", customer: "Alex Morgan", firstName: "Alex", lastName: "Morgan", phone: "215-555-0148", email: "", type: "Pickup", pickupTime: "ASAP", payment: "Pay at Store", subtotal: 15.25, tax: 1.22, deliveryFee: 0, total: 16.47, status: "New", createdAt: new Date().toISOString(), note: "Less ice", items: [{ lineId: "demo-1", productId: "p1", name: "Vietnamese Milk Coffee", basePrice: 4.99, unitPrice: 6.24, quantity: 2, emoji: "☕", ice: "50%", sugar: "70%", toppings: [{ id: "t1", name: "Salted Cream", price: 1.25 }], note: "" }] },
-    { id: "LV250802002", customer: "Taylor Kim", firstName: "Taylor", lastName: "Kim", phone: "215-555-0122", email: "", type: "Delivery", address: "600 Washington Ave", city: "Philadelphia", zip: "19147", payment: "Cash on Delivery", subtotal: 19.36, tax: 1.55, deliveryFee: 3.99, total: 24.9, status: "Preparing", createdAt: new Date(Date.now() - 35 * 60000).toISOString(), note: "Call on arrival", items: [{ lineId: "demo-2", productId: "cb1", name: "Coffee & Bánh Mì Combo", basePrice: 10.99, unitPrice: 10.99, quantity: 2, emoji: "🥖", toppings: [], note: "" }] },
-  ],
+  orders: [],
   content: {
     storeName: "LEVIEN CAFE", tagline: "CAFE & EATERY", logo: "", announcement: "Fresh Vietnamese coffee and bánh mì every day.",
     aboutTitle: "From Vietnam to Philadelphia.", aboutText: "Every cup carries a little piece of Vietnamese coffee culture, served with warmth in our Philadelphia neighborhood.", aboutImage: "",
@@ -73,9 +76,32 @@ const seed: DB = {
 
 const viewLabels: Record<AdminView, string> = {
   dashboard: "Dashboard", orders: "Orders", customers: "Customers", products: "Products", categories: "Categories",
-  toppings: "Toppings", combos: "Combos", promotions: "Promotions", content: "Website Content",
+  toppings: "Toppings", combos: "Combos", promotions: "Promotions", content: "Website Content", account: "My Account",
 };
-const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+const adminViewOrder: AdminView[] = ["dashboard", "orders", "customers", "products", "categories", "toppings", "combos", "promotions", "content", "account"];
+const viewPermissions: Partial<Record<AdminView, StaffPermission>> = {
+  dashboard: "view_dashboard",
+  orders: "manage_orders",
+  customers: "view_customers",
+  products: "manage_catalog",
+  categories: "manage_catalog",
+  toppings: "manage_catalog",
+  combos: "manage_catalog",
+  promotions: "manage_catalog",
+  content: "manage_catalog",
+};
+
+function viewsForRole(role: StaffRole) {
+  return adminViewOrder.filter((adminView) => {
+    const permission = viewPermissions[adminView];
+    return !permission || roleHasPermission(role, permission);
+  });
+}
+
+function initials(name: string) {
+  const value = name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
+  return value || "LV";
+}
 const catalogId = () => crypto.randomUUID();
 type ImageKind = "product" | "combo" | "promotion" | "logo" | "about";
 type ImageFrame = { width: number; height: number; padding: number; mode: "contain" | "cover"; trim: boolean };
@@ -386,19 +412,9 @@ function exportCustomerPurchaseCsv(customers: Customer[], orders: Order[]) {
 const orderItemLabel = (item: CustomerOrder["items"][number]) => item.itemType === "combo" && item.comboItems?.length
   ? `${item.name} × ${item.quantity} (${item.comboItems.map((child) => child.name).join(" + ")})`
   : `${item.name} × ${item.quantity}`;
-function normalizeOrder(order: any): CustomerOrder {
-  const items = (order.items || []).map((item: any, index: number) => typeof item === "string" ? { lineId: `${order.id || "legacy"}-${index}`, productId: "legacy", name: item, basePrice: 0, unitPrice: 0, quantity: 1, emoji: "☕", toppings: [], note: "" } : { ...item, toppings: item.toppings || [] });
-  const names = String(order.customer || "Guest").split(" ");
-  return {
-    id: order.id || uid("LV"), customer: order.customer || "Guest", firstName: order.firstName || names[0] || "Guest", lastName: order.lastName || names.slice(1).join(" "),
-    phone: order.phone || "", email: order.email || "", type: order.type === "Delivery" ? "Delivery" : "Pickup", pickupTime: order.pickupTime, address: order.address, city: order.city, zip: order.zip, apartment: order.apartment,
-    payment: order.payment || "Pay at Store", subtotal: Number(order.subtotal ?? order.total ?? 0), tax: Number(order.tax || 0), deliveryFee: Number(order.deliveryFee || 0), total: Number(order.total || 0),
-    status: order.status || "New", createdAt: order.createdAt || new Date().toISOString(), note: order.note || "", items,
-  };
-}
 
 export default function AdminApp() {
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [staff, setStaff] = useState<StaffSessionSummary | null>(null);
   const [view, setView] = useState<AdminView>("dashboard");
   const [db, setDb] = useState<DB>(seed);
   const [modal, setModal] = useState<null | { type: string; id?: string }>(null);
@@ -408,6 +424,7 @@ export default function AdminApp() {
   const [orderFilter, setOrderFilter] = useState<"All" | OrderStatus>("All");
   const [orderSyncStatus, setOrderSyncStatus] = useState<"connecting" | "live" | "polling">("connecting");
   const orderRefreshPromise = useRef<Promise<void> | null>(null);
+  const loggedIn = Boolean(staff);
 
   useEffect(() => {
     const stored = localStorage.getItem("levien-admin-v1");
@@ -417,32 +434,28 @@ export default function AdminApp() {
         ...product,
         allowToppings: product.allowToppings ?? (product.toppingIds || []).length > 0,
       }));
-      parsed.orders = (parsed.orders || []).map(normalizeOrder);
-      const placedOrders = readOrders().map(normalizeOrder);
-      const mergedOrders = [...placedOrders, ...(parsed.orders || []).filter((order) => !placedOrders.some((placed) => placed.id === order.id))];
-      setDb({ ...parsed, orders: mergedOrders });
-    } else {
-      const placedOrders = readOrders().map(normalizeOrder);
-      if (placedOrders.length) setDb({ ...seed, orders: [...placedOrders, ...seed.orders.filter((order) => !placedOrders.some((placed) => placed.id === order.id))] });
+      setDb({ ...parsed, orders: [] });
     }
     void fetch("/api/admin/session", { cache: "no-store" })
       .then((response) => response.json())
-      .then((result: { authenticated?: boolean }) => {
-        if (result.authenticated) {
-          setLoggedIn(true);
-          void refreshCloudOrders();
-          void refreshCloudCatalog();
+      .then((result: { authenticated?: boolean; staff?: StaffSessionSummary | null }) => {
+        if (result.authenticated && result.staff) {
+          setStaff(result.staff);
+          const availableViews = viewsForRole(result.staff.role);
+          setView(availableViews[0] || "account");
+          if (roleHasPermission(result.staff.role, "manage_orders")) void refreshCloudOrders();
+          if (roleHasPermission(result.staff.role, "manage_catalog")) void refreshCloudCatalog();
         }
       })
       .catch((error) => console.error("Unable to restore admin session:", error));
   }, []);
   useEffect(() => {
-    localStorage.setItem("levien-admin-v1", JSON.stringify(db));
+    localStorage.setItem("levien-admin-v1", JSON.stringify({ ...db, orders: [] }));
     window.dispatchEvent(new Event("levien-admin-updated"));
   }, [db]);
 
   useEffect(() => {
-    if (!loggedIn) return;
+    if (!staff || !roleHasPermission(staff.role, "manage_orders")) return;
     const syncOrders = () => void refreshCloudOrders();
     const eventSource = new EventSource("/api/admin/orders/stream");
     eventSource.addEventListener("ready", () => setOrderSyncStatus("live"));
@@ -466,7 +479,7 @@ export default function AdminApp() {
       document.removeEventListener("visibilitychange", syncWhenVisible);
       window.clearInterval(timer);
     };
-  }, [loggedIn]);
+  }, [staff]);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(""), 2400); return () => clearTimeout(timer); }, [toast]);
 
   const todayOrders = db.orders.filter(o => new Date(o.createdAt).toDateString() === new Date().toDateString());
@@ -495,7 +508,8 @@ export default function AdminApp() {
       try {
         const response = await fetch("/api/admin/orders", { cache: "no-store" });
         if (response.status === 401) {
-          setLoggedIn(false);
+          setStaff(null);
+          setDb((current) => ({ ...current, orders: [] }));
           return;
         }
         const result = (await response.json()) as { orders?: CustomerOrder[]; error?: string };
@@ -517,7 +531,8 @@ export default function AdminApp() {
     try {
       const response = await fetch("/api/admin/catalog", { cache: "no-store" });
       if (response.status === 401) {
-        setLoggedIn(false);
+        setStaff(null);
+        setDb((current) => ({ ...current, orders: [] }));
         return;
       }
       const result = (await response.json()) as { catalog?: Omit<DB, "orders">; error?: string };
@@ -553,31 +568,49 @@ export default function AdminApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: form.get("username"), password: form.get("password") }),
       });
-      const result = (await response.json()) as { error?: string };
+      const result = (await response.json()) as { error?: string; staff?: StaffSessionSummary };
       if (!response.ok) throw new Error(result.error || "Unable to sign in.");
-      setLoggedIn(true);
-      await Promise.all([refreshCloudOrders(), refreshCloudCatalog()]);
+      if (!result.staff) throw new Error("Staff profile is missing from the session.");
+      setStaff(result.staff);
+      const availableViews = viewsForRole(result.staff.role);
+      setView(availableViews[0] || "account");
+      await Promise.all([
+        roleHasPermission(result.staff.role, "manage_orders") ? refreshCloudOrders() : Promise.resolve(),
+        roleHasPermission(result.staff.role, "manage_catalog") ? refreshCloudCatalog() : Promise.resolve(),
+      ]);
     } catch (error) {
       setToast(error instanceof Error ? error.message : "Unable to sign in");
     }
   }
   function logout() {
     void fetch("/api/admin/session", { method: "DELETE" });
-    setLoggedIn(false);
+    setStaff(null);
+    setDb((current) => ({ ...current, orders: [] }));
+    setModal(null);
   }
 
-  if (!loggedIn) return <AdminLogin onLogin={login} toast={toast} />;
+  if (!staff) return <AdminLogin onLogin={login} toast={toast} />;
+
+  const allowedViews = viewsForRole(staff.role);
+  const canManageCatalog = roleHasPermission(staff.role, "manage_catalog");
+  const canManageOrders = roleHasPermission(staff.role, "manage_orders");
+  const canViewCustomers = roleHasPermission(staff.role, "view_customers");
+  const canOpenModal = modal && (
+    modal.type === "order" ? canManageOrders :
+    modal.type === "customer" ? canViewCustomers : canManageCatalog
+  );
 
   return (
     <div className="adminShellV3">
       <aside className="adminSidebarV3">
         <div className="adminBrandV3"><span className="adminLogoV3">LV</span><div><strong>LEVIEN</strong><small>ADMIN PLATFORM</small></div></div>
-        <nav>{(Object.keys(viewLabels) as AdminView[]).map(key => <button key={key} className={view === key ? "active" : ""} onClick={() => setView(key)}><span className="adminNavIcon"><AdminIcon name={key} /></span><span className="adminNavLabel">{viewLabels[key]}</span>{key === "orders" && db.orders.filter(o => o.status === "New").length > 0 && <b>{db.orders.filter(o => o.status === "New").length}</b>}</button>)}</nav>
+        <nav>{allowedViews.map(key => <button key={key} className={view === key ? "active" : ""} onClick={() => setView(key)}><span className="adminNavIcon"><AdminIcon name={key} /></span><span className="adminNavLabel">{viewLabels[key]}</span>{key === "orders" && db.orders.filter(o => o.status === "New").length > 0 && <b>{db.orders.filter(o => o.status === "New").length}</b>}</button>)}</nav>
         <div className="adminSidebarBottom"><Link href="/"><AdminIcon name="external" /><span>View Store</span></Link><button onClick={logout}><AdminIcon name="logout" /><span>Sign out</span></button></div>
       </aside>
       <main className="adminWorkspace">
-        <header className="adminTopbar"><div><span className="adminBreadcrumb">LEVIEN CAFE / {viewLabels[view]}</span><h1>{viewLabels[view]}</h1></div><div className="adminTopActions"><span className={`adminLiveBadge sync-${orderSyncStatus}`}>● {orderSyncStatus === "live" ? "Orders live" : orderSyncStatus === "polling" ? "Auto reconnecting" : "Connecting"}</span><button className="adminAvatar">HT</button></div></header>
-        {view === "dashboard" && <Dashboard db={db} revenue={revenue} todayOrders={todayOrders} openView={setView} openModal={setModal} />}
+        <header className="adminTopbar"><div><span className="adminBreadcrumb">LEVIEN CAFE / {viewLabels[view]}</span><h1>{viewLabels[view]}</h1></div><div className="adminTopActions">{canManageOrders && <span className={`adminLiveBadge sync-${orderSyncStatus}`}>● {orderSyncStatus === "live" ? "Orders live" : orderSyncStatus === "polling" ? "Auto reconnecting" : "Connecting"}</span>}<span className={`adminRoleBadge role-${staff.role}`}>{staffRoleLabels[staff.role]}</span><button className="adminAvatar" title={staff.fullName}>{initials(staff.fullName)}</button></div></header>
+        {view === "dashboard" && canManageCatalog && <Dashboard db={db} revenue={revenue} todayOrders={todayOrders} openView={setView} openModal={setModal} />}
+        {view === "dashboard" && !canManageCatalog && canManageOrders && <OperationsDashboard db={db} todayOrders={todayOrders} openView={setView} />}
         {view === "orders" && <Orders db={db} orders={filteredOrders} filter={orderFilter} setFilter={setOrderFilter} update={update} openModal={setModal} />}
         {view === "customers" && <Customers customers={filteredCustomers} allCustomers={customers} orders={db.orders} query={customerQuery} setQuery={setCustomerQuery} openModal={setModal} />}
         {view === "products" && <Products db={db} products={filteredProducts} query={query} setQuery={setQuery} openModal={setModal} update={update} />}
@@ -586,19 +619,32 @@ export default function AdminApp() {
         {view === "combos" && <Combos db={db} openModal={setModal} update={update} />}
         {view === "promotions" && <Promotions db={db} openModal={setModal} update={update} />}
         {view === "content" && <WebsiteContent db={db} openModal={setModal} />}
+        {view === "account" && <StaffAccount staff={staff} />}
       </main>
-      {modal && <AdminModal modal={modal} db={db} close={() => setModal(null)} update={update} />}
+      {modal && canOpenModal && <AdminModal modal={modal} db={db} close={() => setModal(null)} update={update} />}
       {toast && <div className="adminToast">✓ {toast}</div>}
     </div>
   );
 }
 
 function AdminLogin({ onLogin, toast }: { onLogin: (e: React.FormEvent<HTMLFormElement>) => void; toast: string }) {
-  return <div className="adminLoginPage"><div className="adminLoginVisual"><span>LEVIEN CAFE</span><h1>Your café,<br/>beautifully managed.</h1><p>Products, promotions, website content and online orders in one clean workspace.</p></div><form className="adminLoginCard" onSubmit={onLogin}><div className="adminLoginLogo">LV</div><span className="adminEyebrow">Back office</span><h2>Welcome back</h2><p>Sign in to manage LEVIEN CAFE.</p><label>Username<input name="username" defaultValue="admin" /></label><label>Password<input name="password" type="password" /></label><button className="adminPrimary" type="submit">Sign in</button><small>Credentials are verified securely by the server.</small>{toast && <div className="adminLoginError">{toast}</div>}</form></div>;
+  return <div className="adminLoginPage"><div className="adminLoginVisual"><span>LEVIEN CAFE</span><h1>Your café,<br/>beautifully managed.</h1><p>Orders, store content and staff operations in one role-protected workspace.</p></div><form className="adminLoginCard" onSubmit={onLogin}><div className="adminLoginLogo">LV</div><span className="adminEyebrow">Staff workspace</span><h2>Welcome back</h2><p>Sign in with your staff email. The legacy Owner username remains available during migration.</p><label>Email or legacy username<input name="username" defaultValue="admin" autoComplete="username" /></label><label>Password<input name="password" type="password" autoComplete="current-password" /></label><button className="adminPrimary" type="submit">Sign in</button><small>Identity and permissions are verified securely by the server.</small>{toast && <div className="adminLoginError">{toast}</div>}</form></div>;
 }
 
 function Dashboard({ db, revenue, todayOrders, openView, openModal }: { db: DB; revenue: number; todayOrders: Order[]; openView: (v: AdminView) => void; openModal: (m: { type: string; id?: string }) => void }) {
   return <div className="adminStack"><section className="adminWelcome"><div><span>Good morning</span><h2>Here’s what’s happening at LEVIEN today.</h2></div><button className="adminPrimary" onClick={() => openModal({ type: "product" })}>New product</button></section><section className="adminMetrics"><Metric label="Orders today" value={String(todayOrders.length)} detail={`${db.orders.filter(o => o.status === "New").length} waiting`} /><Metric label="Revenue today" value={money(revenue)} detail="Demo order totals" /><Metric label="Active products" value={String(db.products.filter(p => p.active).length)} detail={`${db.products.filter(p => p.soldOut).length} sold out`} /><Metric label="Live promotions" value={String(db.promotions.filter(p => p.active).length)} detail="Homepage slider" /></section><div className="adminDashboardGrid"><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Live queue</span><h3>Recent orders</h3></div><button className="adminTextButton" onClick={() => openView("orders")}>View all →</button></div><OrderRows orders={db.orders.slice(0, 4)} /></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Quick actions</span><h3>Manage your store</h3></div></div><div className="quickActionGrid"><QuickAction icon="products" title="Add product" text="Create a new menu item." onClick={() => openModal({ type: "product" })}/><QuickAction icon="promotions" title="New promotion" text="Add a homepage slide." onClick={() => openModal({ type: "promotion" })}/><QuickAction icon="toppings" title="Add topping" text="Create an add-on option." onClick={() => openModal({ type: "topping" })}/><QuickAction icon="content" title="Website content" text="Update logo and story." onClick={() => openView("content")}/></div></section></div></div>;
+}
+function OperationsDashboard({ db, todayOrders, openView }: { db: DB; todayOrders: Order[]; openView: (view: AdminView) => void }) {
+  return <div className="adminStack"><section className="adminWelcome"><div><span>Operations workspace</span><h2>Keep today’s order queue moving.</h2></div><button className="adminPrimary" onClick={() => openView("orders")}>Open orders</button></section><section className="adminMetrics"><Metric label="Orders today" value={String(todayOrders.length)} detail="Published online orders"/><Metric label="Waiting" value={String(db.orders.filter((order) => order.status === "New").length)} detail="Need confirmation"/><Metric label="Preparing" value={String(db.orders.filter((order) => order.status === "Preparing").length)} detail="In progress"/><Metric label="Ready" value={String(db.orders.filter((order) => order.status === "Ready").length)} detail="Ready for handoff"/></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Live queue</span><h3>Recent orders</h3></div><button className="adminTextButton" onClick={() => openView("orders")}>View all →</button></div><OrderRows orders={db.orders.slice(0, 6)} /></section></div>;
+}
+function StaffAccount({ staff }: { staff: StaffSessionSummary }) {
+  const accessSummary: Record<StaffRole, string> = {
+    owner: "Full store, staff, schedule, and compensation access.",
+    manager: "Store, staff, schedule, and compensation management access.",
+    supervisor: "Order operations and personal schedule access.",
+    staff: "Personal account and schedule access.",
+  };
+  return <div className="adminAccountGrid"><section className="adminCard adminProfileCard"><div className="adminProfileAvatar">{initials(staff.fullName)}</div><span className="adminEyebrow">Authenticated staff account</span><h2>{staff.fullName}</h2><p>{staff.email}</p><span className={`adminRoleBadge role-${staff.role}`}>{staffRoleLabels[staff.role]}</span></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Access level</span><h3>{staffRoleLabels[staff.role]} permissions</h3></div></div><p className="adminAccessCopy">{accessSummary[staff.role]}</p><div className="adminSecurityNote"><strong>Protected server-side</strong><span>Navigation and every Admin API request are checked against this role. Payroll fields are not part of staff session data.</span></div>{staff.legacy && <div className="adminLegacyNotice"><strong>Legacy Owner session</strong><span>Create the first Supabase Auth Owner account before removing the legacy Admin environment credentials.</span></div>}</section><section className="adminCard adminSchedulePreview"><span className="adminEyebrow">Coming in V2.2</span><h3>Availability and shift registration</h3><p>Your personal schedule workspace will appear here after the scheduling sprint.</p></section></div>;
 }
 function Metric({ label, value, detail }: { label: string; value: string; detail: string }) { return <div className="adminMetric"><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>; }
 function QuickAction({ icon, title, text, onClick }: { icon: AdminIconName; title: string; text: string; onClick: () => void }) { return <button className="adminQuickAction" onClick={onClick}><span><AdminIcon name={icon} /></span><div><strong>{title}</strong><small>{text}</small></div><b><AdminIcon name="arrow" /></b></button>; }
@@ -949,6 +995,7 @@ function AdminIcon({ name }: { name: AdminIconName }) {
     combos: <><rect x="3" y="5" width="8" height="8" rx="2"/><rect x="13" y="11" width="8" height="8" rx="2"/><path d="M11 9h3M10 15h3"/></>,
     promotions: <><path d="M20 12 12 20 4 12 12 4l8 8Z"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/><path d="m9 15 6-6"/></>,
     content: <><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></>,
+    account: <><circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/><path d="M18 5.5a8.5 8.5 0 0 1 0 5"/></>,
     external: <><path d="M14 4h6v6"/><path d="m20 4-9 9"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></>,
     logout: <><path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5"/><path d="m14 8 4 4-4 4M18 12H9"/></>,
     arrow: <><path d="m9 18 6-6-6-6"/></>,

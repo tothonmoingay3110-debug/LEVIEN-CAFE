@@ -13,6 +13,15 @@ Menu: http://localhost:3000/menu
 
 Admin: http://localhost:3000/admin
 
+## V2.1A staff access
+
+Admin supports individual Supabase Auth accounts with Owner, Manager,
+Supervisor, and Staff roles. Apply the V2.1A migration and create the first
+Owner by following `docs/V2.1A-STAFF-AUTH.md`.
+
+The environment-based Admin credentials remain a temporary Owner fallback
+during the migration.
+
 Demo login: `admin` / `123`
 
 ## Sprint 4 highlight

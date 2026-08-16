@@ -1,21 +1,23 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { ADMIN_SESSION_COOKIE, verifyAdminSession } from "@/lib/admin-session";
 import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { readSupabaseOrders } from "@/lib/supabase/order-reader";
+import { getStaffAccess } from "@/lib/staff-auth";
 import type { OrderStatus } from "@/types";
 
 const statuses: OrderStatus[] = ["New", "Preparing", "Ready", "Completed", "Cancelled"];
 
-async function isAuthenticated() {
-  const cookieStore = await cookies();
-  return verifyAdminSession(cookieStore.get(ADMIN_SESSION_COOKIE)?.value);
+async function authorizeOrders() {
+  const access = await getStaffAccess("manage_orders");
+  if (!access.staff) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  if (!access.allowed) return NextResponse.json({ error: "Order access requires Supervisor, Manager, or Owner permission." }, { status: 403 });
+  return null;
 }
 
 export async function GET() {
   try {
-    if (!(await isAuthenticated())) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    const denied = await authorizeOrders();
+    if (denied) return denied;
     const orders = await readSupabaseOrders(createAdminClient());
     return NextResponse.json({ orders });
   } catch (error) {
@@ -27,7 +29,8 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     if (!isSameOriginRequest(request)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
-    if (!(await isAuthenticated())) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    const denied = await authorizeOrders();
+    if (denied) return denied;
     if (requestBodyExceeds(request, 8 * 1024)) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
     let body: { orderNumber?: unknown; status?: unknown };
     try {

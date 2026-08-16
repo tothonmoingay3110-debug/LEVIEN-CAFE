@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { ADMIN_SESSION_COOKIE, verifyAdminSession } from "@/lib/admin-session";
 import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getStaffAccess } from "@/lib/staff-auth";
 import type { Json } from "@/types/database.types";
 
-async function isAuthenticated() {
-  const cookieStore = await cookies();
-  return verifyAdminSession(cookieStore.get(ADMIN_SESSION_COOKIE)?.value);
+async function authorizeCatalog() {
+  const access = await getStaffAccess("manage_catalog");
+  if (!access.staff) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  if (!access.allowed) return NextResponse.json({ error: "Catalog access requires Manager or Owner permission." }, { status: 403 });
+  return null;
 }
 
 export async function GET() {
   try {
-    if (!(await isAuthenticated())) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    const denied = await authorizeCatalog();
+    if (denied) return denied;
     const supabase = createAdminClient();
     const [contentResult, categoryResult, toppingResult, productResult, productToppingResult, comboResult, comboProductResult, promotionResult] = await Promise.all([
       supabase.from("site_content").select("*").eq("singleton_key", "main").single(),
@@ -69,7 +71,8 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     if (!isSameOriginRequest(request)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
-    if (!(await isAuthenticated())) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    const denied = await authorizeCatalog();
+    if (denied) return denied;
     if (requestBodyExceeds(request, 1024 * 1024)) return NextResponse.json({ error: "Catalog request is too large." }, { status: 413 });
     let body: { catalog?: unknown };
     try {

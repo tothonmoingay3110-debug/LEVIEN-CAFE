@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { randomUUID } from "node:crypto";
-import { ADMIN_SESSION_COOKIE, verifyAdminSession } from "@/lib/admin-session";
 import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getStaffAccess } from "@/lib/staff-auth";
 
 const BUCKET = "catalog-images";
 const scopes = new Set(["product", "combo", "promotion", "logo", "about"]);
@@ -19,10 +18,9 @@ export async function POST(request: Request) {
     if (requestBodyExceeds(request, 6 * 1024 * 1024)) {
       return NextResponse.json({ error: "Image upload is too large." }, { status: 413 });
     }
-    const cookieStore = await cookies();
-    if (!verifyAdminSession(cookieStore.get(ADMIN_SESSION_COOKIE)?.value)) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    }
+    const access = await getStaffAccess("manage_catalog");
+    if (!access.staff) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    if (!access.allowed) return NextResponse.json({ error: "Image uploads require Manager or Owner permission." }, { status: 403 });
 
     const formData = await request.formData();
     const file = formData.get("file");

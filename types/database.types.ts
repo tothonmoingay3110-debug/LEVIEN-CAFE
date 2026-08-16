@@ -74,6 +74,30 @@ export type Database = {
         image_url: string | null;
         sort_order: number;
       }>;
+      staff_profiles: {
+        Row: {
+          id: string;
+          auth_user_id: string;
+          email: string;
+          full_name: string;
+          role: "owner" | "manager" | "supervisor" | "staff";
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          auth_user_id: string;
+          email: string;
+          full_name: string;
+          role?: "owner" | "manager" | "supervisor" | "staff";
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["staff_profiles"]["Insert"]>;
+        Relationships: [];
+      };
       customers: {
         Row: {
           id: string;
@@ -163,7 +187,7 @@ export type Database = {
       };
     };
     Enums: {
-      [_ in never]: never;
+      staff_role: "owner" | "manager" | "supervisor" | "staff";
     };
     CompositeTypes: {
       [_ in never]: never;
