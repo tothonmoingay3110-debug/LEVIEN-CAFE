@@ -78,17 +78,117 @@ const viewLabels: Record<AdminView, string> = {
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 const catalogId = () => crypto.randomUUID();
 type ImageKind = "product" | "combo" | "promotion" | "logo" | "about";
-const imageFrames: Record<ImageKind, { width: number; height: number; padding: number }> = {
-  product: { width: 1200, height: 1200, padding: 90 },
-  combo: { width: 1600, height: 1000, padding: 80 },
-  promotion: { width: 1200, height: 1400, padding: 80 },
-  logo: { width: 800, height: 800, padding: 20 },
-  about: { width: 1600, height: 1100, padding: 70 },
+type ImageFrame = { width: number; height: number; padding: number; mode: "contain" | "cover"; trim: boolean };
+type ImageCrop = { x: number; y: number; width: number; height: number; background: string | null };
+const imageFrames: Record<ImageKind, ImageFrame> = {
+  product: { width: 1200, height: 1200, padding: 84, mode: "contain", trim: true },
+  combo: { width: 1600, height: 1000, padding: 72, mode: "contain", trim: true },
+  promotion: { width: 1200, height: 1400, padding: 76, mode: "contain", trim: true },
+  logo: { width: 800, height: 800, padding: 36, mode: "contain", trim: true },
+  about: { width: 1600, height: 1100, padding: 0, mode: "cover", trim: false },
 };
+
+function fullImageCrop(bitmap: ImageBitmap): ImageCrop {
+  return { x: 0, y: 0, width: bitmap.width, height: bitmap.height, background: null };
+}
+
+function detectImageCrop(bitmap: ImageBitmap): ImageCrop {
+  const maximumAnalysisSize = 640;
+  const scale = Math.min(1, maximumAnalysisSize / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return fullImageCrop(bitmap);
+  context.drawImage(bitmap, 0, 0, width, height);
+
+  const pixels = context.getImageData(0, 0, width, height).data;
+  const cornerSize = Math.max(2, Math.round(Math.min(width, height) * 0.055));
+  const corners = [
+    [0, 0], [width - cornerSize, 0],
+    [0, height - cornerSize], [width - cornerSize, height - cornerSize],
+  ];
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+  let alpha = 0;
+  let samples = 0;
+  for (const [startX, startY] of corners) {
+    for (let y = startY; y < startY + cornerSize; y += 2) {
+      for (let x = startX; x < startX + cornerSize; x += 2) {
+        const index = (y * width + x) * 4;
+        red += pixels[index];
+        green += pixels[index + 1];
+        blue += pixels[index + 2];
+        alpha += pixels[index + 3];
+        samples++;
+      }
+    }
+  }
+  const background = {
+    red: red / samples,
+    green: green / samples,
+    blue: blue / samples,
+    alpha: alpha / samples,
+  };
+  const transparentBackground = background.alpha < 48;
+  let minimumX = width;
+  let minimumY = height;
+  let maximumX = -1;
+  let maximumY = -1;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const index = (y * width + x) * 4;
+      const pixelAlpha = pixels[index + 3];
+      const redDifference = pixels[index] - background.red;
+      const greenDifference = pixels[index + 1] - background.green;
+      const blueDifference = pixels[index + 2] - background.blue;
+      const colorDistance = Math.sqrt(
+        redDifference * redDifference + greenDifference * greenDifference + blueDifference * blueDifference,
+      );
+      const isContent = transparentBackground
+        ? pixelAlpha > 42
+        : pixelAlpha > 24 && (colorDistance > 46 || Math.abs(pixelAlpha - background.alpha) > 48);
+      if (!isContent) continue;
+      minimumX = Math.min(minimumX, x);
+      minimumY = Math.min(minimumY, y);
+      maximumX = Math.max(maximumX, x);
+      maximumY = Math.max(maximumY, y);
+    }
+  }
+
+  if (maximumX < minimumX || maximumY < minimumY) return fullImageCrop(bitmap);
+  const detectedWidth = maximumX - minimumX + 1;
+  const detectedHeight = maximumY - minimumY + 1;
+  const detectedCoverage = detectedWidth * detectedHeight / (width * height);
+  if (detectedCoverage > 0.92) return fullImageCrop(bitmap);
+
+  const breathingRoom = Math.round(Math.max(detectedWidth, detectedHeight) * 0.075);
+  minimumX = Math.max(0, minimumX - breathingRoom);
+  minimumY = Math.max(0, minimumY - breathingRoom);
+  maximumX = Math.min(width - 1, maximumX + breathingRoom);
+  maximumY = Math.min(height - 1, maximumY + breathingRoom);
+  const sourceScaleX = bitmap.width / width;
+  const sourceScaleY = bitmap.height / height;
+  return {
+    x: Math.round(minimumX * sourceScaleX),
+    y: Math.round(minimumY * sourceScaleY),
+    width: Math.max(1, Math.round((maximumX - minimumX + 1) * sourceScaleX)),
+    height: Math.max(1, Math.round((maximumY - minimumY + 1) * sourceScaleY)),
+    background: transparentBackground
+      ? null
+      : `rgb(${Math.round(background.red)} ${Math.round(background.green)} ${Math.round(background.blue)})`,
+  };
+}
+
 async function optimizeImage(file: File, kind: ImageKind) {
   if (file.size > 20 * 1024 * 1024) throw new Error("Choose an image smaller than 20 MB.");
   const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   const frame = imageFrames[kind];
+  const crop = frame.trim ? detectImageCrop(bitmap) : fullImageCrop(bitmap);
   const canvas = document.createElement("canvas");
   canvas.width = frame.width;
   canvas.height = frame.height;
@@ -97,14 +197,30 @@ async function optimizeImage(file: File, kind: ImageKind) {
     bitmap.close();
     throw new Error("Your browser cannot optimize this image.");
   }
+  if (crop.background) {
+    context.fillStyle = crop.background;
+    context.fillRect(0, 0, frame.width, frame.height);
+  }
   const availableWidth = frame.width - frame.padding * 2;
   const availableHeight = frame.height - frame.padding * 2;
-  const scale = Math.min(availableWidth / bitmap.width, availableHeight / bitmap.height);
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const fitScale = frame.mode === "cover"
+    ? Math.max(availableWidth / crop.width, availableHeight / crop.height)
+    : Math.min(availableWidth / crop.width, availableHeight / crop.height);
+  const renderedWidth = Math.max(1, Math.round(crop.width * fitScale));
+  const renderedHeight = Math.max(1, Math.round(crop.height * fitScale));
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
-  context.drawImage(bitmap, Math.round((frame.width - width) / 2), Math.round((frame.height - height) / 2), width, height);
+  context.drawImage(
+    bitmap,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
+    Math.round((frame.width - renderedWidth) / 2),
+    Math.round((frame.height - renderedHeight) / 2),
+    renderedWidth,
+    renderedHeight,
+  );
   bitmap.close();
   const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(
     (result) => result ? resolve(result) : reject(new Error("Unable to optimize image.")),
@@ -817,7 +933,8 @@ function ImageUpload({image,setImage,label="Image",kind="product"}:{image:string
       setUploading(false);
     }
   };
-  return <div className="adminUploadField wide"><label>{label}</label><input type="hidden" name="_imageUploading" value={uploading ? "1" : "0"}/><div className="adminUploadRow"><div className={`adminImagePreview landscape ${kind === "logo" ? "logoPreview" : ""}`}>{image?<img src={image} alt="Preview"/>:<span>Upload</span>}</div><div><input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={e=>void upload(e)}/><small>{error || (uploading ? "Auto-fitting and uploading…" : "Automatically fitted, resized and compressed to WebP.")}</small></div></div></div>;
+  const frame = imageFrames[kind];
+  return <div className="adminUploadField wide"><label>{label}</label><input type="hidden" name="_imageUploading" value={uploading ? "1" : "0"}/><div className="adminUploadRow"><div className={`adminImagePreview landscape normalizedPreview ${kind === "logo" ? "logoPreview" : ""}`}>{image?<img src={image} alt="Preview"/>:<span>Upload</span>}</div><div><input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={e=>void upload(e)}/><small>{error || (uploading ? "Detecting the subject and uploading…" : `Auto-trimmed and centered to ${frame.width} × ${frame.height} WebP.`)}</small></div></div></div>;
 }
 function FormActions({close}:{close:()=>void}){return <div className="adminFormActions wide"><button type="button" className="adminSecondary" onClick={close}>Cancel</button><button type="submit" className="adminPrimary">Save changes</button></div>}
 function AdminIcon({ name }: { name: AdminIconName }) {

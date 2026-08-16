@@ -32,7 +32,7 @@ export function PromotionSlider() {
         <div className="heroActions"><a className="button gold" href="/menu">Order Now</a><a className="button ghost" href="/menu">View Menu</a></div>
         <div className="heroTrust"><span>✓ Made to order</span><span>✓ Pickup & delivery</span></div>
       </div>
-      <div className="heroVisual" key={`visual-${promotion.id}`}>
+      <div className={`heroVisual ${promotion.image ? "hasUploadedPromotion" : ""}`} key={`visual-${promotion.id}`}>
         <div className="visualHalo" />
         {promotion.image ? <img className="heroUploadedImage" src={promotion.image} alt={promotion.title} /> : <div className={`heroDrink heroDrink${active + 1}`}><div className="drinkLid" /><div className="drinkFoam"/><div className="drinkLogo">LEVIEN<small>CAFE</small></div></div>}
         <div className="promoInfoCard"><span>{promotion.eyebrow}</span><strong>{promotion.title}</strong><small>{promotion.description}</small></div>
