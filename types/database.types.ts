@@ -82,6 +82,8 @@ export type Database = {
           full_name: string;
           role: "owner" | "manager" | "supervisor" | "staff";
           active: boolean;
+          phone: string;
+          must_change_password: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -92,10 +94,98 @@ export type Database = {
           full_name: string;
           role?: "owner" | "manager" | "supervisor" | "staff";
           active?: boolean;
+          phone?: string;
+          must_change_password?: boolean;
           created_at?: string;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["staff_profiles"]["Insert"]>;
+        Relationships: [];
+      };
+      staff_compensation: {
+        Row: {
+          id: string;
+          staff_id: string;
+          hourly_rate: number;
+          weekly_hours: number;
+          currency: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          staff_id: string;
+          hourly_rate?: number;
+          weekly_hours?: number;
+          currency?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["staff_compensation"]["Insert"]>;
+        Relationships: [];
+      };
+      staff_shift_requests: {
+        Row: {
+          id: string;
+          staff_id: string;
+          shift_date: string;
+          start_time: string;
+          end_time: string;
+          note: string;
+          status: "pending" | "approved" | "declined" | "cancelled";
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          staff_id: string;
+          shift_date: string;
+          start_time: string;
+          end_time: string;
+          note?: string;
+          status?: "pending" | "approved" | "declined" | "cancelled";
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["staff_shift_requests"]["Insert"]>;
+        Relationships: [];
+      };
+      staff_shifts: {
+        Row: {
+          id: string;
+          staff_id: string;
+          shift_date: string;
+          start_time: string;
+          end_time: string;
+          position: string;
+          note: string;
+          status: "scheduled" | "cancelled";
+          source_request_id: string | null;
+          created_by: string | null;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          staff_id: string;
+          shift_date: string;
+          start_time: string;
+          end_time: string;
+          position?: string;
+          note?: string;
+          status?: "scheduled" | "cancelled";
+          source_request_id?: string | null;
+          created_by?: string | null;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["staff_shifts"]["Insert"]>;
         Relationships: [];
       };
       customers: {

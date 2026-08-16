@@ -1,0 +1,37 @@
+LEVIEN CAFE — V2.2 SHIFT REGISTRATION & SCHEDULING
+==================================================
+
+1. Extract this ZIP.
+2. Copy every extracted file into the active LEVIEN-CAFE project and choose Replace.
+3. Keep the active project's .env.local. It is intentionally not included here.
+4. Run:
+
+   npm.cmd install
+   npm.cmd run build
+
+5. Confirm V2.1A and V2.1B migrations are already installed.
+6. In Supabase SQL Editor, run the complete file:
+
+   supabase/migrations/20260816000300_v2_2_shift_scheduling.sql
+
+7. Restart the local development server.
+8. Test as Staff:
+
+   - Open Schedule.
+   - Register a preferred future shift.
+   - Confirm only personal shifts/requests are visible.
+
+9. Test as Owner or Manager:
+
+   - Review and approve the request.
+   - Add a direct work shift.
+   - Edit and cancel a published shift.
+   - Verify overlapping shifts for one employee are rejected.
+
+IMPORTANT
+---------
+- Run the V2.2 SQL migration once before testing Schedule.
+- Keep .env.local and SUPABASE_SERVICE_ROLE_KEY private.
+- Staff/Supervisor cannot see the full team schedule.
+- Manager cannot manage an Owner's shifts.
+- This release does not implement attendance, clock-in, or timesheets.

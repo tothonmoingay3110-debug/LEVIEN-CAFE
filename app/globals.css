@@ -964,3 +964,441 @@ button,input,textarea,select{font-family:var(--font-ui)}
     max-width: 150px;
   }
 }
+
+/* V2.1B: employee accounts, private compensation, and first-login security */
+.employeeWelcome p {
+  margin: 8px 0 0;
+  color: rgba(255,255,255,.72);
+  font-size: 13px;
+}
+.employeeMetrics {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 16px;
+}
+.employeeTable { min-width: 1020px; }
+.adminEmployeeIdentity {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 230px;
+}
+.adminEmployeeIdentity strong,
+.adminEmployeeIdentity small { display: block; }
+.adminEmployeeIdentity small {
+  max-width: 275px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #7a8580;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adminEmployeeAvatar {
+  display: grid;
+  flex: 0 0 39px;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  border-radius: 12px;
+  background: #e9f2ed;
+  color: #175039;
+  font-size: 11px;
+  font-weight: 900;
+}
+.adminEmployeeActions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.adminEmployeeActions button {
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: #edf4ef;
+  color: #16513b;
+  font-size: 10px;
+  font-weight: 850;
+}
+.adminEmployeeActions button.danger { background: #fff0ed; color: #a23e35; }
+.adminEmployeeActions button:disabled { cursor: not-allowed; opacity: .48; }
+.adminEmployeeCreationNote,
+.adminCredentialWarning,
+.adminPasswordRequired {
+  display: grid;
+  gap: 5px;
+  padding: 14px 15px;
+  border: 1px solid #e6d7a5;
+  border-radius: 13px;
+  background: #fff9e7;
+  color: #6d5516;
+}
+.adminEmployeeCreationNote span,
+.adminCredentialWarning span,
+.adminPasswordRequired span {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.adminCredentials { display: grid; gap: 14px; }
+.adminCredentials label {
+  display: grid;
+  gap: 6px;
+  color: #526059;
+  font-size: 11px;
+  font-weight: 850;
+}
+.adminCredentialValue {
+  padding: 12px 14px;
+  border: 1px solid #dce4df;
+  border-radius: 11px;
+  background: #f6f9f7;
+  color: #18372a;
+  font-size: 14px;
+  font-weight: 750;
+  user-select: all;
+}
+.adminCredentialValue.password {
+  font-family: Consolas,"Courier New",monospace;
+  font-size: 16px;
+  letter-spacing: .035em;
+}
+.adminCredentials p {
+  margin: 0;
+  color: #6c7872;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.adminPasswordCard { align-self: stretch; }
+.adminPasswordCard.required {
+  grid-column: 1/-1;
+  border-color: #e0bd4c;
+  box-shadow: 0 14px 40px rgba(126,91,0,.09);
+}
+.adminPasswordRequired { margin-bottom: 18px; }
+.adminPasswordForm {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 13px;
+}
+.adminPasswordForm label {
+  color: #43524b;
+  font-size: 11px;
+  font-weight: 800;
+}
+.adminPasswordForm input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 11px;
+  border: 1px solid #d9e0dc;
+  border-radius: 11px;
+  background: #fff;
+}
+.adminPasswordForm > small,
+.adminPasswordForm .adminLoginError,
+.adminPasswordForm .adminFormSuccess,
+.adminPasswordForm > button { grid-column: 1/-1; }
+.adminPasswordForm > small { color: #79847e; }
+.adminPasswordForm > button { justify-self: end; }
+.adminFormSuccess {
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: #e4f4e9;
+  color: #236242;
+  font-size: 12px;
+  font-weight: 750;
+}
+@media(max-width:1050px) {
+  .employeeMetrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .adminPasswordForm { grid-template-columns: 1fr; }
+}
+@media(max-width:720px) {
+  .employeeMetrics { grid-template-columns: 1fr 1fr; }
+  .employeeWelcome .adminPrimary { width: 100%; }
+  .adminPasswordCard.required { grid-column: auto; }
+  .adminPasswordForm > small,
+  .adminPasswordForm .adminLoginError,
+  .adminPasswordForm .adminFormSuccess,
+  .adminPasswordForm > button { grid-column: auto; }
+  .adminPasswordForm > button { width: 100%; }
+  .adminCredentials .adminFormActions { flex-direction: column; }
+  .adminCredentials .adminFormActions button { width: 100%; }
+}
+@media(max-width:460px) {
+  .employeeMetrics { grid-template-columns: 1fr; }
+}
+
+/* V2.2: shift registration and published team schedules */
+.scheduleWelcome p {
+  margin: 8px 0 0;
+  color: rgba(255,255,255,.72);
+  font-size: 13px;
+}
+.scheduleWelcomeActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+}
+.scheduleWelcome .adminSecondary {
+  border-color: rgba(255,255,255,.24);
+  background: rgba(255,255,255,.1);
+  color: #fff;
+}
+.scheduleMetrics {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 16px;
+}
+.scheduleMetrics .adminMetric:first-child strong {
+  font-size: 22px;
+  white-space: nowrap;
+}
+.scheduleCalendarCard { padding: 0; overflow: hidden; }
+.scheduleToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px;
+  border-bottom: 1px solid #e8ece9;
+}
+.scheduleToolbar h3 {
+  margin: 5px 0 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+}
+.scheduleToolbar > div:last-child { display: flex; gap: 7px; }
+.scheduleToolbar button {
+  border: 1px solid #dce4df;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #295641;
+  font-size: 11px;
+  font-weight: 800;
+}
+.scheduleWeekGrid {
+  display: grid;
+  grid-template-columns: repeat(7,minmax(135px,1fr));
+  min-width: 945px;
+  overflow-x: auto;
+}
+.scheduleDay {
+  min-height: 330px;
+  border-left: 1px solid #e8ece9;
+  background: #fbfcfb;
+}
+.scheduleDay:first-child { border-left: 0; }
+.scheduleDay.today { background: #f2f8f4; }
+.scheduleDay > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 69px;
+  padding: 12px;
+  border-bottom: 1px solid #e8ece9;
+}
+.scheduleDay > header div { display: flex; align-items: center; gap: 7px; }
+.scheduleDay > header span {
+  color: #7b8781;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.scheduleDay > header strong {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #254536;
+}
+.scheduleDay.today > header strong { background: #15523c; color: #fff; }
+.scheduleDay > header button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #d6e2dc;
+  border-radius: 9px;
+  background: #fff;
+  color: #17523c;
+  font-weight: 900;
+}
+.scheduleDayShifts { display: grid; align-content: start; gap: 8px; padding: 9px; }
+.scheduleShift {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr);
+  align-items: start;
+  gap: 7px;
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #cfe0d7;
+  border-radius: 11px;
+  background: #eaf4ee;
+  color: #174b36;
+  text-align: left;
+}
+.scheduleShift:disabled { cursor: default; opacity: 1; }
+.scheduleShiftAvatar,
+.scheduleRequestAvatar {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  background: #15523c;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 900;
+}
+.scheduleShift strong,.scheduleShift small,.scheduleShift em { display: block; }
+.scheduleShift strong { font-size: 10px; }
+.scheduleShift small {
+  margin-top: 3px;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scheduleShift em {
+  margin-top: 3px;
+  color: #6d7b74;
+  font-size: 8px;
+  font-style: normal;
+}
+.scheduleEmptyDay {
+  padding: 12px 4px;
+  color: #a0aaa5;
+  font-size: 10px;
+  text-align: center;
+}
+.scheduleError {
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+  margin: 22px;
+  padding: 18px;
+  border: 1px solid #ebc7bf;
+  border-radius: 14px;
+  background: #fff3f0;
+  color: #873c32;
+}
+.scheduleError span { font-size: 12px; }
+.scheduleError button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #873c32;
+  font-weight: 850;
+  text-decoration: underline;
+}
+.scheduleRequestList { display: grid; }
+.scheduleRequestList > article {
+  display: grid;
+  grid-template-columns: 38px minmax(200px,1fr) auto auto;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 0;
+  border-top: 1px solid #e8ece9;
+}
+.scheduleRequestList > article:first-child { border-top: 0; }
+.scheduleRequestAvatar { width: 38px; height: 38px; border-radius: 12px; font-size: 10px; }
+.scheduleRequestList article strong,
+.scheduleRequestList article small { display: block; }
+.scheduleRequestList article small { margin-top: 3px; color: #76827c; font-size: 11px; }
+.scheduleRequestList article p { margin: 5px 0 0; color: #55645c; font-size: 11px; }
+.scheduleRequestStatus {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #eef1ef;
+  color: #66726c;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.scheduleRequestStatus.status-pending { background: #fff1c4; color: #7a5907; }
+.scheduleRequestStatus.status-approved { background: #ddf1e4; color: #17603c; }
+.scheduleRequestStatus.status-declined,
+.scheduleRequestStatus.status-cancelled { background: #f4e7e4; color: #98453b; }
+.scheduleRequestActions { display: flex; gap: 6px; }
+.scheduleRequestActions button {
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 10px;
+  background: #e4f1e9;
+  color: #19543d;
+  font-size: 10px;
+  font-weight: 850;
+}
+.scheduleRequestActions button.danger { background: #fff0ed; color: #9e4238; }
+.scheduleRequestActions button:disabled { opacity: .5; }
+.scheduleEmptyRequests {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 35px 15px;
+  color: #65736c;
+  text-align: center;
+}
+.scheduleEmptyRequests span { color: #8a948f; font-size: 12px; }
+.scheduleModal { width: min(680px,100%); }
+.scheduleForm {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 14px;
+}
+.scheduleForm label {
+  color: #43524b;
+  font-size: 11px;
+  font-weight: 800;
+}
+.scheduleForm input,
+.scheduleForm select,
+.scheduleForm textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 11px;
+  border: 1px solid #d9e0dc;
+  border-radius: 11px;
+  background: #fff;
+}
+.scheduleForm textarea { resize: vertical; }
+.scheduleForm .wide { grid-column: 1/-1; }
+.scheduleShiftFormActions { display: grid; grid-template-columns: auto 1fr auto auto; }
+.adminDangerButton {
+  border: 0;
+  border-radius: 12px;
+  padding: 11px 16px;
+  background: #fff0ed;
+  color: #9f4036;
+  font-weight: 800;
+}
+@media(max-width:1050px) {
+  .scheduleMetrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .scheduleWelcome { align-items: flex-start; }
+  .scheduleWelcomeActions { flex-direction: column; align-items: stretch; }
+}
+@media(max-width:720px) {
+  .scheduleWelcomeActions { width: 100%; }
+  .scheduleWelcomeActions button { width: 100%; }
+  .scheduleToolbar { align-items: flex-start; flex-direction: column; }
+  .scheduleToolbar > div:last-child { width: 100%; overflow-x: auto; }
+  .scheduleToolbar button { white-space: nowrap; }
+  .scheduleRequestList > article { grid-template-columns: 38px 1fr auto; }
+  .scheduleRequestActions { grid-column: 2/-1; }
+  .scheduleForm { grid-template-columns: 1fr; }
+  .scheduleForm .wide { grid-column: auto; }
+  .scheduleShiftFormActions { display: flex; flex-direction: column; }
+  .scheduleShiftFormActions span { display: none; }
+  .scheduleShiftFormActions button { width: 100%; }
+}
+@media(max-width:460px) {
+  .scheduleMetrics { grid-template-columns: 1fr; }
+}
