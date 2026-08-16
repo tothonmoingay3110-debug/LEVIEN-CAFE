@@ -719,6 +719,18 @@ button,input,textarea,select{font-family:var(--font-ui)}
   width: 100px;
   height: 100px;
 }
+.adminImagePreview.normalizedPreview img {
+  object-fit: contain;
+  padding: 5px;
+}
+.heroVisual.hasUploadedPromotion .visualHalo {
+  transform: translateX(-32px);
+}
+.heroVisual.hasUploadedPromotion .heroUploadedImage {
+  width: min(330px, 80%);
+  height: 390px;
+  transform: translateX(-46px);
+}
 .adminLiveBadge.sync-connecting,
 .adminLiveBadge.sync-polling {
   background: #fff0c7;
@@ -791,6 +803,14 @@ button,input,textarea,select{font-family:var(--font-ui)}
 @media (max-width: 650px) {
   .promoInfoCard {
     height: 180px;
+  }
+  .heroVisual.hasUploadedPromotion .visualHalo {
+    transform: translateX(-20px);
+  }
+  .heroVisual.hasUploadedPromotion .heroUploadedImage {
+    width: min(240px, 72%);
+    height: 295px;
+    transform: translateX(-28px);
   }
 }
 
