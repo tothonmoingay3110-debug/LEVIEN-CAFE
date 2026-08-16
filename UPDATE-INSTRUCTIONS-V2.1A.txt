@@ -1,0 +1,29 @@
+LEVIEN CAFE — V2.1A STAFF AUTH & RBAC
+======================================
+
+1. Extract this ZIP.
+2. Copy every extracted file into the active LEVIEN-CAFE project and choose Replace.
+3. Keep the active project's .env.local. It is intentionally not included here.
+4. Run:
+
+   npm.cmd install
+   npm.cmd run build
+
+5. In Supabase SQL Editor, run the complete file:
+
+   supabase/migrations/20260816000100_v2_1a_staff_auth_rbac.sql
+
+6. Follow docs/V2.1A-STAFF-AUTH.md to create the first Supabase Auth Owner.
+7. Test both:
+
+   - Existing legacy Owner username/password
+   - New Supabase Auth Owner email/password
+
+8. Commit only after both logins work.
+
+IMPORTANT
+---------
+- Do not delete ADMIN_USERNAME, ADMIN_PASSWORD, or ADMIN_SESSION_SECRET yet.
+- Do not expose SUPABASE_SERVICE_ROLE_KEY in client code.
+- Public staff signup should remain disabled.
+- Compensation and hourly wage are not implemented until V2.1B.
