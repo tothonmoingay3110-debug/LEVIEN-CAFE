@@ -16,7 +16,7 @@ export async function getActiveStaffProfile(
 ): Promise<StaffSessionSummary | null> {
   const { data: profile, error } = await createAdminClient()
     .from("staff_profiles")
-    .select("id,auth_user_id,email,full_name,role,active")
+    .select("id,auth_user_id,email,full_name,role,active,must_change_password")
     .eq("auth_user_id", authUser.id)
     .maybeSingle();
 
@@ -30,6 +30,7 @@ export async function getActiveStaffProfile(
     fullName: profile.full_name,
     role: profile.role,
     legacy: false,
+    mustChangePassword: profile.must_change_password,
   };
 }
 
@@ -44,6 +45,7 @@ async function legacyOwnerSession(): Promise<StaffSessionSummary | null> {
       fullName: "Store Owner",
       role: "owner",
       legacy: true,
+      mustChangePassword: false,
     };
   } catch {
     return null;
@@ -66,5 +68,8 @@ export async function getStaffSession(): Promise<StaffSessionSummary | null> {
 
 export async function getStaffAccess(permission: StaffPermission) {
   const staff = await getStaffSession();
-  return { staff, allowed: Boolean(staff && roleHasPermission(staff.role, permission)) };
+  return {
+    staff,
+    allowed: Boolean(staff && !staff.mustChangePassword && roleHasPermission(staff.role, permission)),
+  };
 }

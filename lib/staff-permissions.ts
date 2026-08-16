@@ -9,6 +9,7 @@ export type StaffPermission =
   | "manage_catalog"
   | "manage_staff"
   | "view_compensation"
+  | "manage_schedule"
   | "view_own_schedule";
 
 export type StaffSessionSummary = {
@@ -18,6 +19,7 @@ export type StaffSessionSummary = {
   fullName: string;
   role: StaffRole;
   legacy: boolean;
+  mustChangePassword: boolean;
 };
 
 export const staffRoleLabels: Record<StaffRole, string> = {
@@ -35,6 +37,7 @@ const permissionsByRole: Record<StaffRole, ReadonlySet<StaffPermission>> = {
     "manage_catalog",
     "manage_staff",
     "view_compensation",
+    "manage_schedule",
     "view_own_schedule",
   ]),
   manager: new Set<StaffPermission>([
@@ -44,6 +47,7 @@ const permissionsByRole: Record<StaffRole, ReadonlySet<StaffPermission>> = {
     "manage_catalog",
     "manage_staff",
     "view_compensation",
+    "manage_schedule",
     "view_own_schedule",
   ]),
   supervisor: new Set<StaffPermission>([
@@ -51,7 +55,11 @@ const permissionsByRole: Record<StaffRole, ReadonlySet<StaffPermission>> = {
     "manage_orders",
     "view_own_schedule",
   ]),
-  staff: new Set<StaffPermission>(["view_own_schedule"]),
+  staff: new Set<StaffPermission>([
+    "view_dashboard",
+    "manage_orders",
+    "view_own_schedule",
+  ]),
 };
 
 export function isStaffRole(value: unknown): value is StaffRole {

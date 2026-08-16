@@ -1,0 +1,30 @@
+LEVIEN CAFE — V2.1B EMPLOYEE MANAGEMENT
+========================================
+
+1. Extract this ZIP.
+2. Copy every extracted file into the active LEVIEN-CAFE project and choose Replace.
+3. Keep the active project's .env.local. It is intentionally not included here.
+4. Run:
+
+   npm.cmd install
+   npm.cmd run build
+
+5. Confirm the V2.1A migration is already installed.
+6. In Supabase SQL Editor, run the complete file:
+
+   supabase/migrations/20260816000200_v2_1b_employee_management.sql
+
+7. Sign in to /admin with the existing Supabase Auth Owner account.
+8. Open Employees and create a test Staff account.
+9. Copy the displayed temporary credentials before closing the dialog.
+10. Sign in as that Staff account and complete the required password change.
+
+IMPORTANT
+---------
+- Do not remove ADMIN_USERNAME, ADMIN_PASSWORD, or ADMIN_SESSION_SECRET yet.
+- Do not expose SUPABASE_SERVICE_ROLE_KEY in browser or NEXT_PUBLIC variables.
+- Do not enable public staff signup.
+- Only Owner and Manager can view hourly pay and planned weekly hours.
+- Staff and Supervisor can use the operations dashboard and update order status.
+- Staff and Supervisor cannot edit catalog, website content, or employee data.
+- This release does not include attendance or clock-in.

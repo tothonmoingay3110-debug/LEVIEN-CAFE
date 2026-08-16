@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import ScheduleWorkspace from "@/components/admin/ScheduleWorkspace";
 import {
   roleHasPermission,
   staffRoleLabels,
@@ -11,7 +12,7 @@ import {
 } from "@/lib/staff-permissions";
 import type { CustomerOrder, OrderStatus } from "@/types";
 
-type AdminView = "dashboard" | "orders" | "customers" | "products" | "categories" | "toppings" | "combos" | "promotions" | "content" | "account";
+type AdminView = "dashboard" | "orders" | "schedule" | "customers" | "employees" | "products" | "categories" | "toppings" | "combos" | "promotions" | "content" | "account";
 type AdminIconName = AdminView | "external" | "logout" | "arrow";
 type Category = { id: string; name: string; icon: string; active: boolean };
 type Topping = { id: string; name: string; price: number; active: boolean };
@@ -35,6 +36,19 @@ type Customer = {
   firstOrderAt: string;
   lastOrderAt: string;
   orderIds: string[];
+};
+type Employee = {
+  id: string;
+  email: string;
+  fullName: string;
+  phone: string;
+  role: StaffRole;
+  active: boolean;
+  hourlyRate: number;
+  weeklyHours: number;
+  estimatedWeeklyPay: number;
+  mustChangePassword: boolean;
+  createdAt: string;
 };
 type Content = { storeName: string; tagline: string; logo: string; announcement: string; aboutTitle: string; aboutText: string; aboutImage: string; address: string; phone: string; email: string; hours: string; mapUrl: string; footerText: string };
 type DB = { categories: Category[]; toppings: Topping[]; products: Product[]; combos: Combo[]; promotions: Promotion[]; orders: Order[]; content: Content };
@@ -75,14 +89,16 @@ const seed: DB = {
 };
 
 const viewLabels: Record<AdminView, string> = {
-  dashboard: "Dashboard", orders: "Orders", customers: "Customers", products: "Products", categories: "Categories",
+  dashboard: "Dashboard", orders: "Orders", schedule: "Schedule", customers: "Customers", employees: "Employees", products: "Products", categories: "Categories",
   toppings: "Toppings", combos: "Combos", promotions: "Promotions", content: "Website Content", account: "My Account",
 };
-const adminViewOrder: AdminView[] = ["dashboard", "orders", "customers", "products", "categories", "toppings", "combos", "promotions", "content", "account"];
+const adminViewOrder: AdminView[] = ["dashboard", "orders", "schedule", "customers", "employees", "products", "categories", "toppings", "combos", "promotions", "content", "account"];
 const viewPermissions: Partial<Record<AdminView, StaffPermission>> = {
   dashboard: "view_dashboard",
   orders: "manage_orders",
+  schedule: "view_own_schedule",
   customers: "view_customers",
+  employees: "manage_staff",
   products: "manage_catalog",
   categories: "manage_catalog",
   toppings: "manage_catalog",
@@ -96,6 +112,10 @@ function viewsForRole(role: StaffRole) {
     const permission = viewPermissions[adminView];
     return !permission || roleHasPermission(role, permission);
   });
+}
+
+function viewsForStaff(staff: StaffSessionSummary) {
+  return staff.mustChangePassword ? ["account" as const] : viewsForRole(staff.role);
 }
 
 function initials(name: string) {
@@ -423,6 +443,10 @@ export default function AdminApp() {
   const [customerQuery, setCustomerQuery] = useState("");
   const [orderFilter, setOrderFilter] = useState<"All" | OrderStatus>("All");
   const [orderSyncStatus, setOrderSyncStatus] = useState<"connecting" | "live" | "polling">("connecting");
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(false);
+  const [employeeModal, setEmployeeModal] = useState<{ employee?: Employee } | null>(null);
+  const [temporaryCredentials, setTemporaryCredentials] = useState<{ email: string; password: string } | null>(null);
   const orderRefreshPromise = useRef<Promise<void> | null>(null);
   const loggedIn = Boolean(staff);
 
@@ -441,10 +465,11 @@ export default function AdminApp() {
       .then((result: { authenticated?: boolean; staff?: StaffSessionSummary | null }) => {
         if (result.authenticated && result.staff) {
           setStaff(result.staff);
-          const availableViews = viewsForRole(result.staff.role);
+          const availableViews = viewsForStaff(result.staff);
           setView(availableViews[0] || "account");
-          if (roleHasPermission(result.staff.role, "manage_orders")) void refreshCloudOrders();
-          if (roleHasPermission(result.staff.role, "manage_catalog")) void refreshCloudCatalog();
+          if (!result.staff.mustChangePassword && roleHasPermission(result.staff.role, "manage_orders")) void refreshCloudOrders();
+          if (!result.staff.mustChangePassword && roleHasPermission(result.staff.role, "manage_catalog")) void refreshCloudCatalog();
+          if (!result.staff.mustChangePassword && roleHasPermission(result.staff.role, "manage_staff")) void refreshEmployees();
         }
       })
       .catch((error) => console.error("Unable to restore admin session:", error));
@@ -455,7 +480,7 @@ export default function AdminApp() {
   }, [db]);
 
   useEffect(() => {
-    if (!staff || !roleHasPermission(staff.role, "manage_orders")) return;
+    if (!staff || staff.mustChangePassword || !roleHasPermission(staff.role, "manage_orders")) return;
     const syncOrders = () => void refreshCloudOrders();
     const eventSource = new EventSource("/api/admin/orders/stream");
     eventSource.addEventListener("ready", () => setOrderSyncStatus("live"));
@@ -543,6 +568,25 @@ export default function AdminApp() {
       setToast("Unable to sync Supabase catalog");
     }
   }
+  async function refreshEmployees() {
+    setEmployeesLoading(true);
+    try {
+      const response = await fetch("/api/admin/staff", { cache: "no-store" });
+      if (response.status === 401) {
+        setStaff(null);
+        setEmployees([]);
+        return;
+      }
+      const result = (await response.json()) as { employees?: Employee[]; error?: string };
+      if (!response.ok || !result.employees) throw new Error(result.error || "Unable to load employees.");
+      setEmployees(result.employees);
+    } catch (error) {
+      console.error("Unable to load employees:", error);
+      setToast(error instanceof Error ? error.message : "Unable to load employees");
+    } finally {
+      setEmployeesLoading(false);
+    }
+  }
   async function saveCloudCatalog(next: DB) {
     try {
       const { orders: _orders, ...catalog } = next;
@@ -572,11 +616,12 @@ export default function AdminApp() {
       if (!response.ok) throw new Error(result.error || "Unable to sign in.");
       if (!result.staff) throw new Error("Staff profile is missing from the session.");
       setStaff(result.staff);
-      const availableViews = viewsForRole(result.staff.role);
+      const availableViews = viewsForStaff(result.staff);
       setView(availableViews[0] || "account");
       await Promise.all([
-        roleHasPermission(result.staff.role, "manage_orders") ? refreshCloudOrders() : Promise.resolve(),
-        roleHasPermission(result.staff.role, "manage_catalog") ? refreshCloudCatalog() : Promise.resolve(),
+        !result.staff.mustChangePassword && roleHasPermission(result.staff.role, "manage_orders") ? refreshCloudOrders() : Promise.resolve(),
+        !result.staff.mustChangePassword && roleHasPermission(result.staff.role, "manage_catalog") ? refreshCloudCatalog() : Promise.resolve(),
+        !result.staff.mustChangePassword && roleHasPermission(result.staff.role, "manage_staff") ? refreshEmployees() : Promise.resolve(),
       ]);
     } catch (error) {
       setToast(error instanceof Error ? error.message : "Unable to sign in");
@@ -586,15 +631,27 @@ export default function AdminApp() {
     void fetch("/api/admin/session", { method: "DELETE" });
     setStaff(null);
     setDb((current) => ({ ...current, orders: [] }));
+    setEmployees([]);
     setModal(null);
+    setEmployeeModal(null);
+    setTemporaryCredentials(null);
+  }
+  function handlePasswordChanged() {
+    if (!staff) return;
+    const nextStaff = { ...staff, mustChangePassword: false };
+    setStaff(nextStaff);
+    if (roleHasPermission(nextStaff.role, "manage_orders")) void refreshCloudOrders();
+    if (roleHasPermission(nextStaff.role, "manage_catalog")) void refreshCloudCatalog();
+    if (roleHasPermission(nextStaff.role, "manage_staff")) void refreshEmployees();
   }
 
   if (!staff) return <AdminLogin onLogin={login} toast={toast} />;
 
-  const allowedViews = viewsForRole(staff.role);
-  const canManageCatalog = roleHasPermission(staff.role, "manage_catalog");
-  const canManageOrders = roleHasPermission(staff.role, "manage_orders");
-  const canViewCustomers = roleHasPermission(staff.role, "view_customers");
+  const allowedViews = viewsForStaff(staff);
+  const canManageCatalog = !staff.mustChangePassword && roleHasPermission(staff.role, "manage_catalog");
+  const canManageOrders = !staff.mustChangePassword && roleHasPermission(staff.role, "manage_orders");
+  const canViewCustomers = !staff.mustChangePassword && roleHasPermission(staff.role, "view_customers");
+  const canManageStaff = !staff.mustChangePassword && roleHasPermission(staff.role, "manage_staff");
   const canOpenModal = modal && (
     modal.type === "order" ? canManageOrders :
     modal.type === "customer" ? canViewCustomers : canManageCatalog
@@ -612,16 +669,20 @@ export default function AdminApp() {
         {view === "dashboard" && canManageCatalog && <Dashboard db={db} revenue={revenue} todayOrders={todayOrders} openView={setView} openModal={setModal} />}
         {view === "dashboard" && !canManageCatalog && canManageOrders && <OperationsDashboard db={db} todayOrders={todayOrders} openView={setView} />}
         {view === "orders" && <Orders db={db} orders={filteredOrders} filter={orderFilter} setFilter={setOrderFilter} update={update} openModal={setModal} />}
+        {view === "schedule" && <ScheduleWorkspace staff={staff} notify={setToast} />}
         {view === "customers" && <Customers customers={filteredCustomers} allCustomers={customers} orders={db.orders} query={customerQuery} setQuery={setCustomerQuery} openModal={setModal} />}
+        {view === "employees" && canManageStaff && <Employees currentStaff={staff} employees={employees} loading={employeesLoading} openEmployee={(employee) => setEmployeeModal({ employee })} refresh={refreshEmployees} showCredentials={(credentials) => setTemporaryCredentials(credentials)} notify={setToast} />}
         {view === "products" && <Products db={db} products={filteredProducts} query={query} setQuery={setQuery} openModal={setModal} update={update} />}
         {view === "categories" && <Categories db={db} openModal={setModal} update={update} />}
         {view === "toppings" && <Toppings db={db} openModal={setModal} update={update} />}
         {view === "combos" && <Combos db={db} openModal={setModal} update={update} />}
         {view === "promotions" && <Promotions db={db} openModal={setModal} update={update} />}
         {view === "content" && <WebsiteContent db={db} openModal={setModal} />}
-        {view === "account" && <StaffAccount staff={staff} />}
+        {view === "account" && <StaffAccount staff={staff} passwordChanged={handlePasswordChanged} />}
       </main>
       {modal && canOpenModal && <AdminModal modal={modal} db={db} close={() => setModal(null)} update={update} />}
+      {employeeModal && canManageStaff && <EmployeeModal currentStaff={staff} employee={employeeModal.employee} close={() => setEmployeeModal(null)} saved={(employee, password) => { setEmployees((current) => { const exists = current.some((item) => item.id === employee.id); return exists ? current.map((item) => item.id === employee.id ? employee : item) : [...current, employee].sort((left, right) => left.fullName.localeCompare(right.fullName)); }); setEmployeeModal(null); setToast(employeeModal.employee ? "Employee updated" : "Employee account created"); if (password) setTemporaryCredentials({ email: employee.email, password }); }} />}
+      {temporaryCredentials && <TemporaryCredentials credentials={temporaryCredentials} close={() => setTemporaryCredentials(null)} />}
       {toast && <div className="adminToast">✓ {toast}</div>}
     </div>
   );
@@ -637,14 +698,44 @@ function Dashboard({ db, revenue, todayOrders, openView, openModal }: { db: DB; 
 function OperationsDashboard({ db, todayOrders, openView }: { db: DB; todayOrders: Order[]; openView: (view: AdminView) => void }) {
   return <div className="adminStack"><section className="adminWelcome"><div><span>Operations workspace</span><h2>Keep today’s order queue moving.</h2></div><button className="adminPrimary" onClick={() => openView("orders")}>Open orders</button></section><section className="adminMetrics"><Metric label="Orders today" value={String(todayOrders.length)} detail="Published online orders"/><Metric label="Waiting" value={String(db.orders.filter((order) => order.status === "New").length)} detail="Need confirmation"/><Metric label="Preparing" value={String(db.orders.filter((order) => order.status === "Preparing").length)} detail="In progress"/><Metric label="Ready" value={String(db.orders.filter((order) => order.status === "Ready").length)} detail="Ready for handoff"/></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Live queue</span><h3>Recent orders</h3></div><button className="adminTextButton" onClick={() => openView("orders")}>View all →</button></div><OrderRows orders={db.orders.slice(0, 6)} /></section></div>;
 }
-function StaffAccount({ staff }: { staff: StaffSessionSummary }) {
+function StaffAccount({ staff, passwordChanged }: { staff: StaffSessionSummary; passwordChanged: () => void }) {
   const accessSummary: Record<StaffRole, string> = {
     owner: "Full store, staff, schedule, and compensation access.",
     manager: "Store, staff, schedule, and compensation management access.",
     supervisor: "Order operations and personal schedule access.",
-    staff: "Personal account and schedule access.",
+    staff: "Operations dashboard, order management, and personal schedule access.",
   };
-  return <div className="adminAccountGrid"><section className="adminCard adminProfileCard"><div className="adminProfileAvatar">{initials(staff.fullName)}</div><span className="adminEyebrow">Authenticated staff account</span><h2>{staff.fullName}</h2><p>{staff.email}</p><span className={`adminRoleBadge role-${staff.role}`}>{staffRoleLabels[staff.role]}</span></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Access level</span><h3>{staffRoleLabels[staff.role]} permissions</h3></div></div><p className="adminAccessCopy">{accessSummary[staff.role]}</p><div className="adminSecurityNote"><strong>Protected server-side</strong><span>Navigation and every Admin API request are checked against this role. Payroll fields are not part of staff session data.</span></div>{staff.legacy && <div className="adminLegacyNotice"><strong>Legacy Owner session</strong><span>Create the first Supabase Auth Owner account before removing the legacy Admin environment credentials.</span></div>}</section><section className="adminCard adminSchedulePreview"><span className="adminEyebrow">Coming in V2.2</span><h3>Availability and shift registration</h3><p>Your personal schedule workspace will appear here after the scheduling sprint.</p></section></div>;
+  return <div className="adminAccountGrid"><section className="adminCard adminProfileCard"><div className="adminProfileAvatar">{initials(staff.fullName)}</div><span className="adminEyebrow">Authenticated staff account</span><h2>{staff.fullName}</h2><p>{staff.email}</p><span className={`adminRoleBadge role-${staff.role}`}>{staffRoleLabels[staff.role]}</span></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Access level</span><h3>{staffRoleLabels[staff.role]} permissions</h3></div></div><p className="adminAccessCopy">{accessSummary[staff.role]}</p><div className="adminSecurityNote"><strong>Protected server-side</strong><span>Navigation and every Admin API request are checked against this role. Payroll fields are not part of staff session data.</span></div>{staff.legacy && <div className="adminLegacyNotice"><strong>Legacy Owner session</strong><span>Create the first Supabase Auth Owner account before removing the legacy Admin environment credentials.</span></div>}</section>{!staff.legacy && <PasswordChangeForm required={staff.mustChangePassword} changed={passwordChanged}/>}<section className="adminCard adminSchedulePreview"><span className="adminEyebrow">Available now</span><h3>Shift registration and work schedule</h3><p>Open Schedule to register preferred shifts or review your published weekly schedule.</p></section></div>;
+}
+function PasswordChangeForm({ required, changed }: { required: boolean; changed: () => void }) {
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const currentPassword = String(form.get("currentPassword") || "");
+    const newPassword = String(form.get("newPassword") || "");
+    const confirmation = String(form.get("confirmation") || "");
+    setError("");
+    setMessage("");
+    if (newPassword !== confirmation) return setError("New passwords do not match.");
+    setSaving(true);
+    try {
+      const response = await fetch("/api/admin/account/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword, newPassword }) });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Unable to change password.");
+      formElement.reset();
+      setMessage("Password changed successfully.");
+      changed();
+    } catch (passwordError) {
+      setError(passwordError instanceof Error ? passwordError.message : "Unable to change password.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  return <section className={`adminCard adminPasswordCard ${required ? "required" : ""}`}>{required && <div className="adminPasswordRequired"><strong>Password change required</strong><span>Use the temporary password as your current password before accessing the rest of the workspace.</span></div>}<div className="adminCardHead"><div><span className="adminEyebrow">Account security</span><h3>Change password</h3></div></div><form className="adminPasswordForm" onSubmit={submit}><label>Current password<input name="currentPassword" type="password" autoComplete="current-password" required/></label><label>New password<input name="newPassword" type="password" autoComplete="new-password" minLength={12} required/></label><label>Confirm new password<input name="confirmation" type="password" autoComplete="new-password" minLength={12} required/></label><small>Minimum 12 characters with uppercase, lowercase, number, and symbol.</small>{error && <div className="adminLoginError">{error}</div>}{message && <div className="adminFormSuccess">{message}</div>}<button className="adminPrimary" type="submit" disabled={saving}>{saving ? "Changing…" : "Change password"}</button></form></section>;
 }
 function Metric({ label, value, detail }: { label: string; value: string; detail: string }) { return <div className="adminMetric"><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>; }
 function QuickAction({ icon, title, text, onClick }: { icon: AdminIconName; title: string; text: string; onClick: () => void }) { return <button className="adminQuickAction" onClick={onClick}><span><AdminIcon name={icon} /></span><div><strong>{title}</strong><small>{text}</small></div><b><AdminIcon name="arrow" /></b></button>; }
@@ -702,6 +793,187 @@ function Customers({ customers, allCustomers, orders, query, setQuery, openModal
       </tbody></table></div>
     </section>
   </div>;
+}
+
+function Employees({ currentStaff, employees, loading, openEmployee, refresh, showCredentials, notify }: {
+  currentStaff: StaffSessionSummary;
+  employees: Employee[];
+  loading: boolean;
+  openEmployee: (employee?: Employee) => void;
+  refresh: () => Promise<void>;
+  showCredentials: (credentials: { email: string; password: string }) => void;
+  notify: (message: string) => void;
+}) {
+  const [actionId, setActionId] = useState("");
+  const activeEmployees = employees.filter((employee) => employee.active);
+  const weeklyHours = activeEmployees.reduce((total, employee) => total + employee.weeklyHours, 0);
+  const weeklyPayroll = activeEmployees.reduce((total, employee) => total + employee.estimatedWeeklyPay, 0);
+
+  function canManage(employee: Employee) {
+    return currentStaff.role === "owner" || employee.role !== "owner";
+  }
+
+  async function patchEmployee(employee: Employee, body: Record<string, unknown>) {
+    setActionId(employee.id);
+    try {
+      const response = await fetch("/api/admin/staff", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: employee.id, ...body }),
+      });
+      const result = (await response.json()) as { error?: string; temporaryPassword?: string };
+      if (!response.ok) throw new Error(result.error || "Unable to update employee.");
+      if (result.temporaryPassword) showCredentials({ email: employee.email, password: result.temporaryPassword });
+      await refresh();
+      return result;
+    } finally {
+      setActionId("");
+    }
+  }
+
+  async function toggleEmployee(employee: Employee) {
+    try {
+      await patchEmployee(employee, {
+        fullName: employee.fullName,
+        phone: employee.phone,
+        role: employee.role,
+        active: !employee.active,
+        hourlyRate: employee.hourlyRate,
+        weeklyHours: employee.weeklyHours,
+      });
+      notify(employee.active ? "Employee account locked" : "Employee account activated");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Unable to update employee");
+    }
+  }
+
+  async function resetPassword(employee: Employee) {
+    if (!window.confirm(`Create a new temporary password for ${employee.fullName}?`)) return;
+    try {
+      await patchEmployee(employee, { action: "reset_password" });
+      notify("Temporary password created");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Unable to reset password");
+    }
+  }
+
+  return <div className="adminStack employeeWorkspace">
+    <section className="adminWelcome employeeWelcome">
+      <div><span>Private workforce data</span><h2>Manage employee access and compensation.</h2><p>Only Owner and Manager accounts can open this workspace.</p></div>
+      <button className="adminPrimary" type="button" onClick={() => openEmployee()}>＋ Add employee</button>
+    </section>
+    <section className="employeeMetrics">
+      <Metric label="Active employees" value={String(activeEmployees.length)} detail={`${employees.length - activeEmployees.length} locked`} />
+      <Metric label="Managers" value={String(activeEmployees.filter((employee) => employee.role === "owner" || employee.role === "manager").length)} detail="Owner and Manager" />
+      <Metric label="Weekly hours" value={weeklyHours.toFixed(1)} detail="Planned active hours" />
+      <Metric label="Weekly payroll" value={money(weeklyPayroll)} detail="Estimated before taxes" />
+    </section>
+    <section className="adminCard">
+      <div className="adminCardHead"><div><span className="adminEyebrow">Employee directory</span><h3>{employees.length} staff accounts</h3></div><button className="adminTextButton" type="button" onClick={() => void refresh()} disabled={loading}>{loading ? "Refreshing…" : "Refresh"}</button></div>
+      <div className="adminTableWrap"><table className="adminTable employeeTable"><thead><tr><th>Employee</th><th>Role</th><th>Hours / week</th><th>Hourly pay</th><th>Weekly pay</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+        {employees.map((employee) => {
+          const manageable = canManage(employee);
+          const isSelf = employee.id === currentStaff.id;
+          const busy = actionId === employee.id;
+          return <tr key={employee.id}>
+            <td><div className="adminEmployeeIdentity"><span className="adminEmployeeAvatar">{initials(employee.fullName)}</span><div><strong>{employee.fullName}{isSelf ? " (You)" : ""}</strong><small>{employee.email}{employee.phone ? ` · ${employee.phone}` : ""}</small></div></div></td>
+            <td><span className={`adminRoleBadge role-${employee.role}`}>{staffRoleLabels[employee.role]}</span></td>
+            <td><strong>{employee.weeklyHours.toFixed(1)}</strong></td>
+            <td><strong>{money(employee.hourlyRate)}</strong></td>
+            <td><strong>{money(employee.estimatedWeeklyPay)}</strong></td>
+            <td><span className={employee.active ? "adminState live" : "adminState sold"}>{employee.active ? (employee.mustChangePassword ? "Password pending" : "Active") : "Locked"}</span></td>
+            <td><div className="adminEmployeeActions">
+              {manageable ? <>
+                <button type="button" onClick={() => openEmployee(employee)} disabled={busy}>Edit</button>
+                <button type="button" onClick={() => void resetPassword(employee)} disabled={busy || isSelf}>Reset password</button>
+                <button type="button" className={employee.active ? "danger" : ""} onClick={() => void toggleEmployee(employee)} disabled={busy || isSelf}>{employee.active ? "Lock" : "Activate"}</button>
+              </> : <span className="adminHint">Owner only</span>}
+            </div></td>
+          </tr>;
+        })}
+        {!employees.length && <tr><td colSpan={7}><div className="customerEmpty"><strong>{loading ? "Loading employees…" : "No employees found"}</strong><span>{loading ? "Securely reading staff profiles and compensation." : "Add the first employee account to begin."}</span></div></td></tr>}
+      </tbody></table></div>
+    </section>
+  </div>;
+}
+
+function EmployeeModal({ currentStaff, employee, close, saved }: {
+  currentStaff: StaffSessionSummary;
+  employee?: Employee;
+  close: () => void;
+  saved: (employee: Employee, password?: string) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const isSelf = employee?.id === currentStaff.id;
+  const roles: StaffRole[] = currentStaff.role === "owner" ? ["owner", "manager", "supervisor", "staff"] : ["manager", "supervisor", "staff"];
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setSaving(true);
+    setError("");
+    try {
+      const body = {
+        ...(employee ? { id: employee.id } : {}),
+        fullName: String(form.get("fullName") || "").trim(),
+        email: String(form.get("email") || "").trim(),
+        phone: String(form.get("phone") || "").trim(),
+        role: String(form.get("role") || "staff"),
+        active: employee ? form.get("active") === "on" : true,
+        hourlyRate: Number(form.get("hourlyRate") || 0),
+        weeklyHours: Number(form.get("weeklyHours") || 0),
+      };
+      const response = await fetch("/api/admin/staff", {
+        method: employee ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = (await response.json()) as { employee?: Employee; temporaryPassword?: string; error?: string };
+      if (!response.ok || !result.employee) throw new Error(result.error || "Unable to save employee.");
+      saved(result.employee, result.temporaryPassword);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Unable to save employee.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <ModalShell title={employee ? "Edit employee" : "Add employee"} subtitle={employee ? "Account, role and compensation" : "Create a secure staff login"} close={close}>
+    <form className="adminForm employeeForm" onSubmit={submit}>
+      <label>Full name<input name="fullName" defaultValue={employee?.fullName || ""} maxLength={120} required /></label>
+      <label>Email<input name="email" type="email" defaultValue={employee?.email || ""} readOnly={Boolean(employee)} required /></label>
+      <label>Phone<input name="phone" type="tel" defaultValue={employee?.phone || ""} maxLength={40} /></label>
+      <label>Role<select name="role" defaultValue={employee?.role || "staff"} disabled={isSelf}>{roles.map((role) => <option value={role} key={role}>{staffRoleLabels[role]}</option>)}</select>{isSelf && <input type="hidden" name="role" value={employee?.role}/>}</label>
+      <label>Hourly pay (USD)<input name="hourlyRate" type="number" min="0" max="10000" step="0.01" defaultValue={String(employee?.hourlyRate ?? 0)} required /></label>
+      <label>Planned hours / week<input name="weeklyHours" type="number" min="0" max="168" step="0.25" defaultValue={String(employee?.weeklyHours ?? 0)} required /></label>
+      {employee && <label className="adminCheck wide"><input name="active" type="checkbox" defaultChecked={employee.active} disabled={isSelf}/><span>Account active{isSelf ? " (you cannot lock your own account)" : ""}</span>{isSelf && employee.active && <input type="hidden" name="active" value="on"/>}</label>}
+      {!employee && <div className="adminEmployeeCreationNote wide"><strong>A temporary password will be generated.</strong><span>It is displayed once after saving. The employee must replace it at first login.</span></div>}
+      {error && <div className="adminLoginError wide">{error}</div>}
+      <div className="adminFormActions wide"><button type="button" className="adminSecondary" onClick={close} disabled={saving}>Cancel</button><button type="submit" className="adminPrimary" disabled={saving}>{saving ? "Saving…" : employee ? "Save employee" : "Create account"}</button></div>
+    </form>
+  </ModalShell>;
+}
+
+function TemporaryCredentials({ credentials, close }: { credentials: { email: string; password: string }; close: () => void }) {
+  const [copied, setCopied] = useState(false);
+  async function copyCredentials() {
+    try {
+      await navigator.clipboard.writeText(`Email: ${credentials.email}\nTemporary password: ${credentials.password}`);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+  return <ModalShell title="Temporary login" subtitle="Show this information to the employee once" close={close}>
+    <div className="adminCredentials">
+      <div className="adminCredentialWarning"><strong>Copy before closing</strong><span>This temporary password is not stored in readable form and cannot be shown again.</span></div>
+      <label>Email<span className="adminCredentialValue">{credentials.email}</span></label>
+      <label>Temporary password<span className="adminCredentialValue password">{credentials.password}</span></label>
+      <p>The employee will only see My Account until they replace this password.</p>
+      <div className="adminFormActions"><button type="button" className="adminSecondary" onClick={() => void copyCredentials()}>{copied ? "✓ Copied" : "Copy credentials"}</button><button type="button" className="adminPrimary" onClick={close}>Done</button></div>
+    </div>
+  </ModalShell>;
 }
 
 function Products({ db, products, query, setQuery, openModal, update }: { db: DB; products: Product[]; query: string; setQuery: (v: string) => void; openModal: (m: { type: string; id?: string }) => void; update: (d: DB, m?: string) => void }) {
@@ -988,7 +1260,9 @@ function AdminIcon({ name }: { name: AdminIconName }) {
   const paths: Record<AdminIconName, React.ReactNode> = {
     dashboard: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
     orders: <><path d="M6 3h12l2 4v14H4V7l2-4Z"/><path d="M4 7h16"/><path d="M9 11a3 3 0 0 0 6 0"/></>,
+    schedule: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/><path d="m8 15 2 2 5-5"/></>,
     customers: <><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="10" r="2.5"/><path d="M15 16.5a5 5 0 0 1 6 3.5"/></>,
+    employees: <><circle cx="9" cy="7" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M17 8v6M14 11h6"/><path d="M16 17h5v4h-5z"/></>,
     products: <><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4 7.5 8 4.5 8-4.5"/><path d="M12 12v9"/></>,
     categories: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
     toppings: <><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></>,
