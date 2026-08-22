@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { hashGiftCardCode, normalizeGiftCardCode } from "@/lib/gift-cards";
 import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCustomerSession } from "@/lib/customer-auth";
+import { getSiteOrigin, getStripe } from "@/lib/stripe";
 import { InvalidCheckoutCatalogError, validateAndPriceOrderItems } from "@/lib/supabase/checkout-pricing";
 import type { CartItem, FulfillmentType, ProductTopping } from "@/types";
 import type { Json } from "@/types/database.types";
@@ -12,6 +14,7 @@ type CheckoutOrderRequest = {
   zip?: string; apartment?: string; payment: string; subtotal: number;
   tax: number; deliveryFee: number; total: number; note: string;
   giftCardCode?: string;
+  loyaltyRewardId?: string;
   items: unknown;
 };
 
@@ -152,7 +155,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Delivery address is required." }, { status: 400 });
   }
   const payment = text(body.payment) || "Pay at Store";
-  if (!["Pay at Store", "Cash on Delivery", "Card at Pickup"].includes(payment)) {
+  if (!["Pay at Store", "Cash on Delivery", "Card at Pickup", "Online Card"].includes(payment)) {
     return NextResponse.json({ error: "Invalid payment method." }, { status: 400 });
   }
 
@@ -168,7 +171,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Menu prices changed. Refresh your cart and try again." }, { status: 409 });
     }
 
-    const { data, error } = await supabase.rpc("create_checkout_order_with_gift_card", {
+    const customer = await getCustomerSession();
+    if (customer && email && email.toLowerCase() !== customer.profile.email.toLowerCase()) {
+      return NextResponse.json({ error: "Use the email address on your signed-in account." }, { status: 409 });
+    }
+    const loyaltyRewardId = text(body.loyaltyRewardId);
+    if (loyaltyRewardId && !uuidPattern.test(loyaltyRewardId)) return NextResponse.json({ error: "Invalid loyalty reward." }, { status: 400 });
+    const paymentChannel = payment === "Online Card" ? "stripe" : "offline";
+    const { data, error } = await supabase.rpc("create_checkout_order_v3", {
       p_first_name: firstName, p_last_name: lastName, p_phone: phone,
       p_phone_normalized: phoneNormalized, p_email: email || null,
       p_fulfillment_type: fulfillmentType,
@@ -182,23 +192,55 @@ export async function POST(request: Request) {
       p_total: orderTotal, p_note: note,
       p_items: JSON.parse(JSON.stringify(pricedItems)) as Json,
       p_gift_card_hash: giftCardCode ? hashGiftCardCode(giftCardCode) : null,
+      p_customer_profile_id: customer?.profile.id || null,
+      p_payment_channel: paymentChannel,
+      p_loyalty_reward_id: loyaltyRewardId || null,
     });
     if (error) throw error;
     const created = data?.[0];
     const orderNumber = created?.order_number;
     if (!orderNumber) throw new Error("Supabase did not return an order number.");
-    const { data: createdOrder, error: lookupError } = await supabase
-      .from("orders")
-      .select("id")
-      .eq("order_number", orderNumber)
-      .single();
-    if (lookupError || !createdOrder) throw lookupError || new Error("Unable to create tracking token.");
+    const orderId = created?.order_id;
+    if (!orderId) throw new Error("Unable to create tracking token.");
+    const amountDue = Number(created.amount_due || 0);
+    let checkoutUrl: string | null = null;
+    if (paymentChannel === "stripe" && amountDue > 0) {
+      try {
+        const stripe = getStripe();
+        const origin = getSiteOrigin(request);
+        const checkout = await stripe.checkout.sessions.create({
+          mode: "payment",
+          customer_email: customer?.profile.email || email || undefined,
+          line_items: [{ quantity: 1, price_data: { currency: "usd", unit_amount: Math.round(amountDue * 100), product_data: { name: `LEVIEN CAFE Order ${orderNumber}`, description: `${pricedItems.length} order line${pricedItems.length === 1 ? "" : "s"}` } } }],
+          success_url: `${origin}/order/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${origin}/checkout?payment=cancelled&order=${encodeURIComponent(orderNumber)}`,
+          metadata: { kind: "order", order_id: orderId, order_number: orderNumber },
+          payment_intent_data: { metadata: { kind: "order", order_id: orderId, order_number: orderNumber } },
+          expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+        }, { idempotencyKey: `order-checkout-${orderId}` });
+        if (!checkout.url) throw new Error("Stripe did not return a checkout URL.");
+        checkoutUrl = checkout.url;
+        const [orderUpdate, paymentUpdate] = await Promise.all([
+          supabase.from("orders").update({ stripe_checkout_session_id: checkout.id }).eq("id", orderId),
+          supabase.from("payments").update({ provider_session_id: checkout.id }).eq("order_id", orderId).eq("provider", "stripe"),
+        ]);
+        if (orderUpdate.error) throw orderUpdate.error;
+        if (paymentUpdate.error) throw paymentUpdate.error;
+      } catch (stripeError) {
+        await supabase.rpc("update_order_status_v3", { p_order_number: orderNumber, p_status: "Cancelled", p_actor_id: null, p_stripe_refunded: false });
+        throw stripeError;
+      }
+    }
     return NextResponse.json({
       orderNumber,
-      trackingToken: createdOrder.id,
+      trackingToken: orderId,
+      checkoutUrl,
       paymentMethod: created.final_payment_method,
+      paymentStatus: created.payment_status,
       giftCardAmount: Number(created.gift_card_amount || 0),
       giftCardBalance: created.gift_card_balance === null ? null : Number(created.gift_card_balance),
+      loyaltyDiscount: Number(created.loyalty_discount || 0),
+      amountDue,
     }, { status: 201 });
   } catch (error) {
     if (error instanceof InvalidCheckoutCatalogError) {
@@ -213,6 +255,9 @@ export async function POST(request: Request) {
     if (errorMessage.includes("GIFT_CARD_INACTIVE")) return NextResponse.json({ error: "This Gift Card is not active." }, { status: 409 });
     if (errorMessage.includes("GIFT_CARD_EXPIRED")) return NextResponse.json({ error: "This Gift Card has expired." }, { status: 409 });
     if (errorMessage.includes("GIFT_CARD_EMPTY")) return NextResponse.json({ error: "This Gift Card has no remaining balance." }, { status: 409 });
+    if (errorMessage.includes("LOYALTY_LOGIN_REQUIRED")) return NextResponse.json({ error: "Sign in to use this reward." }, { status: 401 });
+    if (errorMessage.includes("LOYALTY_REWARD_INVALID")) return NextResponse.json({ error: "This reward is unavailable or expired." }, { status: 409 });
+    if (errorMessage.includes("LOYALTY_PRODUCT_REQUIRED")) return NextResponse.json({ error: "Add the reward product to your cart before applying this reward." }, { status: 409 });
     console.error("Unable to create checkout order:", error);
     return NextResponse.json({ error: "Unable to place order." }, { status: 500 });
   }

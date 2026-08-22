@@ -1,5 +1,10 @@
 # V2 Module 6 — Gift Cards
 
+> This original stored-value foundation is extended by the Customer Platform
+> release. For paid online/in-store creation, encrypted code recovery and email
+> delivery, follow `V2-CUSTOMER-ACCOUNTS-PAYMENTS-LOYALTY.md` and apply its
+> migration after this one.
+
 LEVIEN CAFE now supports secure Gift Card issuing, public balance lookup,
 checkout redemption and a complete transaction history.
 
@@ -74,4 +79,3 @@ snapshot.
 10. Run `npm.cmd run build`.
 11. After deployment, run
     `npm.cmd run smoke:production -- https://your-production-domain.com`.
-

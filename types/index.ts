@@ -76,7 +76,7 @@ export type CartItem = {
   comboItems?: ComboProductSelection[];
 };
 
-export type OrderStatus = "New" | "Preparing" | "Ready" | "Completed" | "Cancelled";
+export type OrderStatus = "Pending Payment" | "New" | "Preparing" | "Ready" | "Completed" | "Cancelled";
 export type FulfillmentType = "Pickup" | "Delivery";
 
 export type CustomerOrder = {
@@ -94,9 +94,13 @@ export type CustomerOrder = {
   zip?: string;
   apartment?: string;
   payment: string;
+  paymentStatus?: "unpaid" | "pending" | "paid" | "failed" | "expired" | "refunded";
+  paymentProvider?: "offline" | "stripe" | "gift_card" | "mixed";
   giftCardAmount?: number;
   giftCardLastFour?: string;
   amountDue?: number;
+  loyaltyDiscount?: number;
+  loyaltyRewardId?: string;
   subtotal: number;
   tax: number;
   deliveryFee: number;

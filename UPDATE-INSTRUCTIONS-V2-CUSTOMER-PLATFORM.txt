@@ -1,0 +1,15 @@
+LEVIEN CAFE — V2 CUSTOMER PLATFORM UPDATE
+
+1. Replace project files, but keep your existing .env.local.
+2. Run: npm.cmd install
+3. Add every new key from .env.example to local/Vercel environments.
+4. Run the Supabase migration:
+   supabase/migrations/20260824000100_v2_customer_accounts_payments_loyalty.sql
+5. Configure Supabase Auth redirects/SMTP, Stripe webhook events, and Resend sender.
+6. Run: npm.cmd run build
+7. Run: npm.cmd run verify:production
+8. Deploy and run:
+   npm.cmd run smoke:production -- https://YOUR_DOMAIN
+
+Full setup and acceptance tests:
+docs/V2-CUSTOMER-ACCOUNTS-PAYMENTS-LOYALTY.md

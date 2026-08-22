@@ -4,8 +4,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { readSupabaseOrders } from "@/lib/supabase/order-reader";
 import { getStaffAccess } from "@/lib/staff-auth";
 import type { OrderStatus } from "@/types";
+import { getStripe } from "@/lib/stripe";
 
-const statuses: OrderStatus[] = ["New", "Preparing", "Ready", "Completed", "Cancelled"];
+const statuses: OrderStatus[] = ["Pending Payment", "New", "Preparing", "Ready", "Completed", "Cancelled"];
 
 async function authorizeOrders() {
   const access = await getStaffAccess("manage_orders");
@@ -44,15 +45,26 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Invalid order update." }, { status: 400 });
     }
 
-    const { data, error } = await createAdminClient().rpc("update_order_status_with_gift_card", {
+    const db = createAdminClient();
+    const { data: current, error: currentError } = await db.from("orders").select("id,order_number,payment_provider,payment_status,stripe_payment_intent_id,amount_due").eq("order_number", orderNumber).maybeSingle();
+    if (currentError) throw currentError;
+    if (!current) return NextResponse.json({ error: "Order not found." }, { status: 404 });
+    let stripeRefunded = false;
+    if (status === "Cancelled" && current.payment_status === "paid" && ["stripe", "mixed"].includes(current.payment_provider)) {
+      if (!current.stripe_payment_intent_id) return NextResponse.json({ error: "This paid order is missing its Stripe payment reference. Refund it in Stripe and contact support before cancelling." }, { status: 409 });
+      await getStripe().refunds.create({ payment_intent: current.stripe_payment_intent_id }, { idempotencyKey: `order-cancel-${current.id}` });
+      stripeRefunded = true;
+    }
+    const { data, error } = await db.rpc("update_order_status_v3", {
       p_order_number: orderNumber,
       p_status: status,
       p_actor_id: authorization.staff.legacy ? null : authorization.staff.id,
+      p_stripe_refunded: stripeRefunded,
     });
     if (error) throw error;
     const updated = data?.[0];
     if (!updated) return NextResponse.json({ error: "Order not found." }, { status: 404 });
-    return NextResponse.json({ orderNumber: updated.order_number, status: updated.order_status, giftCardRefund: Number(updated.gift_card_refund || 0) });
+    return NextResponse.json({ orderNumber: updated.order_number, status: updated.order_status, giftCardRefund: Number(updated.gift_card_refund || 0), stripeRefunded });
   } catch (error) {
     const errorMessage = error instanceof Error
       ? error.message
@@ -61,6 +73,8 @@ export async function PATCH(request: Request) {
         : "";
     if (errorMessage.includes("ORDER_NOT_FOUND")) return NextResponse.json({ error: "Order not found." }, { status: 404 });
     if (errorMessage.includes("ORDER_CANCELLED_FINAL")) return NextResponse.json({ error: "A cancelled order cannot be reopened." }, { status: 409 });
+    if (errorMessage.includes("PAYMENT_NOT_CONFIRMED")) return NextResponse.json({ error: "Payment must be confirmed before this order can enter production." }, { status: 409 });
+    if (errorMessage.includes("PAYMENT_REFUND_REQUIRED")) return NextResponse.json({ error: "Stripe refund is required before cancellation." }, { status: 409 });
     console.error("Unable to update admin order:", error);
     return NextResponse.json({ error: "Unable to update order." }, { status: 500 });
   }

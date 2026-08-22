@@ -3,9 +3,14 @@ import type { createAdminClient } from "./admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
-export async function readSupabaseOrders(supabase: AdminClient, orderId?: string): Promise<CustomerOrder[]> {
+export async function readSupabaseOrders(
+  supabase: AdminClient,
+  orderId?: string,
+  customerProfileId?: string,
+): Promise<CustomerOrder[]> {
   let orderQuery = supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(500);
   if (orderId) orderQuery = orderQuery.eq("id", orderId);
+  if (customerProfileId) orderQuery = orderQuery.eq("customer_profile_id", customerProfileId);
   const { data: orders, error: orderError } = await orderQuery;
   if (orderError) throw orderError;
   if (!orders?.length) return [];
@@ -76,8 +81,12 @@ export async function readSupabaseOrders(supabase: AdminClient, orderId?: string
       zip: order.zip || undefined,
       apartment: order.apartment || undefined,
       payment: order.payment_method,
+      paymentStatus: order.payment_status,
+      paymentProvider: order.payment_provider,
       giftCardAmount: Number(order.gift_card_amount || 0),
-      amountDue: Math.max(0, Number(order.total) - Number(order.gift_card_amount || 0)),
+      amountDue: Number(order.amount_due),
+      loyaltyDiscount: Number(order.loyalty_discount || 0),
+      loyaltyRewardId: order.loyalty_reward_id || undefined,
       subtotal: Number(order.subtotal),
       tax: Number(order.tax),
       deliveryFee: Number(order.delivery_fee),

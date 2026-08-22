@@ -7,6 +7,7 @@ export type StaffPermission =
   | "manage_orders"
   | "manage_contacts"
   | "manage_gift_cards"
+  | "manage_loyalty"
   | "view_customers"
   | "manage_catalog"
   | "manage_staff"
@@ -39,6 +40,7 @@ const permissionsByRole: Record<StaffRole, ReadonlySet<StaffPermission>> = {
     "manage_orders",
     "manage_contacts",
     "manage_gift_cards",
+    "manage_loyalty",
     "view_customers",
     "manage_catalog",
     "manage_staff",
@@ -53,6 +55,7 @@ const permissionsByRole: Record<StaffRole, ReadonlySet<StaffPermission>> = {
     "manage_orders",
     "manage_contacts",
     "manage_gift_cards",
+    "manage_loyalty",
     "view_customers",
     "manage_catalog",
     "manage_staff",

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import Link from "next/link";
 
 const money = (value: number) => `$${value.toFixed(2)}`;
 
@@ -46,7 +47,7 @@ export default function GiftCardPage() {
     <Header />
     <main className="giftCardPage">
       <section className="giftCardHero">
-        <div className="giftCardHeroCopy"><span className="sectionLabel">LEVIEN Gift Cards</span><h1>A little joy, ready to share.</h1><p>Use your Gift Card toward any online LEVIEN order. Enter the secure code below to see the current balance.</p><div className="giftCardPromise"><span>✓ Works at checkout</span><span>✓ Balance updates instantly</span><span>✓ Never shows your full code</span></div></div>
+        <div className="giftCardHeroCopy"><span className="sectionLabel">LEVIEN Gift Cards</span><h1>A little joy, ready to share.</h1><p>Buy a digital Gift Card securely or enter an existing code below to check its balance.</p><Link className="button primary" href="/gift-card/buy">Buy a Gift Card</Link><div className="giftCardPromise"><span>✓ Activated only after payment</span><span>✓ Works at checkout</span><span>✓ Recoverable in My Account</span></div></div>
         <div className="giftCardArtwork" aria-hidden="true"><div className="giftCardMock"><span>LEVIEN CAFE</span><strong>GIFT CARD</strong><small>Vietnamese soul, made to share.</small><b>LV</b></div></div>
       </section>
       <section className="giftCardBalanceSection">

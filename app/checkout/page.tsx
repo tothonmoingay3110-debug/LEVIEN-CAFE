@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useStore } from "@/components/StoreProvider";
 import { saveOrder } from "@/lib/orders";
-import type { FulfillmentType } from "@/types";
+import { useCustomerSession } from "@/components/CustomerSessionProvider";
+import type { CustomerAccountData, LoyaltyRewardView } from "@/types/account";
+import type { CustomerOrder, FulfillmentType } from "@/types";
 
 const money = (value: number) => `$${value.toFixed(2)}`;
 
@@ -24,6 +26,7 @@ type AppliedGiftCard = {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { profile } = useCustomerSession();
   const { cart, subtotal, clearCart, ready } = useStore();
   const [type, setType] = useState<FulfillmentType>("Pickup");
   const [submitting, setSubmitting] = useState(false);
@@ -32,11 +35,27 @@ export default function CheckoutPage() {
   const [giftCard, setGiftCard] = useState<AppliedGiftCard | null>(null);
   const [giftCardError, setGiftCardError] = useState("");
   const [checkingGiftCard, setCheckingGiftCard] = useState(false);
+  const [rewards, setRewards] = useState<LoyaltyRewardView[]>([]);
+  const [rewardId, setRewardId] = useState("");
+  const [paymentCancelled, setPaymentCancelled] = useState(false);
   const tax = useMemo(() => subtotal * 0.08, [subtotal]);
   const deliveryFee = type === "Delivery" ? 3.99 : 0;
   const total = subtotal + tax + deliveryFee;
-  const giftCardAmount = giftCard ? Math.min(giftCard.balance, total) : 0;
-  const amountDue = Math.max(0, total - giftCardAmount);
+  const selectedReward = rewards.find((reward) => reward.id === rewardId);
+  const rewardItem = selectedReward?.productId ? cart.find((item) => item.itemType === "product" && item.productId === selectedReward.productId) : undefined;
+  const loyaltyDiscount = selectedReward && rewardItem ? Math.min(rewardItem.basePrice, total) : 0;
+  const giftCardAmount = giftCard ? Math.min(giftCard.balance, Math.max(0, total - loyaltyDiscount)) : 0;
+  const amountDue = Math.max(0, total - loyaltyDiscount - giftCardAmount);
+
+  useEffect(() => {
+    setPaymentCancelled(new URLSearchParams(window.location.search).get("payment") === "cancelled");
+    if (!profile) { setRewards([]); setRewardId(""); return; }
+    void fetch("/api/account", { cache: "no-store" }).then(async (response) => {
+      if (!response.ok) return;
+      const account = await response.json() as CustomerAccountData;
+      setRewards(account.rewards.filter((reward) => reward.status === "issued" && reward.type === "free_product"));
+    });
+  }, [profile]);
 
   async function applyGiftCard() {
     const code = giftCardInput.trim();
@@ -147,7 +166,7 @@ export default function CheckoutPage() {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...orderDetails, giftCardCode: giftCard?.code, items: cart }),
+        body: JSON.stringify({ ...orderDetails, giftCardCode: giftCard?.code, loyaltyRewardId: rewardId || undefined, items: cart }),
       });
       const result = (await response.json()) as {
         orderNumber?: string;
@@ -155,10 +174,18 @@ export default function CheckoutPage() {
         paymentMethod?: string;
         giftCardAmount?: number;
         giftCardBalance?: number | null;
+        loyaltyDiscount?: number;
+        amountDue?: number;
+        paymentStatus?: CustomerOrder["paymentStatus"];
+        checkoutUrl?: string | null;
         error?: string;
       };
       if (!response.ok || !result.orderNumber || !result.trackingToken) throw new Error(result.error || "Unable to place order.");
       const id = result.orderNumber;
+      if (result.checkoutUrl) {
+        window.location.assign(result.checkoutUrl);
+        return;
+      }
 
       saveOrder({
         id,
@@ -168,7 +195,10 @@ export default function CheckoutPage() {
         payment: result.paymentMethod || orderDetails.payment,
         giftCardAmount: Number(result.giftCardAmount || 0),
         giftCardLastFour: giftCard?.lastFour,
-        amountDue: Math.max(0, total - Number(result.giftCardAmount || 0)),
+        loyaltyDiscount: Number(result.loyaltyDiscount || 0),
+        loyaltyRewardId: rewardId || undefined,
+        paymentStatus: result.paymentStatus,
+        amountDue: Number(result.amountDue ?? Math.max(0, total - Number(result.giftCardAmount || 0))),
         status: "New",
         createdAt: new Date().toISOString(),
         items: cart,
@@ -206,22 +236,22 @@ export default function CheckoutPage() {
             <div className="checkoutFields twoColumns">
               <label>
                 <span className="fieldLabel">First name <span className="requiredMark">*</span></span>
-                <input name="firstName" autoComplete="given-name" aria-invalid={Boolean(errors.firstName)} aria-describedby={errors.firstName ? "firstName-error" : undefined} onChange={() => clearError("firstName")} />
+                <input name="firstName" defaultValue={profile?.firstName || ""} autoComplete="given-name" aria-invalid={Boolean(errors.firstName)} aria-describedby={errors.firstName ? "firstName-error" : undefined} onChange={() => clearError("firstName")} />
                 {errors.firstName && <span className="fieldError" id="firstName-error">{errors.firstName}</span>}
               </label>
               <label>
                 <span className="fieldLabel">Last name <span className="requiredMark">*</span></span>
-                <input name="lastName" autoComplete="family-name" aria-invalid={Boolean(errors.lastName)} aria-describedby={errors.lastName ? "lastName-error" : undefined} onChange={() => clearError("lastName")} />
+                <input name="lastName" defaultValue={profile?.lastName || ""} autoComplete="family-name" aria-invalid={Boolean(errors.lastName)} aria-describedby={errors.lastName ? "lastName-error" : undefined} onChange={() => clearError("lastName")} />
                 {errors.lastName && <span className="fieldError" id="lastName-error">{errors.lastName}</span>}
               </label>
               <label>
                 <span className="fieldLabel">Phone number <span className="requiredMark">*</span></span>
-                <input name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(215) 555-0123" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "phone-error" : undefined} onChange={() => clearError("phone")} />
+                <input name="phone" defaultValue={profile?.phone || ""} type="tel" inputMode="tel" autoComplete="tel" placeholder="(215) 555-0123" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "phone-error" : undefined} onChange={() => clearError("phone")} />
                 {errors.phone && <span className="fieldError" id="phone-error">{errors.phone}</span>}
               </label>
               <label>
                 <span className="fieldLabel">Email <small className="optionalLabel">Optional</small></span>
-                <input name="email" type="email" autoComplete="email" aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "email-error" : undefined} onChange={() => clearError("email")} />
+                <input name="email" defaultValue={profile?.email || ""} type="email" autoComplete="email" aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "email-error" : undefined} onChange={() => clearError("email")} />
                 {errors.email && <span className="fieldError" id="email-error">{errors.email}</span>}
               </label>
             </div>
@@ -257,11 +287,13 @@ export default function CheckoutPage() {
           </section>
 
           <section className="checkoutCard">
-            <div className="checkoutCardHead"><span>03</span><div><h2>Payment & notes</h2><p>Online card payment will be connected in a later release.</p></div></div>
+            <div className="checkoutCardHead"><span>03</span><div><h2>Payment & notes</h2><p>Online card payments are processed securely by Stripe.</p></div></div>
+            {paymentCancelled && <div className="customerAuthError">Payment was cancelled. Your cart is still here; choose a method and try again.</div>}
             <div className="checkoutFields twoColumns">
-              <label>Payment method<select name="payment"><option>Pay at Store</option><option>Cash on Delivery</option><option>Card at Pickup</option></select></label>
+              <label>Payment method<select name="payment" defaultValue="Online Card"><option>Online Card</option><option>Pay at Store</option><option>Cash on Delivery</option><option>Card at Pickup</option></select></label>
               <label className="wide"><span className="fieldLabel">Order note <small className="optionalLabel">Optional</small></span><textarea name="note" rows={4} placeholder="Allergies, delivery instructions, or anything we should know" /></label>
             </div>
+            {profile ? <div className="giftCardRedeem"><div className="giftCardRedeemHeading"><div><span>Member Reward</span><strong>{rewards.length ? "Use an available reward" : "No free-product rewards available"}</strong></div></div>{rewards.length > 0 && <select value={rewardId} onChange={(event) => setRewardId(event.target.value)}><option value="">Do not use a reward</option>{rewards.map((reward) => <option key={reward.id} value={reward.id} disabled={!cart.some((item) => item.itemType === "product" && item.productId === reward.productId)}>{reward.name}{cart.some((item) => item.itemType === "product" && item.productId === reward.productId) ? "" : " — add product first"}</option>)}</select>}{selectedReward && !rewardItem && <div className="giftCardError">Add the reward product to your cart before using it.</div>}</div> : <div className="giftCardRedeem"><span>Member Reward</span><p><Link href="/account/sign-in">Sign in</Link> to use earned rewards.</p></div>}
             <div className={`giftCardRedeem ${giftCard ? "applied" : ""}`}>
               <div className="giftCardRedeemHeading"><div><span>Gift Card</span><strong>{giftCard ? `Card ending ${giftCard.lastFour}` : "Have a LEVIEN Gift Card?"}</strong></div>{giftCard && <button type="button" onClick={() => { setGiftCard(null); setGiftCardInput(""); setGiftCardError(""); }}>Remove</button>}</div>
               {giftCard ? <div className="giftCardApplied"><span>✓</span><div><strong>{money(giftCard.balance)} available</strong><small>{money(giftCardAmount)} will be applied to this order.</small></div></div> : <div className="giftCardCodeRow"><input value={giftCardInput} maxLength={24} autoComplete="off" placeholder="LVGC-XXXX-XXXX-XXXX" aria-label="Gift Card code" onChange={(event) => { setGiftCardInput(event.target.value.toUpperCase()); setGiftCardError(""); }} /><button className="adminSecondary" type="button" disabled={!giftCardInput.trim() || checkingGiftCard} onClick={() => void applyGiftCard()}>{checkingGiftCard ? "Checking…" : "Apply"}</button></div>}
@@ -285,6 +317,7 @@ export default function CheckoutPage() {
             <div><span>Tax (8%)</span><b>{money(tax)}</b></div>
             {deliveryFee > 0 && <div><span>Delivery fee</span><b>{money(deliveryFee)}</b></div>}
             {giftCardAmount > 0 && <div className="checkoutGiftCardDiscount"><span>Gift Card ···· {giftCard?.lastFour}</span><b>−{money(giftCardAmount)}</b></div>}
+            {loyaltyDiscount > 0 && <div className="checkoutGiftCardDiscount"><span>Member reward · {selectedReward?.name}</span><b>−{money(loyaltyDiscount)}</b></div>}
             <div className="checkoutGrandTotal"><span>{giftCardAmount > 0 ? "Amount due" : "Total"}</span><strong>{money(amountDue)}</strong></div>
           </div>
           <button className="button primary full checkoutSubmit" type="submit" disabled={submitting}>{submitting ? "Placing order…" : "Place Order"}</button>

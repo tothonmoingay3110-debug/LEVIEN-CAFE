@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useState } from "react";
 import { useStore } from "@/components/StoreProvider";
 import { useSiteData } from "@/components/SiteDataProvider";
+import { useCustomerSession } from "@/components/CustomerSessionProvider";
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { totalItems, openCart } = useStore();
   const { content } = useSiteData();
+  const { authenticated, profile } = useCustomerSession();
   const links = [
     { label: "Home", href: "/" },
     { label: "Menu", href: "/menu" },
@@ -47,6 +49,10 @@ export function Header() {
             <Link className="headerSearch" href="/menu" aria-label="Search the LEVIEN menu">
               <span aria-hidden="true">⌕</span>
               <span>Search menu...</span>
+            </Link>
+            <Link className="headerAccount" href={authenticated ? "/account" : "/account/sign-in"} aria-label={authenticated ? "Open my LEVIEN account" : "Sign in to LEVIEN"}>
+              <span aria-hidden="true">{authenticated ? (profile?.firstName?.[0] || "M").toUpperCase() : "♙"}</span>
+              <b>{authenticated ? "Account" : "Sign In"}</b>
             </Link>
             <button className="button primary orderButton" onClick={openCart}>
               My Order <span className="orderCount">{totalItems}</span>

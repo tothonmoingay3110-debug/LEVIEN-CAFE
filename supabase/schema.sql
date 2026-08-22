@@ -1146,3 +1146,7 @@ comment on table public.gift_cards is
   'Hashed bearer gift cards issued by Owner or Manager and redeemed atomically during checkout.';
 comment on table public.gift_card_transactions is
   'Immutable financial history for gift card issue, redemption and cancellation refund events.';
+
+-- The authoritative additive Customer Accounts, Stripe, encrypted Gift Card and
+-- loyalty schema is versioned separately to keep production rollout explicit:
+-- migrations/20260824000100_v2_customer_accounts_payments_loyalty.sql

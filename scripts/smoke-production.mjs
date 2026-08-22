@@ -31,7 +31,7 @@ function fail(message) {
   failures.push(message);
 }
 
-async function request(path, expectedStatus) {
+async function request(path, expectedStatus, options = {}) {
   const url = new URL(path, baseUrl);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
@@ -40,6 +40,7 @@ async function request(path, expectedStatus) {
       headers: { "User-Agent": "LEVIEN-CAFE-production-smoke-test" },
       redirect: "follow",
       signal: controller.signal,
+      ...options,
     });
     if (response.status === expectedStatus) pass(`${path} returned ${expectedStatus}.`);
     else fail(`${path} returned ${response.status}; expected ${expectedStatus}.`);
@@ -57,6 +58,9 @@ await request("/menu", 200);
 await request("/admin", 200);
 await request("/order-display", 200);
 await request("/gift-card", 200);
+await request("/gift-card/buy", 200);
+await request("/account/sign-in", 200);
+await request("/account/sign-up", 200);
 
 if (homeResponse) {
   const contentType = homeResponse.headers.get("content-type") || "";
@@ -99,6 +103,8 @@ await request("/api/contact", 405);
 await request("/api/admin/contact-messages", 401);
 await request("/api/gift-cards/balance", 405);
 await request("/api/admin/gift-cards", 401);
+await request("/api/account", 401);
+await request("/api/payments/stripe/webhook", 400, { method: "POST", body: "{}", headers: { "User-Agent": "LEVIEN-CAFE-production-smoke-test", "Content-Type": "application/json" } });
 
 const displayResponse = await request("/api/orders/display", 200);
 if (displayResponse?.ok) {

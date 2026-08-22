@@ -10,6 +10,7 @@ import StaffReports from "@/components/admin/StaffReports";
 import ActivityLog from "@/components/admin/ActivityLog";
 import ContactMessages from "@/components/admin/ContactMessages";
 import GiftCards from "@/components/admin/GiftCards";
+import LoyaltyPrograms from "@/components/admin/LoyaltyPrograms";
 import {
   roleHasPermission,
   staffRoleLabels,
@@ -19,7 +20,7 @@ import {
 } from "@/lib/staff-permissions";
 import type { CustomerOrder, OrderStatus } from "@/types";
 
-type AdminView = "dashboard" | "orders" | "messages" | "workspace" | "schedule" | "timeoff" | "labor" | "reports" | "activity" | "customers" | "giftcards" | "employees" | "products" | "categories" | "toppings" | "combos" | "promotions" | "content" | "account";
+type AdminView = "dashboard" | "orders" | "messages" | "workspace" | "schedule" | "timeoff" | "labor" | "reports" | "activity" | "customers" | "loyalty" | "giftcards" | "employees" | "products" | "categories" | "toppings" | "combos" | "promotions" | "content" | "account";
 type AdminIconName = AdminView | "external" | "logout" | "arrow";
 type Category = { id: string; name: string; icon: string; active: boolean };
 type Topping = { id: string; name: string; price: number; active: boolean };
@@ -96,10 +97,10 @@ const seed: DB = {
 };
 
 const viewLabels: Record<AdminView, string> = {
-  dashboard: "Dashboard", orders: "Orders", messages: "Contact Messages", workspace: "My Workspace", schedule: "Schedule", timeoff: "Time Off", labor: "Labor Planning", reports: "Staff Reports", activity: "Activity Log", customers: "Customers", giftcards: "Gift Cards", employees: "Employees", products: "Products", categories: "Categories",
+  dashboard: "Dashboard", orders: "Orders", messages: "Contact Messages", workspace: "My Workspace", schedule: "Schedule", timeoff: "Time Off", labor: "Labor Planning", reports: "Staff Reports", activity: "Activity Log", customers: "Customers", loyalty: "Loyalty Programs", giftcards: "Gift Cards", employees: "Employees", products: "Products", categories: "Categories",
   toppings: "Toppings", combos: "Combos", promotions: "Promotions", content: "Website Content", account: "My Account",
 };
-const adminViewOrder: AdminView[] = ["dashboard", "orders", "messages", "workspace", "schedule", "timeoff", "labor", "reports", "activity", "customers", "giftcards", "employees", "products", "categories", "toppings", "combos", "promotions", "content", "account"];
+const adminViewOrder: AdminView[] = ["dashboard", "orders", "messages", "workspace", "schedule", "timeoff", "labor", "reports", "activity", "customers", "loyalty", "giftcards", "employees", "products", "categories", "toppings", "combos", "promotions", "content", "account"];
 const viewPermissions: Partial<Record<AdminView, StaffPermission>> = {
   dashboard: "view_dashboard",
   orders: "manage_orders",
@@ -112,6 +113,7 @@ const viewPermissions: Partial<Record<AdminView, StaffPermission>> = {
   activity: "view_audit_log",
   customers: "view_customers",
   giftcards: "manage_gift_cards",
+  loyalty: "manage_loyalty",
   employees: "manage_staff",
   products: "manage_catalog",
   categories: "manage_catalog",
@@ -139,7 +141,7 @@ const adminNavGroups: AdminNavGroup[] = [
   { id: "overview", label: "Overview", shortLabel: "Overview", icon: "dashboard", views: ["dashboard", "orders", "messages"] },
   { id: "staff", label: "Staff & Schedule", shortLabel: "Staff", icon: "workspace", views: ["workspace", "schedule", "timeoff", "employees"] },
   { id: "planning", label: "Planning & Reports", shortLabel: "Reports", icon: "reports", views: ["labor", "reports", "activity"] },
-  { id: "store", label: "Store Management", shortLabel: "Store", icon: "products", views: ["customers", "giftcards", "products", "categories", "toppings", "combos", "promotions", "content"] },
+  { id: "store", label: "Customers & Store", shortLabel: "Store", icon: "products", views: ["customers", "loyalty", "giftcards", "products", "categories", "toppings", "combos", "promotions", "content"] },
 ];
 
 function AdminSidebarNav({
@@ -768,6 +770,7 @@ export default function AdminApp() {
         {view === "reports" && <StaffReports />}
         {view === "activity" && <ActivityLog />}
          {view === "customers" && <Customers customers={filteredCustomers} allCustomers={customers} orders={db.orders} query={customerQuery} setQuery={setCustomerQuery} openModal={setModal} />}
+         {view === "loyalty" && <LoyaltyPrograms notify={setToast} />}
          {view === "giftcards" && <GiftCards notify={setToast} />}
         {view === "employees" && canManageStaff && <Employees currentStaff={staff} employees={employees} loading={employeesLoading} openEmployee={(employee) => setEmployeeModal({ employee })} refresh={refreshEmployees} showCredentials={(credentials) => setTemporaryCredentials(credentials)} notify={setToast} />}
         {view === "products" && <Products db={db} products={filteredProducts} query={query} setQuery={setQuery} openModal={setModal} update={update} />}
@@ -839,7 +842,7 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
 function QuickAction({ icon, title, text, onClick }: { icon: AdminIconName; title: string; text: string; onClick: () => void }) { return <button className="adminQuickAction" onClick={onClick}><span><AdminIcon name={icon} /></span><div><strong>{title}</strong><small>{text}</small></div><b><AdminIcon name="arrow" /></b></button>; }
 
 function Orders({ db, orders, filter, setFilter, update, openModal }: { db: DB; orders: Order[]; filter: "All" | OrderStatus; setFilter: (v: "All" | OrderStatus) => void; update: (d: DB, m?: string) => void; openModal: (m: { type: string; id?: string }) => void }) {
-  const statuses: ("All" | OrderStatus)[] = ["All", "New", "Preparing", "Ready", "Completed", "Cancelled"];
+  const statuses: ("All" | OrderStatus)[] = ["All", "Pending Payment", "New", "Preparing", "Ready", "Completed", "Cancelled"];
 
   async function changeOrderStatus(orderId: string, status: OrderStatus) {
     const previousOrders = db.orders;
@@ -872,7 +875,7 @@ function Orders({ db, orders, filter, setFilter, update, openModal }: { db: DB; 
       <div className="adminTabs">{statuses.map(s => <button key={s} className={filter === s ? "active" : ""} onClick={() => setFilter(s)}>{s}<span>{s === "All" ? db.orders.length : db.orders.filter(o => o.status === s).length}</span></button>)}</div>
       <Link className="adminSecondary orderDisplayAdminLink" href="/order-display" target="_blank" rel="noopener noreferrer">Open TV Display ↗</Link>
     </section>
-    <section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Online ordering</span><h3>Order queue</h3></div><span className="adminHint">Status updates are saved to Supabase</span></div><div className="adminTableWrap"><table className="adminTable"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>{orders.map(o => <tr key={o.id}><td><strong>{o.id}</strong><small>{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></td><td><strong>{o.customer}</strong><small>{o.phone}</small></td><td>{o.type}</td><td><strong>{money(o.total)}</strong></td><td><select className={`orderStatusSelect status-${o.status.toLowerCase()}`} value={o.status} onChange={e => void changeOrderStatus(o.id, e.target.value as OrderStatus)}>{["New", "Preparing", "Ready", "Completed", "Cancelled"].map(s => <option key={s}>{s}</option>)}</select></td><td><button className="adminIconAction" onClick={() => openModal({ type: "order", id: o.id })}>View</button></td></tr>)}</tbody></table></div></section>
+    <section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Online ordering</span><h3>Order queue</h3></div><span className="adminHint">Paid online orders enter the queue only after Stripe confirms payment</span></div><div className="adminTableWrap"><table className="adminTable"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>{orders.map(o => <tr key={o.id}><td><strong>{o.id}</strong><small>{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></td><td><strong>{o.customer}</strong><small>{o.phone}</small></td><td>{o.type}</td><td><strong>{money(o.total)}</strong><small>{o.paymentStatus || "unpaid"}</small></td><td><select className={`orderStatusSelect status-${o.status.toLowerCase()}`} value={o.status} onChange={e => void changeOrderStatus(o.id, e.target.value as OrderStatus)}>{(o.status === "Pending Payment" ? ["Pending Payment", "Cancelled"] : ["New", "Preparing", "Ready", "Completed", "Cancelled"]).map(s => <option key={s}>{s}</option>)}</select></td><td><button className="adminIconAction" onClick={() => openModal({ type: "order", id: o.id })}>View</button></td></tr>)}</tbody></table></div></section>
   </div>;
 }
 function OrderRows({ orders }: { orders: Order[] }) { return <div className="adminOrderRows">{orders.map(o => <div key={o.id}><span className={`adminOrderDot status-${o.status.toLowerCase()}`}></span><div><strong>{o.id} · {o.customer}</strong><small>{o.items.map(orderItemLabel).join(", ")}</small></div><b>{money(o.total)}</b><em>{o.status}</em></div>)}</div>; }
@@ -1378,6 +1381,7 @@ function AdminIcon({ name }: { name: AdminIconName }) {
     reports: <><path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h8M8 15h5"/><path d="M16 17h2"/></>,
     activity: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M5 4 3 6M19 4l2 2"/></>,
     customers: <><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="10" r="2.5"/><path d="M15 16.5a5 5 0 0 1 6 3.5"/></>,
+    loyalty: <><path d="M12 3 9.6 8l-5.5.8 4 3.9-.9 5.5 4.8-2.6 4.8 2.6-.9-5.5 4-3.9-5.5-.8L12 3Z"/><circle cx="12" cy="11.5" r="2.2"/></>,
     giftcards: <><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M12 7v14M3 12h18"/><path d="M12 7H8.5a2.5 2.5 0 1 1 2.5-2.5V7Zm0 0h3.5A2.5 2.5 0 1 0 13 4.5V7Z"/></>,
     employees: <><circle cx="9" cy="7" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M17 8v6M14 11h6"/><path d="M16 17h5v4h-5z"/></>,
     products: <><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4 7.5 8 4.5 8-4.5"/><path d="M12 12v9"/></>,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateGiftCardCode } from "@/lib/gift-cards";
+import { encryptSecret } from "@/lib/secret-envelope";
 import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { getStaffAccess } from "@/lib/staff-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -20,12 +21,14 @@ export async function GET() {
     const authorization = await authorizeGiftCards();
     if (authorization.response) return authorization.response;
     const supabase = createAdminClient();
-    const [{ data: cards, error: cardError }, { data: transactions, error: transactionError }] = await Promise.all([
+    const [{ data: cards, error: cardError }, { data: transactions, error: transactionError }, { data: sales, error: salesError }] = await Promise.all([
       supabase.from("gift_cards").select("id,code_last_four,initial_balance,balance,currency,recipient_name,recipient_email,note,status,expires_on,issued_by,created_at,updated_at").order("created_at", { ascending: false }).limit(500),
       supabase.from("gift_card_transactions").select("id,gift_card_id,transaction_type,amount,balance_after,order_id,created_by,note,created_at").order("created_at", { ascending: false }).limit(2000),
+      supabase.from("gift_card_sales").select("gift_card_id,sales_channel,tender_type,receipt_reference,status,delivery_status,paid_at").order("created_at", { ascending: false }).limit(500),
     ]);
     if (cardError) throw cardError;
     if (transactionError) throw transactionError;
+    if (salesError) throw salesError;
 
     const orderIds = [...new Set((transactions || []).map((item) => item.order_id).filter((id): id is string => Boolean(id)))];
     const { data: orders, error: orderError } = orderIds.length
@@ -34,6 +37,7 @@ export async function GET() {
     if (orderError) throw orderError;
     const orderNumbers = new Map((orders || []).map((order) => [order.id, order.order_number]));
     const today = new Date().toISOString().slice(0, 10);
+    const saleByCard = new Map((sales || []).filter((sale) => sale.gift_card_id).map((sale) => [sale.gift_card_id, sale]));
 
     return NextResponse.json({
       cards: (cards || []).map((card) => ({
@@ -51,6 +55,14 @@ export async function GET() {
         issuedBy: card.issued_by,
         createdAt: card.created_at,
         updatedAt: card.updated_at,
+        sale: saleByCard.get(card.id) ? {
+          channel: saleByCard.get(card.id)!.sales_channel,
+          tenderType: saleByCard.get(card.id)!.tender_type,
+          receiptReference: saleByCard.get(card.id)!.receipt_reference,
+          status: saleByCard.get(card.id)!.status,
+          deliveryStatus: saleByCard.get(card.id)!.delivery_status,
+          paidAt: saleByCard.get(card.id)!.paid_at,
+        } : null,
         transactions: (transactions || []).filter((item) => item.gift_card_id === card.id).map((item) => ({
           id: item.id,
           type: item.transaction_type,
@@ -75,7 +87,7 @@ export async function POST(request: Request) {
     if (authorization.response || !authorization.staff) return authorization.response;
     if (requestBodyExceeds(request, 12 * 1024)) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
 
-    let body: { amount?: unknown; recipientName?: unknown; recipientEmail?: unknown; note?: unknown; expiresOn?: unknown };
+    let body: { amount?: unknown; recipientName?: unknown; recipientEmail?: unknown; note?: unknown; expiresOn?: unknown; tenderType?: unknown; receiptReference?: unknown };
     try {
       body = (await request.json()) as typeof body;
     } catch {
@@ -86,21 +98,30 @@ export async function POST(request: Request) {
     const recipientEmail = typeof body.recipientEmail === "string" ? body.recipientEmail.trim().toLowerCase().slice(0, 254) : "";
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 1000) : "";
     const expiresOn = typeof body.expiresOn === "string" ? body.expiresOn.trim() : "";
+    const tenderType = body.tenderType === "cash" || body.tenderType === "card_terminal" || body.tenderType === "complimentary" ? body.tenderType : null;
+    const receiptReference = typeof body.receiptReference === "string" ? body.receiptReference.trim().slice(0, 120) : "";
     const today = new Date().toISOString().slice(0, 10);
-    if (amount < 0.01 || amount > 10000) return NextResponse.json({ error: "Amount must be between $0.01 and $10,000." }, { status: 400 });
+    if (amount < 5 || amount > 1000) return NextResponse.json({ error: "Amount must be between $5 and $1,000." }, { status: 400 });
     if (recipientEmail && !emailPattern.test(recipientEmail)) return NextResponse.json({ error: "Enter a valid recipient email." }, { status: 400 });
     if (expiresOn && (!/^\d{4}-\d{2}-\d{2}$/.test(expiresOn) || expiresOn < today)) return NextResponse.json({ error: "Expiry must be today or later." }, { status: 400 });
+    if (!tenderType) return NextResponse.json({ error: "Select how this Gift Card was paid." }, { status: 400 });
+    if (tenderType === "complimentary" && authorization.staff.role !== "owner") return NextResponse.json({ error: "Only the Owner can create a complimentary Gift Card." }, { status: 403 });
+    if (tenderType !== "complimentary" && receiptReference.length < 2) return NextResponse.json({ error: "A receipt or terminal reference is required." }, { status: 400 });
 
     const code = generateGiftCardCode();
-    const { data, error } = await createAdminClient().rpc("issue_gift_card", {
+    const { data, error } = await createAdminClient().rpc("issue_gift_card_v3", {
       p_code_hash: code.hash,
       p_code_last_four: code.lastFour,
-      p_initial_balance: amount,
+      p_code_ciphertext: encryptSecret(code.formatted),
+      p_amount: amount,
       p_recipient_name: recipientName,
-      p_recipient_email: recipientEmail || null,
+      p_recipient_email: recipientEmail,
       p_note: note,
       p_expires_on: expiresOn || null,
-      p_issued_by: authorization.staff.legacy ? null : authorization.staff.id,
+      p_tender_type: tenderType,
+      p_receipt_reference: receiptReference,
+      p_created_by: authorization.staff.legacy ? null : authorization.staff.id,
+      p_purchaser_email: authorization.staff.email,
     });
     if (error) throw error;
     const giftCardId = data?.[0]?.gift_card_id;
@@ -108,11 +129,11 @@ export async function POST(request: Request) {
 
     await recordWorkforceEvent({ activity: {
       actorId: authorization.staff.legacy ? null : authorization.staff.id,
-      action: "gift_card_issued",
+      action: "gift_card_created",
       entityType: "gift_card",
       entityId: giftCardId,
-      summary: `Gift Card ending ${code.lastFour} issued for $${amount.toFixed(2)}.`,
-      metadata: { lastFour: code.lastFour, amount },
+      summary: `Gift Card ending ${code.lastFour} created for $${amount.toFixed(2)} with ${tenderType}.`,
+      metadata: { lastFour: code.lastFour, amount, tenderType, receiptReference },
     } });
 
     return NextResponse.json({
