@@ -1,0 +1,28 @@
+LEVIEN CAFE — V2.3 LABOR PLANNING
+=================================
+
+1. Extract this ZIP.
+2. Copy every extracted file into the active LEVIEN-CAFE project and choose Replace.
+3. Keep the active project's .env.local. It is intentionally not included here.
+4. Run:
+
+   npm.cmd install
+   npm.cmd run build
+
+5. Confirm V2.1B employee compensation and V2.2 scheduling are already working.
+6. Restart the local development server.
+7. Sign in as Owner or Manager and open Labor Planning.
+8. Verify planned hours, scheduled hours, labor forecast, and CSV export.
+9. Sign in as Staff or Supervisor and confirm Labor Planning is not visible.
+
+NO NEW SQL MIGRATION
+--------------------
+V2.3 reads the existing staff_compensation and staff_shifts tables. Do not rerun
+older migrations if they are already installed.
+
+IMPORTANT
+---------
+- Labor Planning is visible only to Owner and Manager.
+- Forecast values use published schedules, not attendance.
+- The forecast does not include taxes, overtime, tips, bonuses, or deductions.
+- Keep .env.local and SUPABASE_SERVICE_ROLE_KEY private.

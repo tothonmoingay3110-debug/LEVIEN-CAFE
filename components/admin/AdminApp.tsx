@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import LaborPlanning from "@/components/admin/LaborPlanning";
 import ScheduleWorkspace from "@/components/admin/ScheduleWorkspace";
+import TimeOffWorkspace from "@/components/admin/TimeOffWorkspace";
+import WorkforceWorkspace from "@/components/admin/WorkforceWorkspace";
+import StaffReports from "@/components/admin/StaffReports";
+import ActivityLog from "@/components/admin/ActivityLog";
 import {
   roleHasPermission,
   staffRoleLabels,
@@ -12,7 +17,7 @@ import {
 } from "@/lib/staff-permissions";
 import type { CustomerOrder, OrderStatus } from "@/types";
 
-type AdminView = "dashboard" | "orders" | "schedule" | "customers" | "employees" | "products" | "categories" | "toppings" | "combos" | "promotions" | "content" | "account";
+type AdminView = "dashboard" | "orders" | "workspace" | "schedule" | "timeoff" | "labor" | "reports" | "activity" | "customers" | "employees" | "products" | "categories" | "toppings" | "combos" | "promotions" | "content" | "account";
 type AdminIconName = AdminView | "external" | "logout" | "arrow";
 type Category = { id: string; name: string; icon: string; active: boolean };
 type Topping = { id: string; name: string; price: number; active: boolean };
@@ -89,14 +94,19 @@ const seed: DB = {
 };
 
 const viewLabels: Record<AdminView, string> = {
-  dashboard: "Dashboard", orders: "Orders", schedule: "Schedule", customers: "Customers", employees: "Employees", products: "Products", categories: "Categories",
+  dashboard: "Dashboard", orders: "Orders", workspace: "My Workspace", schedule: "Schedule", timeoff: "Time Off", labor: "Labor Planning", reports: "Staff Reports", activity: "Activity Log", customers: "Customers", employees: "Employees", products: "Products", categories: "Categories",
   toppings: "Toppings", combos: "Combos", promotions: "Promotions", content: "Website Content", account: "My Account",
 };
-const adminViewOrder: AdminView[] = ["dashboard", "orders", "schedule", "customers", "employees", "products", "categories", "toppings", "combos", "promotions", "content", "account"];
+const adminViewOrder: AdminView[] = ["dashboard", "orders", "workspace", "schedule", "timeoff", "labor", "reports", "activity", "customers", "employees", "products", "categories", "toppings", "combos", "promotions", "content", "account"];
 const viewPermissions: Partial<Record<AdminView, StaffPermission>> = {
   dashboard: "view_dashboard",
   orders: "manage_orders",
+  workspace: "view_own_schedule",
   schedule: "view_own_schedule",
+  timeoff: "view_own_schedule",
+  labor: "view_compensation",
+  reports: "view_workforce_reports",
+  activity: "view_audit_log",
   customers: "view_customers",
   employees: "manage_staff",
   products: "manage_catalog",
@@ -116,6 +126,71 @@ function viewsForRole(role: StaffRole) {
 
 function viewsForStaff(staff: StaffSessionSummary) {
   return staff.mustChangePassword ? ["account" as const] : viewsForRole(staff.role);
+}
+
+type AdminNavGroupId = "overview" | "staff" | "planning" | "store";
+type AdminNavGroup = { id: AdminNavGroupId; label: string; shortLabel: string; icon: AdminIconName; views: AdminView[] };
+
+const adminNavGroups: AdminNavGroup[] = [
+  { id: "overview", label: "Overview", shortLabel: "Overview", icon: "dashboard", views: ["dashboard", "orders"] },
+  { id: "staff", label: "Staff & Schedule", shortLabel: "Staff", icon: "workspace", views: ["workspace", "schedule", "timeoff", "employees"] },
+  { id: "planning", label: "Planning & Reports", shortLabel: "Reports", icon: "reports", views: ["labor", "reports", "activity"] },
+  { id: "store", label: "Store Management", shortLabel: "Store", icon: "products", views: ["customers", "products", "categories", "toppings", "combos", "promotions", "content"] },
+];
+
+function AdminSidebarNav({
+  allowedViews,
+  view,
+  setView,
+  newOrders,
+  unreadNotifications,
+}: {
+  allowedViews: AdminView[];
+  view: AdminView;
+  setView: (view: AdminView) => void;
+  newOrders: number;
+  unreadNotifications: number;
+}) {
+  const visibleGroups = useMemo(() => adminNavGroups.map((group) => ({
+    ...group,
+    views: group.views.filter((item) => allowedViews.includes(item)),
+  })).filter((group) => group.views.length), [allowedViews]);
+  const activeGroup = visibleGroups.find((group) => group.views.includes(view))?.id || null;
+  const [expandedGroup, setExpandedGroup] = useState<AdminNavGroupId | null>(activeGroup);
+
+  useEffect(() => {
+    if (activeGroup) setExpandedGroup(activeGroup);
+  }, [activeGroup]);
+
+  const badgeForView = (item: AdminView) => item === "orders" ? newOrders : item === "workspace" ? unreadNotifications : 0;
+
+  return <nav className="adminGroupedNav" aria-label="Admin navigation">
+    {visibleGroups.map((group) => {
+      const open = expandedGroup === group.id;
+      const containsActive = group.views.includes(view);
+      const badge = group.views.reduce((total, item) => total + badgeForView(item), 0);
+      return <section className={`adminNavGroup ${open ? "open" : ""} ${containsActive ? "containsActive" : ""}`} key={group.id}>
+        <button className="adminNavGroupButton" type="button" aria-expanded={open} aria-controls={`admin-nav-${group.id}`} onClick={() => setExpandedGroup((current) => current === group.id ? null : group.id)}>
+          <span className="adminNavIcon"><AdminIcon name={group.icon} /></span>
+          <span className="adminGroupLabel">{group.label}</span>
+          <span className="adminGroupShortLabel">{group.shortLabel}</span>
+          {badge > 0 && <b>{Math.min(99, badge)}</b>}
+          <span className="adminNavChevron"><AdminIcon name="arrow" /></span>
+        </button>
+        {open && <div className="adminNavSub" id={`admin-nav-${group.id}`}>
+          {group.views.map((item) => {
+            const itemBadge = badgeForView(item);
+            return <button key={item} type="button" className={view === item ? "active" : ""} onClick={() => setView(item)}>
+              <span className="adminNavIcon"><AdminIcon name={item} /></span>
+              <span className="adminNavLabel">{viewLabels[item]}</span>
+              {itemBadge > 0 && <b>{Math.min(99, itemBadge)}</b>}
+            </button>;
+          })}
+        </div>}
+      </section>;
+    })}
+    {allowedViews.includes("account") && <button type="button" className={`adminNavAccount ${view === "account" ? "active" : ""}`} onClick={() => setView("account")}><span className="adminNavIcon"><AdminIcon name="account" /></span><span className="adminNavLabel">{viewLabels.account}</span></button>}
+  </nav>;
 }
 
 function initials(name: string) {
@@ -447,6 +522,7 @@ export default function AdminApp() {
   const [employeesLoading, setEmployeesLoading] = useState(false);
   const [employeeModal, setEmployeeModal] = useState<{ employee?: Employee } | null>(null);
   const [temporaryCredentials, setTemporaryCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const orderRefreshPromise = useRef<Promise<void> | null>(null);
   const loggedIn = Boolean(staff);
 
@@ -506,6 +582,16 @@ export default function AdminApp() {
     };
   }, [staff]);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(""), 2400); return () => clearTimeout(timer); }, [toast]);
+  useEffect(() => {
+    if (!staff || staff.mustChangePassword || !roleHasPermission(staff.role, "view_own_schedule")) {
+      setUnreadNotifications(0);
+      return;
+    }
+    void fetch("/api/admin/workspace", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((result: { unreadCount?: number }) => setUnreadNotifications(Number(result.unreadCount || 0)))
+      .catch(() => setUnreadNotifications(0));
+  }, [staff]);
 
   const todayOrders = db.orders.filter(o => new Date(o.createdAt).toDateString() === new Date().toDateString());
   const revenue = todayOrders.filter(o => o.status !== "Cancelled").reduce((sum, order) => sum + order.total, 0);
@@ -635,6 +721,7 @@ export default function AdminApp() {
     setModal(null);
     setEmployeeModal(null);
     setTemporaryCredentials(null);
+    setUnreadNotifications(0);
   }
   function handlePasswordChanged() {
     if (!staff) return;
@@ -661,7 +748,7 @@ export default function AdminApp() {
     <div className="adminShellV3">
       <aside className="adminSidebarV3">
         <div className="adminBrandV3"><span className="adminLogoV3">LV</span><div><strong>LEVIEN</strong><small>ADMIN PLATFORM</small></div></div>
-        <nav>{allowedViews.map(key => <button key={key} className={view === key ? "active" : ""} onClick={() => setView(key)}><span className="adminNavIcon"><AdminIcon name={key} /></span><span className="adminNavLabel">{viewLabels[key]}</span>{key === "orders" && db.orders.filter(o => o.status === "New").length > 0 && <b>{db.orders.filter(o => o.status === "New").length}</b>}</button>)}</nav>
+        <AdminSidebarNav allowedViews={allowedViews} view={view} setView={setView} newOrders={db.orders.filter((order) => order.status === "New").length} unreadNotifications={unreadNotifications} />
         <div className="adminSidebarBottom"><Link href="/"><AdminIcon name="external" /><span>View Store</span></Link><button onClick={logout}><AdminIcon name="logout" /><span>Sign out</span></button></div>
       </aside>
       <main className="adminWorkspace">
@@ -669,7 +756,12 @@ export default function AdminApp() {
         {view === "dashboard" && canManageCatalog && <Dashboard db={db} revenue={revenue} todayOrders={todayOrders} openView={setView} openModal={setModal} />}
         {view === "dashboard" && !canManageCatalog && canManageOrders && <OperationsDashboard db={db} todayOrders={todayOrders} openView={setView} />}
         {view === "orders" && <Orders db={db} orders={filteredOrders} filter={orderFilter} setFilter={setOrderFilter} update={update} openModal={setModal} />}
+        {view === "workspace" && <WorkforceWorkspace staff={staff} notify={setToast} unreadChanged={setUnreadNotifications} />}
         {view === "schedule" && <ScheduleWorkspace staff={staff} notify={setToast} />}
+        {view === "timeoff" && <TimeOffWorkspace staff={staff} notify={setToast} />}
+        {view === "labor" && <LaborPlanning />}
+        {view === "reports" && <StaffReports />}
+        {view === "activity" && <ActivityLog />}
         {view === "customers" && <Customers customers={filteredCustomers} allCustomers={customers} orders={db.orders} query={customerQuery} setQuery={setCustomerQuery} openModal={setModal} />}
         {view === "employees" && canManageStaff && <Employees currentStaff={staff} employees={employees} loading={employeesLoading} openEmployee={(employee) => setEmployeeModal({ employee })} refresh={refreshEmployees} showCredentials={(credentials) => setTemporaryCredentials(credentials)} notify={setToast} />}
         {view === "products" && <Products db={db} products={filteredProducts} query={query} setQuery={setQuery} openModal={setModal} update={update} />}
@@ -763,7 +855,13 @@ function Orders({ db, orders, filter, setFilter, update, openModal }: { db: DB; 
     }
   }
 
-  return <div className="adminStack"><section className="adminToolbar"><div className="adminTabs">{statuses.map(s => <button key={s} className={filter === s ? "active" : ""} onClick={() => setFilter(s)}>{s}<span>{s === "All" ? db.orders.length : db.orders.filter(o => o.status === s).length}</span></button>)}</div></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Online ordering</span><h3>Order queue</h3></div><span className="adminHint">Status updates are saved to Supabase</span></div><div className="adminTableWrap"><table className="adminTable"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>{orders.map(o => <tr key={o.id}><td><strong>{o.id}</strong><small>{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></td><td><strong>{o.customer}</strong><small>{o.phone}</small></td><td>{o.type}</td><td><strong>{money(o.total)}</strong></td><td><select className={`orderStatusSelect status-${o.status.toLowerCase()}`} value={o.status} onChange={e => void changeOrderStatus(o.id, e.target.value as OrderStatus)}>{["New", "Preparing", "Ready", "Completed", "Cancelled"].map(s => <option key={s}>{s}</option>)}</select></td><td><button className="adminIconAction" onClick={() => openModal({ type: "order", id: o.id })}>View</button></td></tr>)}</tbody></table></div></section></div>;
+  return <div className="adminStack">
+    <section className="adminToolbar">
+      <div className="adminTabs">{statuses.map(s => <button key={s} className={filter === s ? "active" : ""} onClick={() => setFilter(s)}>{s}<span>{s === "All" ? db.orders.length : db.orders.filter(o => o.status === s).length}</span></button>)}</div>
+      <Link className="adminSecondary orderDisplayAdminLink" href="/order-display" target="_blank" rel="noopener noreferrer">Open TV Display ↗</Link>
+    </section>
+    <section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Online ordering</span><h3>Order queue</h3></div><span className="adminHint">Status updates are saved to Supabase</span></div><div className="adminTableWrap"><table className="adminTable"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>{orders.map(o => <tr key={o.id}><td><strong>{o.id}</strong><small>{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></td><td><strong>{o.customer}</strong><small>{o.phone}</small></td><td>{o.type}</td><td><strong>{money(o.total)}</strong></td><td><select className={`orderStatusSelect status-${o.status.toLowerCase()}`} value={o.status} onChange={e => void changeOrderStatus(o.id, e.target.value as OrderStatus)}>{["New", "Preparing", "Ready", "Completed", "Cancelled"].map(s => <option key={s}>{s}</option>)}</select></td><td><button className="adminIconAction" onClick={() => openModal({ type: "order", id: o.id })}>View</button></td></tr>)}</tbody></table></div></section>
+  </div>;
 }
 function OrderRows({ orders }: { orders: Order[] }) { return <div className="adminOrderRows">{orders.map(o => <div key={o.id}><span className={`adminOrderDot status-${o.status.toLowerCase()}`}></span><div><strong>{o.id} · {o.customer}</strong><small>{o.items.map(orderItemLabel).join(", ")}</small></div><b>{money(o.total)}</b><em>{o.status}</em></div>)}</div>; }
 
@@ -1261,6 +1359,11 @@ function AdminIcon({ name }: { name: AdminIconName }) {
     dashboard: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
     orders: <><path d="M6 3h12l2 4v14H4V7l2-4Z"/><path d="M4 7h16"/><path d="M9 11a3 3 0 0 0 6 0"/></>,
     schedule: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/><path d="m8 15 2 2 5-5"/></>,
+    workspace: <><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/><path d="M7 13h4M7 17h7"/><circle cx="17" cy="15" r="2.5"/></>,
+    timeoff: <><path d="M4 5h16v15H4z"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="m9 15 2 2 4-5"/></>,
+    labor: <><path d="M4 20V10M10 20V4M16 20v-7M22 20V7"/><path d="M2 20h20"/><path d="m4 7 6-4 6 7 6-5"/></>,
+    reports: <><path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h8M8 15h5"/><path d="M16 17h2"/></>,
+    activity: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M5 4 3 6M19 4l2 2"/></>,
     customers: <><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="10" r="2.5"/><path d="M15 16.5a5 5 0 0 1 6 3.5"/></>,
     employees: <><circle cx="9" cy="7" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M17 8v6M14 11h6"/><path d="M16 17h5v4h-5z"/></>,
     products: <><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4 7.5 8 4.5 8-4.5"/><path d="M12 12v9"/></>,

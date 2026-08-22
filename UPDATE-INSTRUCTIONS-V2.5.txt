@@ -1,0 +1,28 @@
+LEVIEN CAFE — V2.5 COPY WEEKLY SCHEDULE
+=======================================
+
+1. Extract this ZIP.
+2. Copy every extracted file into the active LEVIEN-CAFE project and choose Replace.
+3. Keep the active project's .env.local. It is intentionally not included here.
+4. Run:
+
+   npm.cmd install
+   npm.cmd run build
+
+5. Confirm V2.2 scheduling and V2.4 time off are already working.
+6. Restart the local development server.
+7. Sign in as Owner or Manager and open Schedule.
+8. Choose Copy week, select a populated source week and a future target week.
+9. Review created/skipped counts and inspect the target week.
+10. Repeat the copy and confirm existing shifts are skipped, not overwritten.
+
+NO NEW SQL MIGRATION
+--------------------
+V2.5 uses the existing staff_shifts and staff_time_off_requests tables.
+
+IMPORTANT
+---------
+- Existing target shifts are never deleted.
+- Approved time off and overlapping shifts are skipped automatically.
+- Staff and Supervisor cannot copy team schedules.
+- Keep .env.local and SUPABASE_SERVICE_ROLE_KEY private.

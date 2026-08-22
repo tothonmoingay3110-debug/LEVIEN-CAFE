@@ -3,11 +3,13 @@ import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security"
 import { getStaffSession } from "@/lib/staff-auth";
 import { roleHasPermission, type StaffSessionSummary } from "@/lib/staff-permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { recordWorkforceEvent, shiftNotificationMessage } from "@/lib/workforce-events";
 import type { Database } from "@/types/database.types";
 
 type StaffProfile = Database["public"]["Tables"]["staff_profiles"]["Row"];
 type ShiftRequest = Database["public"]["Tables"]["staff_shift_requests"]["Row"];
 type WorkShift = Database["public"]["Tables"]["staff_shifts"]["Row"];
+type TimeOffRequest = Database["public"]["Tables"]["staff_time_off_requests"]["Row"];
 
 type ShiftInput = {
   staffId?: unknown;
@@ -68,6 +70,15 @@ function dateWithinDays(date: string, minimumDays: number, maximumDays: number) 
   return days >= minimumDays && days <= maximumDays;
 }
 
+function addDays(date: string, days: number) {
+  const timestamp = Date.parse(`${date}T00:00:00Z`);
+  return new Date(timestamp + days * 86_400_000).toISOString().slice(0, 10);
+}
+
+function daysBetween(from: string, to: string) {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+}
+
 function employee(profile: StaffProfile) {
   return {
     id: profile.id,
@@ -104,6 +115,16 @@ function shiftResponse(shift: WorkShift) {
     status: shift.status,
     sourceRequestId: shift.source_request_id,
     createdAt: shift.created_at,
+  };
+}
+
+function timeOffResponse(request: TimeOffRequest) {
+  return {
+    id: request.id,
+    staffId: request.staff_id,
+    startDate: request.start_date,
+    endDate: request.end_date,
+    reason: request.reason,
   };
 }
 
@@ -154,6 +175,19 @@ async function hasRequestConflict(staffId: string, date: string, startTime: stri
   return Boolean(data?.length);
 }
 
+async function hasApprovedTimeOff(staffId: string, date: string) {
+  const { data, error } = await createAdminClient()
+    .from("staff_time_off_requests")
+    .select("id")
+    .eq("staff_id", staffId)
+    .eq("status", "approved")
+    .lte("start_date", date)
+    .gte("end_date", date)
+    .limit(1);
+  if (error) throw error;
+  return Boolean(data?.length);
+}
+
 export async function GET(request: Request) {
   try {
     const authorization = await authenticatedStaff();
@@ -170,28 +204,33 @@ export async function GET(request: Request) {
     const supabase = createAdminClient();
     let shiftQuery = supabase.from("staff_shifts").select("*").gte("shift_date", from).lte("shift_date", to).eq("status", "scheduled").order("shift_date").order("start_time");
     let requestQuery = supabase.from("staff_shift_requests").select("*").gte("shift_date", from).lte("shift_date", to).order("shift_date").order("start_time");
+    let timeOffQuery = supabase.from("staff_time_off_requests").select("*").eq("status", "approved").lte("start_date", to).gte("end_date", from).order("start_date");
     if (!canManage) {
       if (staff.legacy) return NextResponse.json({ error: "Create a Supabase Auth Owner account to use personal scheduling." }, { status: 400 });
       shiftQuery = shiftQuery.eq("staff_id", staff.id);
       requestQuery = requestQuery.eq("staff_id", staff.id);
+      timeOffQuery = timeOffQuery.eq("staff_id", staff.id);
     }
 
-    const [profileResult, shiftResult, requestResult] = await Promise.all([
+    const [profileResult, shiftResult, requestResult, timeOffResult] = await Promise.all([
       canManage
         ? supabase.from("staff_profiles").select("*").order("full_name")
         : supabase.from("staff_profiles").select("*").eq("id", staff.id),
       shiftQuery,
       requestQuery,
+      timeOffQuery,
     ]);
     if (profileResult.error) throw profileResult.error;
     if (shiftResult.error) throw shiftResult.error;
     if (requestResult.error) throw requestResult.error;
+    if (timeOffResult.error) throw timeOffResult.error;
 
     return NextResponse.json({
       canManage,
       team: (profileResult.data || []).map(employee),
       shifts: (shiftResult.data || []).map(shiftResponse),
       requests: (requestResult.data || []).map(requestResponse),
+      timeOff: (timeOffResult.data || []).map(timeOffResponse),
     });
   } catch (error) {
     console.error("Unable to load schedule:", error);
@@ -209,10 +248,105 @@ export async function POST(request: Request) {
     const body = (await request.json()) as ShiftInput & { kind?: unknown };
     const kind = body.kind;
 
+    if (kind === "copy_week") {
+      if (!roleHasPermission(staff.role, "manage_schedule")) return NextResponse.json({ error: "Only Owner or Manager can copy team schedules." }, { status: 403 });
+      const copyBody = body as ShiftInput & { sourceStart?: unknown; targetStart?: unknown };
+      const sourceStart = validDate(copyBody.sourceStart);
+      const targetStart = validDate(copyBody.targetStart);
+      if (!sourceStart || !targetStart || sourceStart === targetStart || !dateWithinDays(sourceStart, -366, 366) || !dateWithinDays(targetStart, 0, 365)) {
+        return NextResponse.json({ error: "Choose different source and future target weeks within one year." }, { status: 400 });
+      }
+      const sourceEnd = addDays(sourceStart, 6);
+      const targetEnd = addDays(targetStart, 6);
+      const offset = daysBetween(sourceStart, targetStart);
+      const supabase = createAdminClient();
+      const [sourceResult, targetResult, profileResult, timeOffResult] = await Promise.all([
+        supabase.from("staff_shifts").select("*").eq("status", "scheduled").gte("shift_date", sourceStart).lte("shift_date", sourceEnd).order("shift_date").order("start_time"),
+        supabase.from("staff_shifts").select("*").eq("status", "scheduled").gte("shift_date", targetStart).lte("shift_date", targetEnd),
+        supabase.from("staff_profiles").select("*"),
+        supabase.from("staff_time_off_requests").select("*").eq("status", "approved").lte("start_date", targetEnd).gte("end_date", targetStart),
+      ]);
+      if (sourceResult.error) throw sourceResult.error;
+      if (targetResult.error) throw targetResult.error;
+      if (profileResult.error) throw profileResult.error;
+      if (timeOffResult.error) throw timeOffResult.error;
+      const sourceShifts = sourceResult.data || [];
+      if (!sourceShifts.length) return NextResponse.json({ error: "The source week has no published shifts to copy." }, { status: 400 });
+      const profiles = new Map((profileResult.data || []).map((profile) => [profile.id, profile]));
+      const occupied = [...(targetResult.data || [])];
+      const approvedTimeOff = timeOffResult.data || [];
+      const actorId = staff.legacy ? null : staff.id;
+      const skipped = { inactive: 0, permission: 0, timeOff: 0, conflict: 0 };
+      const rows: Database["public"]["Tables"]["staff_shifts"]["Insert"][] = [];
+
+      for (const sourceShift of sourceShifts) {
+        const target = profiles.get(sourceShift.staff_id);
+        const targetDate = addDays(sourceShift.shift_date, offset);
+        if (!target?.active) {
+          skipped.inactive++;
+          continue;
+        }
+        if (!canManageProfile(staff, target)) {
+          skipped.permission++;
+          continue;
+        }
+        if (approvedTimeOff.some((request) => request.staff_id === target.id && request.start_date <= targetDate && request.end_date >= targetDate)) {
+          skipped.timeOff++;
+          continue;
+        }
+        const conflict = occupied.some((shift) => shift.staff_id === target.id && shift.shift_date === targetDate && shift.status === "scheduled" && shift.start_time < sourceShift.end_time && shift.end_time > sourceShift.start_time);
+        if (conflict) {
+          skipped.conflict++;
+          continue;
+        }
+        const row: Database["public"]["Tables"]["staff_shifts"]["Insert"] = {
+          staff_id: target.id,
+          shift_date: targetDate,
+          start_time: sourceShift.start_time,
+          end_time: sourceShift.end_time,
+          position: sourceShift.position,
+          note: sourceShift.note,
+          created_by: actorId,
+          updated_by: actorId,
+        };
+        rows.push(row);
+        occupied.push({ ...sourceShift, ...row, id: `copy-${rows.length}`, status: "scheduled", source_request_id: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+      }
+
+      let created: WorkShift[] = [];
+      if (rows.length) {
+        const { data, error } = await supabase.from("staff_shifts").insert(rows).select("*");
+        if (error) throw error;
+        created = data || [];
+      }
+      if (created.length) {
+        const counts = new Map<string, number>();
+        created.forEach((shift) => counts.set(shift.staff_id, (counts.get(shift.staff_id) || 0) + 1));
+        await recordWorkforceEvent({
+          notifications: [...counts].map(([staffId, count]) => ({
+            staffId,
+            type: "schedule",
+            title: "New shifts added",
+            message: `${count} shift${count === 1 ? " was" : "s were"} copied into the week of ${targetStart}.`,
+            link: "/admin",
+          })),
+          activity: {
+            actorId,
+            action: "schedule.copy_week",
+            entityType: "schedule",
+            summary: `${staff.fullName} copied ${created.length} shifts from ${sourceStart} to ${targetStart}.`,
+            metadata: { sourceStart, targetStart, createdCount: created.length, skipped },
+          },
+        });
+      }
+      return NextResponse.json({ sourceCount: sourceShifts.length, createdCount: created.length, skipped, shifts: created.map(shiftResponse), sourceStart, targetStart });
+    }
+
     if (kind === "request") {
       if (staff.legacy) return NextResponse.json({ error: "Legacy Owner accounts cannot submit personal shift requests." }, { status: 400 });
       const input = parseShiftInput(body, false);
       if (!input || !dateWithinDays(input.date, 0, 120)) return NextResponse.json({ error: "Choose a valid shift within the next 120 days (maximum 16 hours)." }, { status: 400 });
+      if (await hasApprovedTimeOff(staff.id, input.date)) return NextResponse.json({ error: "You have approved time off on this date." }, { status: 409 });
       if (await hasShiftConflict(staff.id, input.date, input.startTime, input.endTime)) {
         return NextResponse.json({ error: "You already have a published shift during this time." }, { status: 409 });
       }
@@ -237,6 +371,7 @@ export async function POST(request: Request) {
       const target = await readProfile(input.staffId);
       if (!target || !target.active) return NextResponse.json({ error: "Choose an active employee." }, { status: 400 });
       if (!canManageProfile(staff, target)) return NextResponse.json({ error: "Only an Owner can schedule an Owner account." }, { status: 403 });
+      if (await hasApprovedTimeOff(target.id, input.date)) return NextResponse.json({ error: "This employee has approved time off on this date." }, { status: 409 });
       if (await hasShiftConflict(target.id, input.date, input.startTime, input.endTime)) return NextResponse.json({ error: "This employee already has an overlapping scheduled shift." }, { status: 409 });
       const actorId = staff.legacy ? null : staff.id;
       const { data, error } = await createAdminClient().from("staff_shifts").insert({
@@ -250,6 +385,11 @@ export async function POST(request: Request) {
         updated_by: actorId,
       }).select("*").single();
       if (error || !data) throw error || new Error("Work shift was not created.");
+      const message = `${staff.fullName} added your shift: ${shiftNotificationMessage(data.shift_date, data.start_time, data.end_time)}.`;
+      await recordWorkforceEvent({
+        notifications: [{ staffId: target.id, type: "schedule", title: "Work shift added", message, link: "/admin" }],
+        activity: { actorId, action: "shift.create", entityType: "shift", entityId: data.id, summary: message, metadata: { staffId: target.id, date: data.shift_date } },
+      });
       return NextResponse.json({ shift: shiftResponse(data) }, { status: 201 });
     }
 
@@ -295,10 +435,15 @@ export async function PATCH(request: Request) {
       if (body.action === "decline") {
         const { error: declineError } = await supabase.from("staff_shift_requests").update({ status: "declined", reviewed_by: actorId, reviewed_at: new Date().toISOString() }).eq("id", id);
         if (declineError) throw declineError;
+        await recordWorkforceEvent({
+          notifications: [{ staffId: target.id, type: "schedule", title: "Shift request declined", message: `${staff.fullName} declined your preferred shift for ${shiftRequest.shift_date}.`, link: "/admin" }],
+          activity: { actorId, action: "shift_request.decline", entityType: "shift_request", entityId: id, summary: `${staff.fullName} declined ${target.full_name}'s preferred shift request.` },
+        });
         return NextResponse.json({ changed: true });
       }
 
       if (!dateWithinDays(shiftRequest.shift_date, 0, 365)) return NextResponse.json({ error: "Past shift requests cannot be approved." }, { status: 400 });
+      if (await hasApprovedTimeOff(target.id, shiftRequest.shift_date)) return NextResponse.json({ error: "This employee has approved time off on the requested date." }, { status: 409 });
       if (await hasShiftConflict(target.id, shiftRequest.shift_date, shiftRequest.start_time.slice(0, 5), shiftRequest.end_time.slice(0, 5))) {
         return NextResponse.json({ error: "Approval would overlap an existing scheduled shift." }, { status: 409 });
       }
@@ -318,6 +463,11 @@ export async function PATCH(request: Request) {
         await supabase.from("staff_shifts").delete().eq("id", createdShift.id);
         throw approveError;
       }
+      const message = `${staff.fullName} approved your shift: ${shiftNotificationMessage(createdShift.shift_date, createdShift.start_time, createdShift.end_time)}.`;
+      await recordWorkforceEvent({
+        notifications: [{ staffId: target.id, type: "schedule", title: "Shift request approved", message, link: "/admin" }],
+        activity: { actorId, action: "shift_request.approve", entityType: "shift", entityId: createdShift.id, summary: message, metadata: { requestId: shiftRequest.id, staffId: target.id } },
+      });
       return NextResponse.json({ changed: true, shift: shiftResponse(createdShift) });
     }
 
@@ -332,6 +482,11 @@ export async function PATCH(request: Request) {
       if (body.action === "cancel") {
         const { error: cancelError } = await supabase.from("staff_shifts").update({ status: "cancelled", updated_by: actorId }).eq("id", id);
         if (cancelError) throw cancelError;
+        const message = `${staff.fullName} cancelled your shift: ${shiftNotificationMessage(shift.shift_date, shift.start_time, shift.end_time)}.`;
+        await recordWorkforceEvent({
+          notifications: [{ staffId: shift.staff_id, type: "schedule", title: "Work shift cancelled", message, link: "/admin" }],
+          activity: { actorId, action: "shift.cancel", entityType: "shift", entityId: shift.id, summary: message, metadata: { staffId: shift.staff_id, date: shift.shift_date } },
+        });
         return NextResponse.json({ changed: true });
       }
       if (body.action !== "update") return NextResponse.json({ error: "Unknown shift action." }, { status: 400 });
@@ -341,6 +496,7 @@ export async function PATCH(request: Request) {
       const target = await readProfile(input.staffId);
       if (!target || !target.active) return NextResponse.json({ error: "Choose an active employee." }, { status: 400 });
       if (!canManageProfile(staff, target)) return NextResponse.json({ error: "Only an Owner can schedule an Owner account." }, { status: 403 });
+      if (await hasApprovedTimeOff(target.id, input.date)) return NextResponse.json({ error: "This employee has approved time off on this date." }, { status: 409 });
       if (await hasShiftConflict(target.id, input.date, input.startTime, input.endTime, shift.id)) return NextResponse.json({ error: "This employee already has an overlapping scheduled shift." }, { status: 409 });
       const { data: updated, error: updateError } = await supabase.from("staff_shifts").update({
         staff_id: target.id,
@@ -352,6 +508,14 @@ export async function PATCH(request: Request) {
         updated_by: actorId,
       }).eq("id", id).select("*").single();
       if (updateError || !updated) throw updateError || new Error("Work shift was not updated.");
+      const message = `${staff.fullName} updated a shift: ${shiftNotificationMessage(updated.shift_date, updated.start_time, updated.end_time)}.`;
+      await recordWorkforceEvent({
+        notifications: [
+          { staffId: updated.staff_id, type: "schedule", title: shift.staff_id === updated.staff_id ? "Work shift updated" : "Work shift assigned", message, link: "/admin" },
+          ...(shift.staff_id !== updated.staff_id ? [{ staffId: shift.staff_id, type: "schedule" as const, title: "Work shift reassigned", message: `${staff.fullName} reassigned your ${shift.shift_date} shift.`, link: "/admin" }] : []),
+        ],
+        activity: { actorId, action: "shift.update", entityType: "shift", entityId: shift.id, summary: message, metadata: { previousStaffId: shift.staff_id, staffId: updated.staff_id, date: updated.shift_date } },
+      });
       return NextResponse.json({ shift: shiftResponse(updated) });
     }
 
