@@ -10,8 +10,8 @@ of the full V2 scope.
 | 2. Roles & Permissions | Owner/Manager/Supervisor/Staff access control | Complete |
 | 3. Staff Scheduling | Availability, weekly schedules and shift management | Complete |
 | 4. Order Display System — TV | Public live Preparing, Ready and Completed board | Complete |
-| 5. Contact Us | Customer form, stored messages and Admin inbox | Planned |
-| 6. Gift Card | Issue, balance, redeem and transaction history | Planned |
+| 5. Contact Us | Customer form, stored messages and Admin inbox | Complete |
+| 6. Gift Card | Issue, balance, redeem and transaction history | Complete |
 | 7. Online Payment | Payment provider, payment status and order link | Planned |
 | 8. AI Combo Suggestions | Data-assisted combo recommendations for Admin | Planned |
 | 9. QR / Order Tracking | QR entry and customer order-status tracking | Partially complete |

@@ -1,0 +1,31 @@
+LEVIEN CAFE — V2 MODULE 5 CONTACT US UPDATE
+
+1. Keep your existing .env.local file. It is not included in this package.
+2. Copy this package over the current LEVIEN-CAFE project.
+3. In Supabase Dashboard -> SQL Editor, run this file ONCE:
+
+   supabase/migrations/20260822000300_v2_module_5_contact_messages.sql
+
+   V2.1A staff profiles must already be installed. Do not run the full
+   supabase/schema.sql against an existing project.
+
+4. From the project directory run:
+
+   npm.cmd install
+   npm.cmd run build
+   npm.cmd run dev
+
+5. Open the storefront and submit a test message from Contact Us.
+6. Sign in as Owner or Manager, then open:
+
+   Admin -> Overview -> Contact Messages
+
+7. Update the test message status and internal note, save, then refresh.
+8. Confirm a Supervisor or Staff account cannot see Contact Messages.
+9. After deploying, run:
+
+   npm.cmd run smoke:production -- https://your-production-domain.com
+
+Required server environment variables remain unchanged. In particular,
+SUPABASE_SERVICE_ROLE_KEY must stay server-side and must never use a
+NEXT_PUBLIC_ prefix.

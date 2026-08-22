@@ -320,6 +320,73 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["customers"]["Insert"]>;
         Relationships: [];
       };
+      contact_messages: {
+        Row: {
+          id: string;
+          name: string;
+          email: string;
+          phone: string;
+          subject: string;
+          message: string;
+          status: "new" | "in_progress" | "resolved" | "archived";
+          admin_note: string;
+          handled_by: string | null;
+          handled_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["contact_messages"]["Row"], "id" | "created_at" | "updated_at"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["contact_messages"]["Insert"]>;
+        Relationships: [];
+      };
+      gift_cards: {
+        Row: {
+          id: string;
+          code_hash: string;
+          code_last_four: string;
+          initial_balance: number;
+          balance: number;
+          currency: string;
+          recipient_name: string;
+          recipient_email: string | null;
+          note: string;
+          status: "active" | "disabled" | "redeemed";
+          expires_on: string | null;
+          issued_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["gift_cards"]["Row"], "id" | "created_at" | "updated_at"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["gift_cards"]["Insert"]>;
+        Relationships: [];
+      };
+      gift_card_transactions: {
+        Row: {
+          id: string;
+          gift_card_id: string;
+          transaction_type: "issue" | "redeem" | "refund";
+          amount: number;
+          balance_after: number;
+          order_id: string | null;
+          created_by: string | null;
+          note: string;
+          created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["gift_card_transactions"]["Row"], "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["gift_card_transactions"]["Insert"]>;
+        Relationships: [];
+      };
       orders: {
         Row: {
           id: string;
@@ -337,6 +404,8 @@ export type Database = {
           zip: string | null;
           apartment: string | null;
           payment_method: string;
+          gift_card_id: string | null;
+          gift_card_amount: number;
           subtotal: number;
           tax: number;
           delivery_fee: number;
@@ -346,8 +415,10 @@ export type Database = {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["orders"]["Row"], "id" | "created_at" | "updated_at"> & {
+        Insert: Omit<Database["public"]["Tables"]["orders"]["Row"], "id" | "created_at" | "updated_at" | "gift_card_id" | "gift_card_amount"> & {
           id?: string;
+          gift_card_id?: string | null;
+          gift_card_amount?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -374,6 +445,40 @@ export type Database = {
           p_items: Json;
         };
         Returns: { order_number: string }[];
+      };
+      create_checkout_order_with_gift_card: {
+        Args: {
+          p_first_name: string; p_last_name: string; p_phone: string;
+          p_phone_normalized: string; p_email: string | null;
+          p_fulfillment_type: "Pickup" | "Delivery"; p_pickup_time: string | null;
+          p_address: string | null; p_city: string | null; p_zip: string | null;
+          p_apartment: string | null; p_payment_method: string; p_subtotal: number;
+          p_tax: number; p_delivery_fee: number; p_total: number; p_note: string;
+          p_items: Json; p_gift_card_hash: string | null;
+        };
+        Returns: {
+          order_number: string;
+          gift_card_amount: number;
+          gift_card_balance: number | null;
+          final_payment_method: string;
+        }[];
+      };
+      issue_gift_card: {
+        Args: {
+          p_code_hash: string;
+          p_code_last_four: string;
+          p_initial_balance: number;
+          p_recipient_name: string;
+          p_recipient_email: string | null;
+          p_note: string;
+          p_expires_on: string | null;
+          p_issued_by: string | null;
+        };
+        Returns: { gift_card_id: string }[];
+      };
+      update_order_status_with_gift_card: {
+        Args: { p_order_number: string; p_status: string; p_actor_id: string | null };
+        Returns: { order_number: string; order_status: string; gift_card_refund: number }[];
       };
       save_admin_catalog: {
         Args: { p_catalog: Json };

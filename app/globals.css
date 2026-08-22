@@ -2335,3 +2335,295 @@ button,input,textarea,select{font-family:var(--font-ui)}
 @media(prefers-reduced-motion:reduce) {
   .orderDisplayLive.live i,.orderDisplayTicket { animation: none; }
 }
+
+/* V2 Module 5 — customer contact and private admin inbox */
+.contactSection {
+  padding: clamp(70px,8vw,118px) 24px;
+  background: linear-gradient(135deg,#f0eadf 0%,#fbf9f4 54%,#edf3ee 100%);
+  border-top: 1px solid #e2e7df;
+}
+.contactInner {
+  width: min(1240px,100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0,.88fr) minmax(0,1.12fr);
+  align-items: center;
+  gap: clamp(42px,7vw,96px);
+}
+.contactIntro h2 {
+  max-width: 570px;
+  margin: 13px 0 19px;
+  color: #10271f;
+  font-family: Georgia,serif;
+  font-size: clamp(40px,5vw,72px);
+  line-height: .96;
+  letter-spacing: -.045em;
+}
+.contactIntro > p { max-width: 570px; margin: 0; color: #5f6d66; font-size: 15px; line-height: 1.75; }
+.contactInfoGrid { margin-top: 34px; display: grid; gap: 10px; }
+.contactInfoGrid > * {
+  display: grid;
+  grid-template-columns: 105px minmax(0,1fr);
+  align-items: center;
+  gap: 14px;
+  min-height: 56px;
+  padding: 11px 16px;
+  border: 1px solid rgba(13,74,53,.12);
+  border-radius: 14px;
+  background: rgba(255,255,255,.62);
+  color: #184c39;
+}
+.contactInfoGrid span { color: #819088; font-size: 9px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+.contactInfoGrid strong { overflow-wrap: anywhere; font-size: 12px; }
+.contactForm {
+  position: relative;
+  padding: clamp(25px,3.6vw,44px);
+  border: 1px solid #e0e7e1;
+  border-radius: 27px;
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 26px 68px rgba(18,51,39,.12);
+}
+.contactFormHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; margin-bottom: 25px; }
+.contactFormHeading span { color: #ad8330; font-size: 9px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+.contactFormHeading strong { color: #173128; font-family: Georgia,serif; font-size: clamp(21px,2vw,29px); }
+.contactFormGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 16px; }
+.contactFormGrid label { display: grid; gap: 8px; color: #40564d; font-size: 10px; font-weight: 850; letter-spacing: .04em; }
+.contactFormGrid label > span { color: #c08b25; }
+.contactFormGrid label > small { float: right; color: #97a29d; font-size: 8px; font-weight: 700; }
+.contactFormGrid .wide { grid-column: 1/-1; }
+.contactFormGrid input,.contactFormGrid select,.contactFormGrid textarea {
+  width: 100%;
+  border: 1px solid #dce4de;
+  border-radius: 12px;
+  outline: none;
+  background: #fbfcfa;
+  color: #1b3128;
+  padding: 12px 13px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  transition: border-color .18s,box-shadow .18s,background .18s;
+}
+.contactFormGrid textarea { min-height: 126px; resize: vertical; line-height: 1.55; }
+.contactFormGrid input:focus,.contactFormGrid select:focus,.contactFormGrid textarea:focus { border-color: #287457; background: #fff; box-shadow: 0 0 0 3px rgba(40,116,87,.1); }
+.contactHoneypot { position: absolute!important; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.contactFormError,.contactFormSuccess { margin-top: 16px; padding: 11px 13px; border-radius: 11px; font-size: 11px; }
+.contactFormError { border: 1px solid #efb8ae; background: #fff1ee; color: #9a3427; }
+.contactFormSuccess { display: flex; align-items: center; gap: 10px; border: 1px solid #b8dfc8; background: #effaf3; color: #17613f; }
+.contactFormSuccess > span { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; background: #237b50; color: #fff; }
+.contactFormSuccess strong,.contactFormSuccess small { display: block; }
+.contactFormSuccess small { margin-top: 2px; color: #618170; }
+.contactSubmit { width: 100%; margin-top: 18px; min-height: 48px; }
+.contactSubmit:disabled { cursor: wait; opacity: .65; }
+.contactPrivacy { display: block; margin-top: 11px; color: #87928d; text-align: center; font-size: 9px; }
+
+.contactInboxWelcome p { max-width: 620px; }
+.contactInboxMetrics .adminMetric strong { color: #124f39; }
+.contactInboxToolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.contactInboxToolbar .adminSearch { flex: 1 1 310px; }
+.contactInboxToolbar .adminTabs { flex: 0 1 auto; overflow-x: auto; }
+.contactMessageList { display: grid; gap: 14px; }
+.contactMessageCard {
+  overflow: hidden;
+  border: 1px solid #dee7e1;
+  border-left: 4px solid #b7c6bf;
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 9px 25px rgba(20,54,41,.055);
+}
+.contactMessageCard.status-new { border-left-color: #e8b637; }
+.contactMessageCard.status-in_progress { border-left-color: #418bc4; }
+.contactMessageCard.status-resolved { border-left-color: #3b9b67; }
+.contactMessageCard.status-archived { opacity: .76; }
+.contactMessageCard > header { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 13px; padding: 18px 20px 14px; }
+.contactMessageAvatar { width: 39px; height: 39px; display: grid; place-items: center; border-radius: 50%; background: #e9f2ed; color: #17533d; font-family: Georgia,serif; font-size: 16px; font-weight: 900; }
+.contactMessageCard > header span { color: #a27b2d; font-size: 9px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.contactMessageCard > header h3 { margin: 3px 0 0; color: #19342a; font-size: 16px; }
+.contactMessageCard > header small { display: block; margin-top: 3px; color: #84908a; font-size: 9px; }
+.contactMessageCard > header b { padding: 6px 9px; border-radius: 999px; background: #eef2ef; color: #52675e; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
+.contactMessageCard.status-new > header b { background: #fff3cd; color: #715615; }
+.contactMessageCard.status-in_progress > header b { background: #e9f4fd; color: #28658f; }
+.contactMessageCard.status-resolved > header b { background: #e8f7ee; color: #267249; }
+.contactMessageDetails { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 0 20px; }
+.contactMessageDetails a { color: #21684e; font-size: 10px; font-weight: 750; }
+.contactMessageCard > p { margin: 14px 20px 18px; color: #4f635a; font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.contactMessageManage { display: grid; grid-template-columns: minmax(145px,.36fr) minmax(260px,1fr) auto; align-items: end; gap: 12px; padding: 15px 20px 19px; border-top: 1px solid #edf1ee; background: #fafcfb; }
+.contactMessageManage label { display: grid; gap: 6px; color: #687b72; font-size: 9px; font-weight: 850; text-transform: uppercase; letter-spacing: .06em; }
+.contactMessageManage select,.contactMessageManage textarea { width: 100%; border: 1px solid #dce5df; border-radius: 10px; outline: none; background: #fff; color: #263d34; padding: 9px 10px; font: inherit; font-size: 10px; text-transform: none; letter-spacing: 0; }
+.contactMessageManage textarea { min-height: 38px; resize: vertical; }
+.contactMessageManage select:focus,.contactMessageManage textarea:focus { border-color: #327a5d; box-shadow: 0 0 0 3px rgba(50,122,93,.08); }
+.contactMessageManage .adminPrimary { min-height: 38px; }
+.contactInboxEmpty { min-height: 250px; display: grid; place-items: center; align-content: center; gap: 8px; border: 1px dashed #ccd9d1; border-radius: 17px; background: #fbfcfb; color: #72837a; text-align: center; }
+.contactInboxEmpty span { width: 43px; height: 43px; display: grid; place-items: center; border-radius: 50%; background: #edf4f0; color: #2a7155; font-size: 19px; }
+.contactInboxEmpty strong { color: #284338; font-size: 13px; }
+.contactInboxEmpty p { margin: 0; font-size: 10px; }
+@media(max-width:900px) {
+  .contactInner { grid-template-columns: 1fr; }
+  .contactIntro { text-align: center; }
+  .contactIntro h2,.contactIntro > p { margin-left: auto; margin-right: auto; }
+  .contactInfoGrid { width: min(570px,100%); margin-left: auto; margin-right: auto; text-align: left; }
+  .contactInboxToolbar { align-items: stretch; flex-direction: column; }
+  .contactInboxToolbar .adminSearch { flex-basis: auto; }
+  .contactMessageManage { grid-template-columns: 150px 1fr; }
+  .contactMessageManage .adminPrimary { grid-column: 1/-1; }
+}
+@media(max-width:600px) {
+  .contactSection { padding-left: 16px; padding-right: 16px; }
+  .contactForm { padding: 23px 17px; border-radius: 20px; }
+  .contactFormHeading { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .contactFormGrid { grid-template-columns: 1fr; }
+  .contactFormGrid .wide { grid-column: auto; }
+  .contactInfoGrid > * { grid-template-columns: 88px minmax(0,1fr); }
+  .contactMessageCard > header { grid-template-columns: auto minmax(0,1fr); padding-left: 15px; padding-right: 15px; }
+  .contactMessageCard > header b { grid-column: 1/-1; justify-self: start; }
+  .contactMessageDetails { padding: 0 15px; }
+  .contactMessageCard > p { margin-left: 15px; margin-right: 15px; }
+  .contactMessageManage { grid-template-columns: 1fr; padding-left: 15px; padding-right: 15px; }
+  .contactMessageManage .adminPrimary { grid-column: auto; }
+}
+
+/* V2 Module 6 — Gift Cards */
+.giftCardPage { min-height: 75vh; background: #f8f5ee; }
+.giftCardHero { width: min(1240px,calc(100% - 44px)); margin: 0 auto; padding: clamp(68px,8vw,118px) 0; display: grid; grid-template-columns: minmax(0,.9fr) minmax(420px,1.1fr); align-items: center; gap: clamp(45px,8vw,110px); }
+.giftCardHeroCopy h1 { max-width: 660px; margin: 15px 0 20px; color: #112c22; font-family: Georgia,serif; font-size: clamp(48px,6.4vw,86px); line-height: .95; letter-spacing: -.05em; }
+.giftCardHeroCopy > p { max-width: 590px; color: #66736d; font-size: 15px; line-height: 1.75; }
+.giftCardPromise { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 28px; color: #256149; font-size: 10px; font-weight: 800; }
+.giftCardArtwork { min-height: 430px; display: grid; place-items: center; border-radius: 50% 18% 50% 18%; background: radial-gradient(circle at 50% 42%,#e6c690,#c9a06f 62%,#b78655); box-shadow: inset 0 0 0 18px rgba(20,78,56,.08),0 35px 75px rgba(31,67,52,.16); }
+.giftCardMock { position: relative; width: min(440px,82%); aspect-ratio: 1.62; overflow: hidden; padding: 34px; border: 1px solid rgba(255,255,255,.3); border-radius: 24px; background: radial-gradient(circle at 92% 7%,rgba(255,255,255,.2),transparent 28%),linear-gradient(135deg,#0f543b,#072b20); color: #fff; box-shadow: 0 28px 58px rgba(9,42,31,.34); transform: rotate(-5deg); }
+.giftCardMock:after { content:""; position:absolute; inset:0; opacity:.16; background-image:radial-gradient(#fff 1px,transparent 1px); background-size:18px 18px; }
+.giftCardMock span,.giftCardMock strong,.giftCardMock small,.giftCardMock b { position:relative; z-index:1; display:block; }
+.giftCardMock span { color:#f2ce5f; font-size:11px; font-weight:900; letter-spacing:.16em; }
+.giftCardMock strong { margin-top:45px; font-family:Georgia,serif; font-size:clamp(27px,3.5vw,47px); letter-spacing:.02em; }
+.giftCardMock small { margin-top:9px; color:#b8d1c6; font-size:10px; }
+.giftCardMock b { position:absolute; z-index:1; right:27px; bottom:25px; width:55px; height:55px; display:grid; place-items:center; border:3px double #fff; border-radius:50%; background:#f6f0e4; color:#115039; font-family:Georgia,serif; }
+.giftCardBalanceSection { padding: clamp(66px,7vw,105px) max(22px,calc((100vw - 1240px)/2)); display:grid; grid-template-columns:.8fr 1.2fr; gap:clamp(40px,7vw,95px); align-items:center; background:#0a3125; color:#fff; }
+.giftCardBalanceIntro h2 { margin:12px 0 18px; font-family:Georgia,serif; font-size:clamp(38px,4.5vw,59px); letter-spacing:-.04em; }
+.giftCardBalanceIntro p { max-width:480px; color:#b8cbc2; line-height:1.7; }
+.giftCardBalanceIntro p strong { color:#f2cf61; }
+.giftCardBalanceForm { padding:clamp(24px,3.8vw,43px); border:1px solid rgba(255,255,255,.12); border-radius:25px; background:rgba(255,255,255,.075); box-shadow:0 24px 60px rgba(0,0,0,.18); }
+.giftCardBalanceForm > label { display:grid; gap:9px; color:#cbdad3; font-size:10px; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
+.giftCardBalanceForm input { width:100%; border:1px solid rgba(255,255,255,.2); border-radius:13px; outline:none; background:rgba(255,255,255,.1); color:#fff; padding:14px 15px; font-size:15px; font-weight:800; letter-spacing:.08em; }
+.giftCardBalanceForm input:focus { border-color:#f2cd5a; box-shadow:0 0 0 3px rgba(242,205,90,.12); }
+.giftCardBalanceForm > .button { width:100%; margin-top:14px; background:#f2c94f; color:#15382a; }
+.giftCardBalanceForm > .button:disabled { opacity:.55; cursor:wait; }
+.giftCardBalanceError { margin-top:14px; padding:11px 13px; border:1px solid rgba(255,155,140,.35); border-radius:11px; background:rgba(153,40,29,.25); color:#ffd5ce; font-size:11px; }
+.giftCardBalanceResult { position:relative; margin-top:16px; padding:18px; display:grid; grid-template-columns:1fr auto; gap:4px 14px; border:1px solid rgba(119,230,168,.3); border-radius:16px; background:rgba(29,124,78,.25); }
+.giftCardBalanceResult > div span,.giftCardBalanceResult > div strong,.giftCardBalanceResult > div small { display:block; }
+.giftCardBalanceResult > div span { color:#bcd1c7; font-size:9px; text-transform:uppercase; letter-spacing:.1em; }
+.giftCardBalanceResult > div strong { margin:5px 0 1px; color:#fff; font-size:30px; }
+.giftCardBalanceResult > div small { color:#9eb9ad; font-size:9px; }
+.giftCardBalanceResult > b { align-self:start; padding:6px 9px; border-radius:999px; background:#6ee09f; color:#12402d; font-size:9px; text-transform:uppercase; }
+.giftCardBalanceResult > p { grid-column:1/-1; margin:9px 0 0; color:#b7cbc2; font-size:9px; }
+.giftCardBalanceResult:not(.status-active) { border-color:rgba(255,255,255,.15); background:rgba(255,255,255,.07); }
+.giftCardBalanceResult:not(.status-active) > b { background:#d7ded9; color:#4b5f56; }
+.giftCardBalancePrivacy { display:block; margin-top:13px; color:#829f92; text-align:center; font-size:9px; }
+
+.giftCardRedeem { margin-top:20px; padding:17px; border:1px dashed #c9d8d0; border-radius:15px; background:#f9fbf9; }
+.giftCardRedeem.applied { border-style:solid; border-color:#a9d9bd; background:#f1faf4; }
+.giftCardRedeemHeading { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.giftCardRedeemHeading span,.giftCardRedeemHeading strong { display:block; }
+.giftCardRedeemHeading span { color:#a17b2f; font-size:9px; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
+.giftCardRedeemHeading strong { margin-top:3px; color:#214536; font-size:12px; }
+.giftCardRedeemHeading > button { border:0; background:transparent; color:#9b3c32; font-size:10px; font-weight:800; }
+.giftCardCodeRow { display:grid; grid-template-columns:1fr auto; gap:9px; margin-top:12px; }
+.giftCardCodeRow input { width:100%; border:1px solid #dce5df; border-radius:11px; outline:none; padding:11px 12px; color:#244135; font-weight:800; letter-spacing:.06em; }
+.giftCardCodeRow input:focus { border-color:#34795d; box-shadow:0 0 0 3px rgba(52,121,93,.08); }
+.giftCardCodeRow button { min-width:90px; }
+.giftCardApplied { display:flex; align-items:center; gap:10px; margin-top:12px; }
+.giftCardApplied > span { width:30px; height:30px; display:grid; place-items:center; border-radius:50%; background:#238154; color:#fff; }
+.giftCardApplied strong,.giftCardApplied small { display:block; }
+.giftCardApplied strong { color:#1d5b40; font-size:12px; }
+.giftCardApplied small { margin-top:2px; color:#678175; font-size:10px; }
+.giftCardError { margin-top:10px; color:#a33b30; font-size:10px; }
+.giftCardRedeem > a { display:inline-block; margin-top:11px; color:#24664b; font-size:9px; font-weight:800; }
+.checkoutGiftCardDiscount { color:#21754d; }
+.checkoutGiftCardDiscount span { color:#21754d; }
+.trackGiftCardDiscount { border-top:1px dashed #c8d6ce; color:#23714c; }
+.orderResultDetails small { display:block; margin-top:5px; color:#347257; font-size:9px; }
+
+.giftCardIssuePanel { border-color:#d9e4dd; }
+.giftCardIssueForm { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:15px; }
+.giftCardIssueForm label { display:grid; gap:7px; color:#5c6d65; font-size:10px; font-weight:800; }
+.giftCardIssueForm label > span { color:#b08128; }
+.giftCardIssueForm input,.giftCardIssueForm textarea { width:100%; border:1px solid #dfe6e2; border-radius:11px; outline:none; padding:11px 12px; background:#fbfcfb; color:#243b32; font:inherit; font-size:11px; }
+.giftCardIssueForm input:focus,.giftCardIssueForm textarea:focus { border-color:#31795c; box-shadow:0 0 0 3px rgba(49,121,92,.08); }
+.giftCardIssueForm .wide { grid-column:1/-1; }
+.issuedGiftCard { display:flex; align-items:center; justify-content:space-between; gap:25px; padding:23px 25px; border:1px solid #d8b64e; border-radius:19px; background:linear-gradient(135deg,#fff7d8,#f7e7a6); box-shadow:0 15px 32px rgba(117,89,17,.1); }
+.issuedGiftCard span { color:#7e6114; font-size:9px; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
+.issuedGiftCard h3 { margin:7px 0 4px; color:#173f30; font-family:monospace; font-size:clamp(20px,2.5vw,31px); letter-spacing:.04em; }
+.issuedGiftCard p { margin:0; color:#736943; font-size:10px; }
+.issuedGiftCard > div:last-child { display:flex; gap:8px; flex:0 0 auto; }
+.giftCardToolbar .adminSearch { max-width:none; }
+.giftCardList { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.giftCardAdminCard { overflow:hidden; border:1px solid #dfe7e2; border-radius:19px; background:#fff; box-shadow:0 10px 28px rgba(18,56,42,.06); }
+.giftCardAdminCard.status-disabled,.giftCardAdminCard.status-redeemed,.giftCardAdminCard.status-expired { opacity:.78; }
+.giftCardAdminCard > header { display:grid; grid-template-columns:128px minmax(0,1fr) auto; align-items:center; gap:15px; padding:19px; }
+.giftCardMini { min-height:76px; padding:13px; display:flex; flex-direction:column; justify-content:space-between; border-radius:13px; background:linear-gradient(135deg,#15533d,#092e22); color:#fff; box-shadow:0 10px 20px rgba(15,67,48,.17); }
+.giftCardMini span { color:#f0ca55; font-size:7px; font-weight:900; letter-spacing:.12em; }
+.giftCardMini strong { font-family:monospace; font-size:12px; letter-spacing:.06em; }
+.giftCardAdminCard > header > div:nth-child(2) > span { color:#9a782e; font-size:9px; font-weight:850; text-transform:uppercase; letter-spacing:.08em; }
+.giftCardAdminCard > header h3 { margin:5px 0 2px; color:#194532; font-size:23px; }
+.giftCardAdminCard > header h3 small { color:#7b8882; font-size:10px; font-weight:600; }
+.giftCardAdminCard > header p { margin:0; color:#7b8781; font-size:9px; overflow-wrap:anywhere; }
+.giftCardAdminCard > header > b { align-self:start; padding:6px 9px; border-radius:999px; background:#e6f5ec; color:#237149; font-size:8px; text-transform:uppercase; }
+.giftCardAdminCard.status-disabled > header > b,.giftCardAdminCard.status-expired > header > b { background:#ecefed; color:#627068; }
+.giftCardAdminCard.status-redeemed > header > b { background:#e9e8f6; color:#5b5791; }
+.giftCardAdminMeta { display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid #edf1ee; border-bottom:1px solid #edf1ee; }
+.giftCardAdminMeta > span { padding:11px 15px; color:#334c41; font-size:9px; font-weight:750; }
+.giftCardAdminMeta > span + span { border-left:1px solid #edf1ee; }
+.giftCardAdminMeta small { display:block; margin-bottom:4px; color:#89958f; font-size:7px; letter-spacing:.08em; text-transform:uppercase; }
+.giftCardAdminNote { margin:0; padding:12px 18px; color:#687970; font-size:10px; line-height:1.5; }
+.giftCardAdminCard > footer { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:13px 18px 17px; background:#fbfcfb; }
+.adminDangerSoft { border:1px solid #efcac6; border-radius:10px; background:#fff3f1; color:#9c3d35; padding:9px 12px; font-weight:800; }
+.giftCardAdminCard details { flex:1; text-align:right; }
+.giftCardAdminCard summary { cursor:pointer; color:#1e664b; font-size:9px; font-weight:850; list-style:none; }
+.giftCardAdminCard summary::-webkit-details-marker { display:none; }
+.giftCardTransactions { margin-top:11px; display:grid; border:1px solid #e3e9e5; border-radius:11px; overflow:hidden; text-align:left; }
+.giftCardTransactions > div { display:grid; grid-template-columns:55px 1fr auto; align-items:center; gap:8px; padding:9px 10px; background:#fff; }
+.giftCardTransactions > div + div { border-top:1px solid #edf1ee; }
+.giftCardTransactions > div > span { padding:4px 5px; border-radius:999px; background:#edf3ef; color:#557067; text-align:center; font-size:7px; font-weight:850; text-transform:uppercase; }
+.giftCardTransactions .type-redeem { background:#fff0d6; color:#815e17; }
+.giftCardTransactions .type-refund { background:#e7f5ed; color:#28724c; }
+.giftCardTransactions p { margin:0; }
+.giftCardTransactions p strong,.giftCardTransactions p small { display:block; }
+.giftCardTransactions p strong { color:#29473b; font-size:10px; }
+.giftCardTransactions p small { margin-top:2px; color:#89958f; font-size:7px; }
+.giftCardTransactions > div > b { color:#285f48; font-size:9px; }
+@media(max-width:1050px) {
+  .giftCardHero { grid-template-columns:1fr; }
+  .giftCardHeroCopy { text-align:center; }
+  .giftCardHeroCopy h1,.giftCardHeroCopy > p { margin-left:auto; margin-right:auto; }
+  .giftCardPromise { justify-content:center; }
+  .giftCardArtwork { width:min(650px,100%); min-height:380px; margin:auto; }
+  .giftCardBalanceSection { grid-template-columns:1fr; }
+  .giftCardBalanceIntro { text-align:center; }
+  .giftCardBalanceIntro p { margin-left:auto; margin-right:auto; }
+  .giftCardList { grid-template-columns:1fr; }
+}
+@media(max-width:720px) {
+  .giftCardHero { width:min(100% - 30px,1240px); padding:55px 0; }
+  .giftCardArtwork { min-height:290px; }
+  .giftCardMock { padding:24px; border-radius:18px; }
+  .giftCardMock strong { margin-top:26px; }
+  .giftCardBalanceSection { padding-left:15px; padding-right:15px; }
+  .giftCardIssueForm { grid-template-columns:1fr; }
+  .giftCardIssueForm .wide { grid-column:auto; }
+  .issuedGiftCard { align-items:flex-start; flex-direction:column; }
+  .issuedGiftCard > div:last-child { width:100%; }
+  .issuedGiftCard > div:last-child button { flex:1; }
+  .giftCardAdminCard > header { grid-template-columns:105px minmax(0,1fr); }
+  .giftCardAdminCard > header > b { grid-column:1/-1; justify-self:start; }
+}
+@media(max-width:480px) {
+  .giftCardArtwork { min-height:235px; }
+  .giftCardMock { width:88%; }
+  .giftCardMock small { display:none; }
+  .giftCardCodeRow { grid-template-columns:1fr; }
+  .giftCardAdminCard > header { grid-template-columns:1fr; }
+  .giftCardMini { width:150px; }
+  .giftCardAdminMeta { grid-template-columns:1fr; }
+  .giftCardAdminMeta > span + span { border-left:0; border-top:1px solid #edf1ee; }
+  .giftCardAdminCard > footer { align-items:stretch; flex-direction:column; }
+  .giftCardAdminCard details { text-align:left; }
+}

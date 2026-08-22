@@ -8,7 +8,7 @@ import { readOrders } from "@/lib/orders";
 import type { CustomerOrder, OrderStatus } from "@/types";
 
 const stages: OrderStatus[] = ["New", "Preparing", "Ready", "Completed"];
-type TrackedOrder = Pick<CustomerOrder, "id" | "customer" | "type" | "status" | "total" | "items">;
+type TrackedOrder = Pick<CustomerOrder, "id" | "customer" | "type" | "status" | "total" | "giftCardAmount" | "amountDue" | "items">;
 
 export default function TrackOrderPage() {
   const [order, setOrder] = useState<TrackedOrder | null>(null);
@@ -101,7 +101,7 @@ export default function TrackOrderPage() {
             <strong>{stage === "New" ? "Order received" : stage}</strong>
             <small>{stage === "New" ? "Your order is waiting for confirmation." : stage === "Preparing" ? "The team is preparing your order." : stage === "Ready" ? "Your order is ready for pickup or delivery." : "Your order has been completed."}</small>
           </div>)}</div>}
-          <div className="trackOrderItems"><h2>Order details</h2>{order.items.map((item) => <article className={item.itemType === "combo" ? "trackComboItem" : ""} key={item.lineId}><div><strong>{item.quantity} × {item.name}</strong>{item.itemType === "combo" && item.comboItems?.length ? <div className="trackComboChildren">{item.comboItems.map((child) => <span key={child.productId}><b>{child.emoji} {child.name}</b><small>{[child.ice && `Ice ${child.ice}`, child.sugar && `Sugar ${child.sugar}`, ...child.toppings.map((t) => `+ ${t.name}`), child.note && `Note: ${child.note}`].filter(Boolean).join(" · ")}</small></span>)}</div> : <small>{[item.ice && `Ice ${item.ice}`, item.sugar && `Sugar ${item.sugar}`, ...item.toppings.map((t) => `+ ${t.name}`)].filter(Boolean).join(" · ")}</small>}</div><b>${(item.unitPrice * item.quantity).toFixed(2)}</b></article>)}<div className="trackTotal"><span>Total</span><strong>${order.total.toFixed(2)}</strong></div></div>
+          <div className="trackOrderItems"><h2>Order details</h2>{order.items.map((item) => <article className={item.itemType === "combo" ? "trackComboItem" : ""} key={item.lineId}><div><strong>{item.quantity} × {item.name}</strong>{item.itemType === "combo" && item.comboItems?.length ? <div className="trackComboChildren">{item.comboItems.map((child) => <span key={child.productId}><b>{child.emoji} {child.name}</b><small>{[child.ice && `Ice ${child.ice}`, child.sugar && `Sugar ${child.sugar}`, ...child.toppings.map((t) => `+ ${t.name}`), child.note && `Note: ${child.note}`].filter(Boolean).join(" · ")}</small></span>)}</div> : <small>{[item.ice && `Ice ${item.ice}`, item.sugar && `Sugar ${item.sugar}`, ...item.toppings.map((t) => `+ ${t.name}`)].filter(Boolean).join(" · ")}</small>}</div><b>${(item.unitPrice * item.quantity).toFixed(2)}</b></article>)}{Boolean(order.giftCardAmount) && <div className="trackTotal trackGiftCardDiscount"><span>Gift Card</span><strong>−${order.giftCardAmount?.toFixed(2)}</strong></div>}<div className="trackTotal"><span>{order.giftCardAmount ? "Amount due" : "Total"}</span><strong>${(order.amountDue ?? order.total).toFixed(2)}</strong></div></div>
           <p className={`trackRefreshNote sync-${syncStatus}`}>{syncStatus === "live" ? "Live order updates connected." : "Automatic status checks are active while live updates reconnect."}</p>
         </> : null}
       </section>

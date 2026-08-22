@@ -12,7 +12,7 @@ export function Footer() {
           <span className={`logo footerLogo ${content.logo ? "hasUploadedLogo" : ""}`}>{content.logo ? <img src={content.logo} alt={`${content.storeName} logo`} /> : <b>LV</b>}</span>
           <div className="footerBrandCopy"><strong>{content.storeName}</strong><p>{content.aboutText}</p></div>
         </div>
-        <div><h3>Explore</h3><a href="/menu">Menu</a><a href="#combos">Combos</a><a href="#story">Our Story</a></div>
+        <div><h3>Explore</h3><a href="/menu">Menu</a><a href="/#combos">Combos</a><a href="/gift-card">Gift Cards</a><a href="/#story">Our Story</a><a href="/#contact">Contact</a></div>
         <div><h3>Visit</h3><p>{content.address}</p><a href={`tel:${content.phone.replace(/[^+\d]/g, "")}`}>{content.phone}</a><a href={`mailto:${content.email}`}>{content.email}</a></div>
         <div><h3>Hours</h3><p>{content.hours}</p><Link className="adminLink" href="/admin">Staff Admin</Link></div>
       </div>

@@ -15,15 +15,59 @@ type CheckoutErrors = Partial<
   Record<"firstName" | "lastName" | "phone" | "email" | "address" | "city" | "zip", string>
 >;
 
+type AppliedGiftCard = {
+  code: string;
+  lastFour: string;
+  balance: number;
+  expiresOn: string | null;
+};
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { cart, subtotal, clearCart, ready } = useStore();
   const [type, setType] = useState<FulfillmentType>("Pickup");
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<CheckoutErrors>({});
+  const [giftCardInput, setGiftCardInput] = useState("");
+  const [giftCard, setGiftCard] = useState<AppliedGiftCard | null>(null);
+  const [giftCardError, setGiftCardError] = useState("");
+  const [checkingGiftCard, setCheckingGiftCard] = useState(false);
   const tax = useMemo(() => subtotal * 0.08, [subtotal]);
   const deliveryFee = type === "Delivery" ? 3.99 : 0;
   const total = subtotal + tax + deliveryFee;
+  const giftCardAmount = giftCard ? Math.min(giftCard.balance, total) : 0;
+  const amountDue = Math.max(0, total - giftCardAmount);
+
+  async function applyGiftCard() {
+    const code = giftCardInput.trim();
+    if (!code || checkingGiftCard) return;
+    setCheckingGiftCard(true);
+    setGiftCardError("");
+    try {
+      const response = await fetch("/api/gift-cards/balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const result = (await response.json()) as {
+        card?: { lastFour: string; balance: number; expiresOn: string | null; usable: boolean; status: string };
+        error?: string;
+      };
+      if (!response.ok || !result.card) throw new Error(result.error || "Unable to check this Gift Card.");
+      if (!result.card.usable) {
+        const reason = result.card.status === "expired" ? "This Gift Card has expired."
+          : result.card.status === "redeemed" ? "This Gift Card has no remaining balance."
+            : "This Gift Card is not active.";
+        throw new Error(reason);
+      }
+      setGiftCard({ code, lastFour: result.card.lastFour, balance: Number(result.card.balance), expiresOn: result.card.expiresOn });
+    } catch (error) {
+      setGiftCard(null);
+      setGiftCardError(error instanceof Error ? error.message : "Unable to check this Gift Card.");
+    } finally {
+      setCheckingGiftCard(false);
+    }
+  }
 
   function clearError(field: keyof CheckoutErrors) {
     setErrors((current) => {
@@ -103,9 +147,16 @@ export default function CheckoutPage() {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...orderDetails, items: cart }),
+        body: JSON.stringify({ ...orderDetails, giftCardCode: giftCard?.code, items: cart }),
       });
-      const result = (await response.json()) as { orderNumber?: string; trackingToken?: string; error?: string };
+      const result = (await response.json()) as {
+        orderNumber?: string;
+        trackingToken?: string;
+        paymentMethod?: string;
+        giftCardAmount?: number;
+        giftCardBalance?: number | null;
+        error?: string;
+      };
       if (!response.ok || !result.orderNumber || !result.trackingToken) throw new Error(result.error || "Unable to place order.");
       const id = result.orderNumber;
 
@@ -114,6 +165,10 @@ export default function CheckoutPage() {
         trackingToken: result.trackingToken,
         customer: `${firstName} ${lastName}`.trim(),
         ...orderDetails,
+        payment: result.paymentMethod || orderDetails.payment,
+        giftCardAmount: Number(result.giftCardAmount || 0),
+        giftCardLastFour: giftCard?.lastFour,
+        amountDue: Math.max(0, total - Number(result.giftCardAmount || 0)),
         status: "New",
         createdAt: new Date().toISOString(),
         items: cart,
@@ -207,6 +262,12 @@ export default function CheckoutPage() {
               <label>Payment method<select name="payment"><option>Pay at Store</option><option>Cash on Delivery</option><option>Card at Pickup</option></select></label>
               <label className="wide"><span className="fieldLabel">Order note <small className="optionalLabel">Optional</small></span><textarea name="note" rows={4} placeholder="Allergies, delivery instructions, or anything we should know" /></label>
             </div>
+            <div className={`giftCardRedeem ${giftCard ? "applied" : ""}`}>
+              <div className="giftCardRedeemHeading"><div><span>Gift Card</span><strong>{giftCard ? `Card ending ${giftCard.lastFour}` : "Have a LEVIEN Gift Card?"}</strong></div>{giftCard && <button type="button" onClick={() => { setGiftCard(null); setGiftCardInput(""); setGiftCardError(""); }}>Remove</button>}</div>
+              {giftCard ? <div className="giftCardApplied"><span>✓</span><div><strong>{money(giftCard.balance)} available</strong><small>{money(giftCardAmount)} will be applied to this order.</small></div></div> : <div className="giftCardCodeRow"><input value={giftCardInput} maxLength={24} autoComplete="off" placeholder="LVGC-XXXX-XXXX-XXXX" aria-label="Gift Card code" onChange={(event) => { setGiftCardInput(event.target.value.toUpperCase()); setGiftCardError(""); }} /><button className="adminSecondary" type="button" disabled={!giftCardInput.trim() || checkingGiftCard} onClick={() => void applyGiftCard()}>{checkingGiftCard ? "Checking…" : "Apply"}</button></div>}
+              {giftCardError && <div className="giftCardError" role="alert">{giftCardError}</div>}
+              <Link href="/gift-card">Check balance</Link>
+            </div>
           </section>
         </div>
 
@@ -223,10 +284,11 @@ export default function CheckoutPage() {
             <div><span>Subtotal</span><b>{money(subtotal)}</b></div>
             <div><span>Tax (8%)</span><b>{money(tax)}</b></div>
             {deliveryFee > 0 && <div><span>Delivery fee</span><b>{money(deliveryFee)}</b></div>}
-            <div className="checkoutGrandTotal"><span>Total</span><strong>{money(total)}</strong></div>
+            {giftCardAmount > 0 && <div className="checkoutGiftCardDiscount"><span>Gift Card ···· {giftCard?.lastFour}</span><b>−{money(giftCardAmount)}</b></div>}
+            <div className="checkoutGrandTotal"><span>{giftCardAmount > 0 ? "Amount due" : "Total"}</span><strong>{money(amountDue)}</strong></div>
           </div>
           <button className="button primary full checkoutSubmit" type="submit" disabled={submitting}>{submitting ? "Placing order…" : "Place Order"}</button>
-          <p className="checkoutFinePrint">This Sprint 4.3 order is saved locally and appears immediately in Admin → Orders.</p>
+          <p className="checkoutFinePrint">Your order is saved securely and appears immediately in the LEVIEN order queue.</p>
         </aside>
       </form>}
     </main>

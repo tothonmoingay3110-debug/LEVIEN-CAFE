@@ -31,7 +31,7 @@ export default function OrderSuccessPage() {
         <div className="orderResultDetails">
           <div><span>Order type</span><strong>{order?.type || "—"}</strong></div>
           <div><span>Estimated ready</span><strong>{order?.type === "Delivery" ? "30–45 minutes" : order?.pickupTime === "ASAP" ? "15–20 minutes" : order?.pickupTime || "15–20 minutes"}</strong></div>
-          <div><span>Total</span><strong>{order ? `$${order.total.toFixed(2)}` : "—"}</strong></div>
+          <div><span>{order?.giftCardAmount ? "Amount due" : "Total"}</span><strong>{order ? `$${(order.amountDue ?? order.total).toFixed(2)}` : "—"}</strong>{Boolean(order?.giftCardAmount) && <small>Gift Card applied: −${order?.giftCardAmount?.toFixed(2)}</small>}</div>
         </div>
         <div className="orderResultActions">
           <Link className="button primary" href={order && trackingToken ? `/order/track?order=${encodeURIComponent(order.id)}&token=${encodeURIComponent(trackingToken)}` : "/menu"}>Track Order</Link>

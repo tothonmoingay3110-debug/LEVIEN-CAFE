@@ -1,0 +1,35 @@
+LEVIEN CAFE — V2 MODULE 6 GIFT CARDS UPDATE
+
+1. Keep your existing .env.local file. It is not included in this package.
+2. Copy this package over the current LEVIEN-CAFE project.
+3. In Supabase Dashboard -> SQL Editor, run this file ONCE:
+
+   supabase/migrations/20260823000100_v2_module_6_gift_cards.sql
+
+   Existing checkout/order migrations and V2.1A staff profiles must already be
+   installed. Run this migration BEFORE starting or deploying the updated app.
+   Do not run the full supabase/schema.sql against an existing project.
+
+4. From the project directory run:
+
+   npm.cmd install
+   npm.cmd run build
+   npm.cmd run dev
+
+5. Sign in as Owner or Manager and open:
+
+   Admin -> Store Management -> Gift Cards
+
+6. Issue a small test card and copy the full code from the one-time result.
+7. Open /gift-card to check its balance, then redeem it during checkout.
+8. Cancel that test order in Admin -> Orders and confirm one refund appears in
+   the Gift Card transaction history.
+9. Confirm Supervisor and Staff accounts cannot see Gift Cards.
+10. After deploying, run:
+
+   npm.cmd run smoke:production -- https://your-production-domain.com
+
+Required server environment variables remain unchanged. In particular,
+SUPABASE_SERVICE_ROLE_KEY must stay server-side and must never use a
+NEXT_PUBLIC_ prefix.
+

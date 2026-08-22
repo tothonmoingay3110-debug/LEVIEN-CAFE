@@ -5,6 +5,8 @@ export type StaffRole = (typeof staffRoles)[number];
 export type StaffPermission =
   | "view_dashboard"
   | "manage_orders"
+  | "manage_contacts"
+  | "manage_gift_cards"
   | "view_customers"
   | "manage_catalog"
   | "manage_staff"
@@ -35,6 +37,8 @@ const permissionsByRole: Record<StaffRole, ReadonlySet<StaffPermission>> = {
   owner: new Set<StaffPermission>([
     "view_dashboard",
     "manage_orders",
+    "manage_contacts",
+    "manage_gift_cards",
     "view_customers",
     "manage_catalog",
     "manage_staff",
@@ -47,6 +51,8 @@ const permissionsByRole: Record<StaffRole, ReadonlySet<StaffPermission>> = {
   manager: new Set<StaffPermission>([
     "view_dashboard",
     "manage_orders",
+    "manage_contacts",
+    "manage_gift_cards",
     "view_customers",
     "manage_catalog",
     "manage_staff",

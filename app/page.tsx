@@ -2,6 +2,7 @@
 
 import { CategoryCard } from "@/components/CategoryCard";
 import { ComboCard } from "@/components/ComboCard";
+import { ContactSection } from "@/components/ContactSection";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { MapSection } from "@/components/MapSection";
@@ -38,9 +39,10 @@ export default function HomePage() {
 
         <section className="section storySection" id="story">
           <div className="storyVisual">{content.aboutImage ? <img src={content.aboutImage} alt={content.aboutTitle} /> : <div className="storyArch"><span>FROM VIETNAM<br/>TO PHILADELPHIA</span><div className="storyCounter"><div className="storyCup">LV</div></div></div>}</div>
-          <div className="storyCopy"><span className="sectionLabel">Our Story</span><h2>{content.aboutTitle}</h2><p>{content.aboutText}</p><a className="textLink" href="#location">Come visit us →</a></div>
+          <div className="storyCopy"><span className="sectionLabel">Our Story</span><h2>{content.aboutTitle}</h2><p>{content.aboutText}</p><a className="textLink" href="/#location">Come visit us →</a></div>
         </section>
 
+        <ContactSection />
         <MapSection />
       </main>
       <Footer />

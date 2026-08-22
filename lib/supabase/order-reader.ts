@@ -76,6 +76,8 @@ export async function readSupabaseOrders(supabase: AdminClient, orderId?: string
       zip: order.zip || undefined,
       apartment: order.apartment || undefined,
       payment: order.payment_method,
+      giftCardAmount: Number(order.gift_card_amount || 0),
+      amountDue: Math.max(0, Number(order.total) - Number(order.gift_card_amount || 0)),
       subtotal: Number(order.subtotal),
       tax: Number(order.tax),
       deliveryFee: Number(order.delivery_fee),

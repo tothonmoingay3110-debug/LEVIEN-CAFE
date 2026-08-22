@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hashGiftCardCode, normalizeGiftCardCode } from "@/lib/gift-cards";
 import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { InvalidCheckoutCatalogError, validateAndPriceOrderItems } from "@/lib/supabase/checkout-pricing";
@@ -10,6 +11,7 @@ type CheckoutOrderRequest = {
   type: FulfillmentType; pickupTime?: string; address?: string; city?: string;
   zip?: string; apartment?: string; payment: string; subtotal: number;
   tax: number; deliveryFee: number; total: number; note: string;
+  giftCardCode?: string;
   items: unknown;
 };
 
@@ -128,12 +130,15 @@ export async function POST(request: Request) {
   const total = amount(body.total);
   const items = normalizeItems(body.items);
   const note = text(body.note);
+  const giftCardRaw = text(body.giftCardCode);
+  const giftCardCode = giftCardRaw ? normalizeGiftCardCode(giftCardRaw) : null;
 
   if (!firstName || !lastName || phoneNormalized.length < 10 || phoneNormalized.length > 15 ||
       firstName.length > 100 || lastName.length > 100 || phone.length > 30 || email.length > 254 ||
       (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ||
       !["Pickup", "Delivery"].includes(fulfillmentType) || subtotal === null || tax === null ||
-      deliveryFee === null || total === null || items === null || note.length > 1000) {
+      deliveryFee === null || total === null || items === null || note.length > 1000 ||
+      (giftCardRaw && !giftCardCode)) {
     return NextResponse.json({ error: "Invalid order details." }, { status: 400 });
   }
 
@@ -163,7 +168,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Menu prices changed. Refresh your cart and try again." }, { status: 409 });
     }
 
-    const { data, error } = await supabase.rpc("create_checkout_order", {
+    const { data, error } = await supabase.rpc("create_checkout_order_with_gift_card", {
       p_first_name: firstName, p_last_name: lastName, p_phone: phone,
       p_phone_normalized: phoneNormalized, p_email: email || null,
       p_fulfillment_type: fulfillmentType,
@@ -176,9 +181,11 @@ export async function POST(request: Request) {
       p_subtotal: orderSubtotal, p_tax: orderTax, p_delivery_fee: orderDeliveryFee,
       p_total: orderTotal, p_note: note,
       p_items: JSON.parse(JSON.stringify(pricedItems)) as Json,
+      p_gift_card_hash: giftCardCode ? hashGiftCardCode(giftCardCode) : null,
     });
     if (error) throw error;
-    const orderNumber = data?.[0]?.order_number;
+    const created = data?.[0];
+    const orderNumber = created?.order_number;
     if (!orderNumber) throw new Error("Supabase did not return an order number.");
     const { data: createdOrder, error: lookupError } = await supabase
       .from("orders")
@@ -186,11 +193,26 @@ export async function POST(request: Request) {
       .eq("order_number", orderNumber)
       .single();
     if (lookupError || !createdOrder) throw lookupError || new Error("Unable to create tracking token.");
-    return NextResponse.json({ orderNumber, trackingToken: createdOrder.id }, { status: 201 });
+    return NextResponse.json({
+      orderNumber,
+      trackingToken: createdOrder.id,
+      paymentMethod: created.final_payment_method,
+      giftCardAmount: Number(created.gift_card_amount || 0),
+      giftCardBalance: created.gift_card_balance === null ? null : Number(created.gift_card_balance),
+    }, { status: 201 });
   } catch (error) {
     if (error instanceof InvalidCheckoutCatalogError) {
       return NextResponse.json({ error: "The menu changed or an item is unavailable. Refresh your cart and try again." }, { status: 409 });
     }
+    const errorMessage = error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error && typeof error.message === "string"
+        ? error.message
+        : "";
+    if (errorMessage.includes("GIFT_CARD_INVALID")) return NextResponse.json({ error: "Gift Card not found." }, { status: 409 });
+    if (errorMessage.includes("GIFT_CARD_INACTIVE")) return NextResponse.json({ error: "This Gift Card is not active." }, { status: 409 });
+    if (errorMessage.includes("GIFT_CARD_EXPIRED")) return NextResponse.json({ error: "This Gift Card has expired." }, { status: 409 });
+    if (errorMessage.includes("GIFT_CARD_EMPTY")) return NextResponse.json({ error: "This Gift Card has no remaining balance." }, { status: 409 });
     console.error("Unable to create checkout order:", error);
     return NextResponse.json({ error: "Unable to place order." }, { status: 500 });
   }
