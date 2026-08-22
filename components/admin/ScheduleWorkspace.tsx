@@ -36,14 +36,31 @@ type WorkShift = {
   createdAt: string;
 };
 
+type ApprovedTimeOff = {
+  id: string;
+  staffId: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+};
+
 type ScheduleData = {
   canManage: boolean;
   team: ScheduleEmployee[];
   shifts: WorkShift[];
   requests: ShiftRequest[];
+  timeOff: ApprovedTimeOff[];
 };
 
-const emptySchedule: ScheduleData = { canManage: false, team: [], shifts: [], requests: [] };
+type CopyWeekResult = {
+  sourceCount: number;
+  createdCount: number;
+  sourceStart: string;
+  targetStart: string;
+  skipped: { inactive: number; permission: number; timeOff: number; conflict: number };
+};
+
+const emptySchedule: ScheduleData = { canManage: false, team: [], shifts: [], requests: [], timeOff: [] };
 
 function dateKey(date: Date) {
   const year = date.getFullYear();
@@ -103,6 +120,7 @@ export default function ScheduleWorkspace({ staff, notify }: { staff: StaffSessi
   const [error, setError] = useState("");
   const [requestDate, setRequestDate] = useState<string | null>(null);
   const [shiftEditor, setShiftEditor] = useState<{ date: string; shift?: WorkShift } | null>(null);
+  const [copyWeekOpen, setCopyWeekOpen] = useState(false);
   const [actionId, setActionId] = useState("");
   const weekEnd = addDays(weekStart, 6);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)), [weekStart]);
@@ -114,7 +132,7 @@ export default function ScheduleWorkspace({ staff, notify }: { staff: StaffSessi
       const response = await fetch(`/api/admin/schedule?from=${weekStart}&to=${addDays(weekStart, 6)}`, { cache: "no-store" });
       const result = (await response.json()) as ScheduleData & { error?: string };
       if (!response.ok) throw new Error(result.error || "Unable to load schedule.");
-      setData({ canManage: Boolean(result.canManage), team: result.team || [], shifts: result.shifts || [], requests: result.requests || [] });
+      setData({ canManage: Boolean(result.canManage), team: result.team || [], shifts: result.shifts || [], requests: result.requests || [], timeOff: result.timeOff || [] });
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Unable to load schedule.");
     } finally {
@@ -158,6 +176,7 @@ export default function ScheduleWorkspace({ staff, notify }: { staff: StaffSessi
       <div><span>{data.canManage ? "Team scheduling" : "My work schedule"}</span><h2>{data.canManage ? "Build a clear weekly schedule for the team." : "Register preferred shifts and follow your published schedule."}</h2><p>No clock-in or attendance tracking is collected.</p></div>
       <div className="scheduleWelcomeActions">
         {!staff.legacy && <button className="adminSecondary" type="button" onClick={() => setRequestDate(openForDate(today))}>Register my shift</button>}
+        {data.canManage && <button className="adminSecondary" type="button" onClick={() => setCopyWeekOpen(true)}>Copy week</button>}
         {data.canManage && <button className="adminPrimary" type="button" onClick={() => setShiftEditor({ date: openForDate(today) })}>＋ Add work shift</button>}
       </div>
     </section>
@@ -178,9 +197,14 @@ export default function ScheduleWorkspace({ staff, notify }: { staff: StaffSessi
       {!error && <div className="scheduleWeekGrid">
         {weekDays.map((day) => {
           const shifts = data.shifts.filter((shift) => shift.date === day);
+          const timeOff = data.timeOff.filter((request) => request.startDate <= day && request.endDate >= day);
           return <article className={`scheduleDay ${day === today ? "today" : ""}`} key={day}>
             <header><div><span>{fromDateKey(day).toLocaleDateString("en-US", { weekday: "short" })}</span><strong>{fromDateKey(day).getDate()}</strong></div>{day >= today && <button type="button" title={data.canManage ? "Add work shift" : "Register preferred shift"} onClick={() => data.canManage ? setShiftEditor({ date: day }) : setRequestDate(day)}>＋</button>}</header>
             <div className="scheduleDayShifts">
+              {timeOff.map((request) => {
+                const employee = employeeById.get(request.staffId);
+                return <div className="scheduleTimeOff" key={request.id}><span>OFF</span><div><strong>{data.canManage ? employee?.fullName || "Unknown employee" : "Approved time off"}</strong><small>{request.reason || "Unavailable"}</small></div></div>;
+              })}
               {shifts.map((shift) => {
                 const employee = employeeById.get(shift.staffId);
                 return <button className="scheduleShift" type="button" key={shift.id} onClick={() => data.canManage && setShiftEditor({ date: shift.date, shift })} disabled={!data.canManage}>
@@ -188,7 +212,7 @@ export default function ScheduleWorkspace({ staff, notify }: { staff: StaffSessi
                   <span><strong>{shift.startTime}–{shift.endTime}</strong><small>{data.canManage ? employee?.fullName || "Unknown employee" : shift.position || "Work shift"}</small>{data.canManage && shift.position && <em>{shift.position}</em>}</span>
                 </button>;
               })}
-              {!shifts.length && <small className="scheduleEmptyDay">{loading ? "Loading…" : "No shifts"}</small>}
+              {!shifts.length && !timeOff.length && <small className="scheduleEmptyDay">{loading ? "Loading…" : "No shifts"}</small>}
             </div>
           </article>;
         })}
@@ -217,7 +241,49 @@ export default function ScheduleWorkspace({ staff, notify }: { staff: StaffSessi
 
     {requestDate && <ShiftRequestModal date={requestDate} close={() => setRequestDate(null)} saved={async () => { setRequestDate(null); notify("Shift request submitted"); await refresh(); }} />}
     {shiftEditor && <WorkShiftModal staff={staff} date={shiftEditor.date} shift={shiftEditor.shift} team={data.team} close={() => setShiftEditor(null)} saved={async () => { setShiftEditor(null); notify(shiftEditor.shift ? "Work shift updated" : "Work shift published"); await refresh(); }} cancelled={shiftEditor.shift ? async () => { await change({ kind: "shift", action: "cancel", id: shiftEditor.shift?.id }, "Work shift cancelled"); setShiftEditor(null); } : undefined} />}
+    {copyWeekOpen && <CopyWeekModal currentWeek={weekStart} close={() => setCopyWeekOpen(false)} copied={(result) => { setCopyWeekOpen(false); setWeekStart(result.targetStart); const skipped = result.sourceCount - result.createdCount; notify(`${result.createdCount} shift${result.createdCount === 1 ? "" : "s"} copied${skipped ? ` · ${skipped} skipped` : ""}`); }} />}
   </div>;
+}
+
+function CopyWeekModal({ currentWeek, close, copied }: { currentWeek: string; close: () => void; copied: (result: CopyWeekResult) => void }) {
+  const today = dateKey(new Date());
+  const nextWeek = addDays(mondayOf(today), 7);
+  const defaultTarget = currentWeek >= today ? currentWeek : nextWeek;
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<CopyWeekResult | null>(null);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "copy_week", sourceStart: form.get("sourceStart"), targetStart: form.get("targetStart") }) });
+      const copyResult = (await response.json()) as CopyWeekResult & { error?: string };
+      if (!response.ok) throw new Error(copyResult.error || "Unable to copy the weekly schedule.");
+      setResult(copyResult);
+    } catch (copyError) {
+      setError(copyError instanceof Error ? copyError.message : "Unable to copy the weekly schedule.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <ScheduleModal title="Copy weekly schedule" eyebrow="Fast team scheduling" close={close}>
+    {!result ? <form className="scheduleForm copyWeekForm" onSubmit={submit}>
+      <label>Source week starts<input name="sourceStart" type="date" defaultValue={addDays(defaultTarget, -7)} required /></label>
+      <label>Target week starts<input name="targetStart" type="date" min={today} defaultValue={defaultTarget} required /></label>
+      <div className="copyWeekNote wide"><strong>Copies seven calendar days.</strong><span>Locked employees, Owner shifts without Owner permission, approved time off, and overlapping shifts are skipped automatically. Existing target shifts are never deleted.</span></div>
+      {error && <div className="adminLoginError wide">{error}</div>}
+      <div className="adminFormActions wide"><button className="adminSecondary" type="button" onClick={close}>Cancel</button><button className="adminPrimary" type="submit" disabled={saving}>{saving ? "Copying…" : "Copy schedule"}</button></div>
+    </form> : <div className="copyWeekResult">
+      <div className="copyWeekResultHero"><span>✓</span><div><strong>Weekly copy complete</strong><small>{shortDate(result.sourceStart)} → {shortDate(result.targetStart)}</small></div></div>
+      <div className="copyWeekResultGrid"><div><span>Source shifts</span><strong>{result.sourceCount}</strong></div><div className="created"><span>Created</span><strong>{result.createdCount}</strong></div><div><span>Conflicts</span><strong>{result.skipped.conflict}</strong></div><div><span>Time off</span><strong>{result.skipped.timeOff}</strong></div><div><span>Inactive</span><strong>{result.skipped.inactive}</strong></div><div><span>Permission</span><strong>{result.skipped.permission}</strong></div></div>
+      <p>No existing target shifts were changed or removed.</p>
+      <div className="adminFormActions"><button className="adminPrimary" type="button" onClick={() => copied(result)}>View target week</button></div>
+    </div>}
+  </ScheduleModal>;
 }
 
 function ShiftRequestModal({ date, close, saved }: { date: string; close: () => void; saved: () => Promise<void> }) {

@@ -188,6 +188,110 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["staff_shifts"]["Insert"]>;
         Relationships: [];
       };
+      staff_time_off_requests: {
+        Row: {
+          id: string;
+          staff_id: string;
+          start_date: string;
+          end_date: string;
+          reason: string;
+          status: "pending" | "approved" | "declined" | "cancelled";
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          staff_id: string;
+          start_date: string;
+          end_date: string;
+          reason?: string;
+          status?: "pending" | "approved" | "declined" | "cancelled";
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["staff_time_off_requests"]["Insert"]>;
+        Relationships: [];
+      };
+      staff_notifications: {
+        Row: {
+          id: string;
+          staff_id: string;
+          notification_type: "schedule" | "swap" | "time_off" | "system";
+          title: string;
+          message: string;
+          link: string;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          staff_id: string;
+          notification_type?: "schedule" | "swap" | "time_off" | "system";
+          title: string;
+          message?: string;
+          link?: string;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["staff_notifications"]["Insert"]>;
+        Relationships: [];
+      };
+      staff_shift_swap_requests: {
+        Row: {
+          id: string;
+          shift_id: string;
+          requester_id: string;
+          offered_to: string;
+          note: string;
+          status: "pending" | "approved" | "declined" | "cancelled";
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          shift_id: string;
+          requester_id: string;
+          offered_to: string;
+          note?: string;
+          status?: "pending" | "approved" | "declined" | "cancelled";
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["staff_shift_swap_requests"]["Insert"]>;
+        Relationships: [];
+      };
+      staff_audit_log: {
+        Row: {
+          id: string;
+          actor_id: string | null;
+          action: string;
+          entity_type: string;
+          entity_id: string | null;
+          summary: string;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          actor_id?: string | null;
+          action: string;
+          entity_type: string;
+          entity_id?: string | null;
+          summary: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["staff_audit_log"]["Insert"]>;
+        Relationships: [];
+      };
       customers: {
         Row: {
           id: string;
@@ -278,6 +382,7 @@ export type Database = {
     };
     Enums: {
       staff_role: "owner" | "manager" | "supervisor" | "staff";
+      shift_swap_status: "pending" | "approved" | "declined" | "cancelled";
     };
     CompositeTypes: {
       [_ in never]: never;

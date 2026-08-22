@@ -2,7 +2,7 @@ import { createAdminClient } from "./admin";
 
 type OrderStreamOptions = {
   filter?: string;
-  channelPrefix: "admin-orders" | "tracked-order";
+  channelPrefix: "admin-orders" | "tracked-order" | "order-display";
 };
 
 export function createOrderEventStream(request: Request, options: OrderStreamOptions) {

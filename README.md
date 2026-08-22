@@ -43,6 +43,54 @@ overlapping shifts, and edit or cancel scheduled work.
 Apply `supabase/migrations/20260816000300_v2_2_shift_scheduling.sql` after V2.1B.
 See `docs/V2.2-SHIFT-SCHEDULING.md`. Attendance and clock-in remain out of scope.
 
+## V2.3 labor planning
+
+Owner and Manager now have a private Labor Planning workspace that compares
+planned weekly hours with published schedule hours and calculates a weekly labor
+cost forecast. Reports include daily coverage, employee variance, and CSV export.
+
+V2.3 reuses V2.1B compensation and V2.2 schedule data, so it does not require a
+new SQL migration. See `docs/V2.3-LABOR-PLANNING.md`.
+
+## V2.4 time off requests
+
+All individual staff accounts can submit date-range time-off requests. Owner and
+Manager can approve, decline, or cancel approved availability. Approved time off
+appears in Schedule and blocks overlapping shift creation or approval.
+
+Apply `supabase/migrations/20260822000100_v2_4_time_off_requests.sql` once. See
+`docs/V2.4-TIME-OFF.md`. Paid leave and payroll calculations remain out of scope.
+
+## V2.5 copy weekly schedule
+
+Owner and Manager can copy seven days of published shifts into a future week.
+The copy operation preserves the source and existing target schedules while
+skipping conflicts, approved time off, inactive accounts, and restricted Owner
+assignments. See `docs/V2.5-COPY-WEEK.md`. No new SQL migration is required.
+
+## V2.11 staff operations suite
+
+V2.6 through V2.11 are delivered together as one cumulative staff-operations
+release. My Workspace gives each authenticated employee a private inbox,
+upcoming schedule, time-off summary, and manager-reviewed shift coverage flow.
+Owner and Manager also receive date-range Staff Reports with CSV export and an
+append-only Activity Log for schedule, coverage, and time-off actions.
+
+Apply `supabase/migrations/20260822000200_v2_11_staff_operations.sql` after the
+V2.4 migration. See `docs/V2.11-STAFF-OPERATIONS.md`. This release does not add
+attendance, clock-in, payroll, SMS, or email delivery.
+
+## V2 Module 4 order display system
+
+The public TV pickup board at `/order-display` shows Preparing, Ready for Pickup,
+and recently Completed order numbers. It updates through the existing Supabase
+order Realtime stream with a polling fallback and never exposes customer,
+delivery, item, total, or payment data. Staff can open it from Admin → Orders.
+
+No new migration is required after Sprint 5.5B. See
+`docs/V2-MODULE-4-ORDER-DISPLAY.md` for operation and verification, and
+`docs/V2-RESTAURANT-OPERATIONS-ROADMAP.md` for the agreed nine-module V2 scope.
+
 Demo login: `admin` / `123`
 
 ## Sprint 4 highlight

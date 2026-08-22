@@ -55,6 +55,7 @@ async function request(path, expectedStatus) {
 const homeResponse = await request("/", 200);
 await request("/menu", 200);
 await request("/admin", 200);
+await request("/order-display", 200);
 
 if (homeResponse) {
   const contentType = homeResponse.headers.get("content-type") || "";
@@ -93,6 +94,31 @@ if (healthResponse?.ok) {
 }
 
 await request("/api/orders/track?token=invalid", 400);
+
+const displayResponse = await request("/api/orders/display", 200);
+if (displayResponse?.ok) {
+  try {
+    const body = await displayResponse.json();
+    const orders = Array.isArray(body?.orders) ? body.orders : null;
+    if (orders) pass("Public order display returned an order list.");
+    else fail("Public order display returned an unexpected payload.");
+
+    const serialized = JSON.stringify(body).toLowerCase();
+    const privateFields = ["first_name", "last_name", "phone", "email", "address", "total", "payment"];
+    if (privateFields.every((field) => !serialized.includes(`\"${field}\"`))) {
+      pass("Public order display excludes customer and payment fields.");
+    } else {
+      fail("Public order display exposed a private customer or payment field.");
+    }
+    if ((displayResponse.headers.get("cache-control") || "").includes("no-store")) {
+      pass("Order display response is not cached.");
+    } else {
+      fail("Order display response must use Cache-Control: no-store.");
+    }
+  } catch {
+    fail("Public order display did not return valid JSON.");
+  }
+}
 
 for (const message of passes) console.log(`[ok] ${message}`);
 if (failures.length) {

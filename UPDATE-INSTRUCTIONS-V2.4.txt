@@ -1,0 +1,35 @@
+LEVIEN CAFE — V2.4 TIME OFF REQUESTS
+====================================
+
+1. Extract this ZIP.
+2. Copy every extracted file into the active LEVIEN-CAFE project and choose Replace.
+3. Keep the active project's .env.local. It is intentionally not included here.
+4. Run:
+
+   npm.cmd install
+   npm.cmd run build
+
+5. Confirm migrations through V2.2 are already installed.
+6. In Supabase SQL Editor, run the complete file once:
+
+   supabase/migrations/20260822000100_v2_4_time_off_requests.sql
+
+7. Restart the local development server.
+8. Test as Staff:
+
+   - Open Time Off.
+   - Submit a future date range.
+   - Confirm only personal requests are visible.
+
+9. Test as Owner or Manager:
+
+   - Approve the request.
+   - Confirm its OFF marker appears in Schedule.
+   - Confirm a work shift cannot be assigned on the approved date.
+
+IMPORTANT
+---------
+- Run the V2.4 migration once before opening Time Off or Schedule.
+- Existing shifts must be cancelled/reassigned before time off can be approved.
+- Time off is availability only; it does not calculate paid leave or payroll.
+- Keep .env.local and SUPABASE_SERVICE_ROLE_KEY private.

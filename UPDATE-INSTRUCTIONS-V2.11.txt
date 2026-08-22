@@ -1,0 +1,43 @@
+LEVIEN CAFE — V2.11 STAFF OPERATIONS (V2.6–V2.11)
+===================================================
+
+1. BACK UP YOUR CURRENT PROJECT
+
+Keep your existing .env.local. Do not copy or commit a secret file from another project.
+
+2. COPY THE UPDATED PROJECT FILES
+
+Extract the V2.11 ZIP and copy the files into the LEVIEN-CAFE project.
+Do not copy node_modules, .next, .git or a different .env.local.
+
+3. RUN THE NEW SUPABASE MIGRATION
+
+Confirm the Supabase project matches NEXT_PUBLIC_SUPABASE_URL.
+In Supabase Dashboard > SQL Editor, run this file after the V2.4 migration:
+
+supabase/migrations/20260822000200_v2_11_staff_operations.sql
+
+V2.3 and V2.5 did not require database migrations.
+
+4. INSTALL AND BUILD IN VS CODE POWERSHELL
+
+npm.cmd install
+npm.cmd run build
+npm.cmd run dev
+
+Open http://localhost:3000/admin
+
+5. VERIFY
+
+- Every role can open My Workspace.
+- A staff member can offer their own future shift to an eligible coworker.
+- Owner/Manager can approve or decline team coverage requests.
+- A Manager cannot approve their own request or manage an Owner request.
+- Staff Reports and Activity Log are visible only to Owner/Manager.
+- Notifications appear after schedule, coverage and time-off changes.
+- Existing Store, Checkout, Orders and Catalog screens still work.
+
+IMPORTANT SCOPE
+
+This release does not implement attendance, clock-in, payroll, email or SMS.
+Scheduled hours are planning values. Hourly pay remains private to Owner/Manager.
