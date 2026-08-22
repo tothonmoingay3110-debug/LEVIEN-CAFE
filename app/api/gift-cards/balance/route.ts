@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { hashGiftCardCode, normalizeGiftCardCode } from "@/lib/gift-cards";
 import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { allowRequest } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
     if (!isSameOriginRequest(request)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    if (!allowRequest(request, "gift-card-balance", 20, 10 * 60 * 1000)) return NextResponse.json({ error: "Too many balance checks. Try again later." }, { status: 429 });
     if (requestBodyExceeds(request, 4 * 1024)) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
     if (!(request.headers.get("content-type") || "").toLowerCase().includes("application/json")) {
       return NextResponse.json({ error: "Content-Type must be application/json." }, { status: 415 });

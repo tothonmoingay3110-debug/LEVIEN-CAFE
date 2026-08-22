@@ -105,18 +105,26 @@ verification checklist.
 
 ## V2 Module 6 gift cards
 
-Owner and Manager accounts can issue, search, disable and reactivate Gift Cards
-from Admin → Store Management → Gift Cards. Customers can securely check a
-balance at `/gift-card` and redeem all or part of a card during checkout. Order
-cancellation returns the redeemed amount exactly once, and the Admin history
-records every issue, redemption and refund.
+Customers can buy digital Gift Cards through Stripe, check balances, redeem
+partial value, and recover purchased codes from My Account. A paid sale must be
+confirmed before the card activates. Owner and Manager can create verified
+in-store cash/terminal cards; complimentary cards are Owner-only. Full codes are
+encrypted at rest while checkout lookups use SHA-256 hashes.
 
-Only a SHA-256 hash and the final four characters of each code are stored. The
-full code is displayed once when the card is issued. Apply
-`supabase/migrations/20260823000100_v2_module_6_gift_cards.sql` once before
-deploying this code. See `docs/V2-MODULE-6-GIFT-CARDS.md` for rollout and tests.
+Apply `20260823000100_v2_module_6_gift_cards.sql` followed by
+`20260824000100_v2_customer_accounts_payments_loyalty.sql`. See
+`docs/V2-CUSTOMER-ACCOUNTS-PAYMENTS-LOYALTY.md`.
 
-Demo login: `admin` / `123`
+## V2 customer accounts, payments and loyalty
+
+Verified customers receive My Account, linked order history, a printable member
+card, Gift Card wallet, loyalty progress, and redeemable rewards. Owner and
+Manager can define product rules such as “buy 5 of Product A, get Product B” or
+award a physical gift. Stripe Checkout, signed webhooks, idempotent fulfillment,
+refund-first cancellation and benefit restoration protect online orders.
+
+Follow `UPDATE-INSTRUCTIONS-V2-CUSTOMER-PLATFORM.txt` and the complete production
+guide in `docs/V2-CUSTOMER-ACCOUNTS-PAYMENTS-LOYALTY.md`.
 
 ## Sprint 4 highlight
 

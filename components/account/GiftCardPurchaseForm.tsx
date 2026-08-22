@@ -1,0 +1,14 @@
+"use client";
+
+import Link from "next/link";
+import { FormEvent, useEffect, useState } from "react";
+import { useCustomerSession } from "@/components/CustomerSessionProvider";
+
+export default function GiftCardPurchaseForm() {
+  const { loading, profile } = useCustomerSession(); const [submitting, setSubmitting] = useState(false); const [error, setError] = useState(""); const [cancelled, setCancelled] = useState(false);
+  useEffect(() => setCancelled(new URLSearchParams(window.location.search).get("payment") === "cancelled"), []);
+  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); setSubmitting(true); setError(""); const response = await fetch("/api/gift-cards/purchase", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ amount: Number(form.get("amount")), recipientName: form.get("recipientName"), recipientEmail: form.get("recipientEmail"), message: form.get("message") }) }); const result = await response.json() as { checkoutUrl?: string; error?: string }; if (!response.ok || !result.checkoutUrl) { setError(result.error || "Unable to continue."); setSubmitting(false); return; } window.location.assign(result.checkoutUrl); }
+  if (loading) return <div className="accountLoading">Loading…</div>;
+  if (!profile) return <section className="giftCardBuyGate"><span className="sectionLabel">SECURE PURCHASE</span><h1>Sign in before buying a Gift Card.</h1><p>Your account keeps the secure code recoverable and gives you a purchase record.</p><Link className="button primary" href="/account/sign-in">Sign In</Link><Link className="button secondary" href="/account/sign-up">Create Account</Link></section>;
+  return <form className="giftCardBuyForm" onSubmit={submit}><span className="sectionLabel">DIGITAL GIFT CARD</span><h1>Send something delicious.</h1><p>Stripe confirms payment before a card is activated. The recipient receives the secure code by email, and your copy remains in My Account.</p>{cancelled && <div className="customerAuthError">Payment was cancelled. No Gift Card was activated.</div>}{error && <div className="customerAuthError">{error}</div>}<label>Amount (USD)<input name="amount" type="number" min={5} max={1000} step="0.01" defaultValue={25} required /></label><label>Recipient name<input name="recipientName" maxLength={120} required /></label><label>Recipient email<input name="recipientEmail" type="email" maxLength={254} required /></label><label>Personal message<textarea name="message" rows={4} maxLength={500} placeholder="Enjoy something special at LEVIEN!" /></label><button className="button primary full" disabled={submitting}>{submitting ? "Opening secure checkout…" : "Continue to Stripe"}</button><small>Purchasing as {profile.email}. Values from $5 to $1,000. Treat the delivered code like cash.</small></form>;
+}
