@@ -91,6 +91,31 @@ No new migration is required after Sprint 5.5B. See
 `docs/V2-MODULE-4-ORDER-DISPLAY.md` for operation and verification, and
 `docs/V2-RESTAURANT-OPERATIONS-ROADMAP.md` for the agreed nine-module V2 scope.
 
+## V2 Module 5 contact us
+
+The storefront now includes a responsive Contact Us form for general questions,
+order support, catering, feedback and other requests. Submissions are saved in
+Supabase and appear in Admin → Overview → Contact Messages, where Owner and
+Manager accounts can search, filter, update status and keep a private follow-up
+note. Supervisor and Staff accounts cannot access the inbox.
+
+Apply `supabase/migrations/20260822000300_v2_module_5_contact_messages.sql`
+once. See `docs/V2-MODULE-5-CONTACT-US.md` for the privacy boundary, rollout and
+verification checklist.
+
+## V2 Module 6 gift cards
+
+Owner and Manager accounts can issue, search, disable and reactivate Gift Cards
+from Admin → Store Management → Gift Cards. Customers can securely check a
+balance at `/gift-card` and redeem all or part of a card during checkout. Order
+cancellation returns the redeemed amount exactly once, and the Admin history
+records every issue, redemption and refund.
+
+Only a SHA-256 hash and the final four characters of each code are stored. The
+full code is displayed once when the card is issued. Apply
+`supabase/migrations/20260823000100_v2_module_6_gift_cards.sql` once before
+deploying this code. See `docs/V2-MODULE-6-GIFT-CARDS.md` for rollout and tests.
+
 Demo login: `admin` / `123`
 
 ## Sprint 4 highlight

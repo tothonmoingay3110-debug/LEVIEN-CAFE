@@ -94,6 +94,9 @@ export type CustomerOrder = {
   zip?: string;
   apartment?: string;
   payment: string;
+  giftCardAmount?: number;
+  giftCardLastFour?: string;
+  amountDue?: number;
   subtotal: number;
   tax: number;
   deliveryFee: number;

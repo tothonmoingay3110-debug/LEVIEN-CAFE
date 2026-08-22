@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { CartItem, CustomerOrder } from "@/types";
 
 const uuidPattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
-type TrackedOrder = Pick<CustomerOrder, "id" | "customer" | "type" | "status" | "total" | "items">;
+type TrackedOrder = Pick<CustomerOrder, "id" | "customer" | "type" | "status" | "total" | "giftCardAmount" | "amountDue" | "items">;
 
 export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token")?.trim() || "";
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const supabase = createAdminClient();
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("id,order_number,first_name,last_name,fulfillment_type,status,total")
+      .select("id,order_number,first_name,last_name,fulfillment_type,status,total,gift_card_amount")
       .eq("id", token)
       .maybeSingle();
 
@@ -86,6 +86,8 @@ export async function GET(request: Request) {
       type: order.fulfillment_type,
       status: order.status,
       total: Number(order.total),
+      giftCardAmount: Number(order.gift_card_amount || 0),
+      amountDue: Math.max(0, Number(order.total) - Number(order.gift_card_amount || 0)),
       items,
     };
     return NextResponse.json({ order: trackedOrder });

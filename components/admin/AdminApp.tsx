@@ -8,6 +8,8 @@ import TimeOffWorkspace from "@/components/admin/TimeOffWorkspace";
 import WorkforceWorkspace from "@/components/admin/WorkforceWorkspace";
 import StaffReports from "@/components/admin/StaffReports";
 import ActivityLog from "@/components/admin/ActivityLog";
+import ContactMessages from "@/components/admin/ContactMessages";
+import GiftCards from "@/components/admin/GiftCards";
 import {
   roleHasPermission,
   staffRoleLabels,
@@ -17,7 +19,7 @@ import {
 } from "@/lib/staff-permissions";
 import type { CustomerOrder, OrderStatus } from "@/types";
 
-type AdminView = "dashboard" | "orders" | "workspace" | "schedule" | "timeoff" | "labor" | "reports" | "activity" | "customers" | "employees" | "products" | "categories" | "toppings" | "combos" | "promotions" | "content" | "account";
+type AdminView = "dashboard" | "orders" | "messages" | "workspace" | "schedule" | "timeoff" | "labor" | "reports" | "activity" | "customers" | "giftcards" | "employees" | "products" | "categories" | "toppings" | "combos" | "promotions" | "content" | "account";
 type AdminIconName = AdminView | "external" | "logout" | "arrow";
 type Category = { id: string; name: string; icon: string; active: boolean };
 type Topping = { id: string; name: string; price: number; active: boolean };
@@ -94,13 +96,14 @@ const seed: DB = {
 };
 
 const viewLabels: Record<AdminView, string> = {
-  dashboard: "Dashboard", orders: "Orders", workspace: "My Workspace", schedule: "Schedule", timeoff: "Time Off", labor: "Labor Planning", reports: "Staff Reports", activity: "Activity Log", customers: "Customers", employees: "Employees", products: "Products", categories: "Categories",
+  dashboard: "Dashboard", orders: "Orders", messages: "Contact Messages", workspace: "My Workspace", schedule: "Schedule", timeoff: "Time Off", labor: "Labor Planning", reports: "Staff Reports", activity: "Activity Log", customers: "Customers", giftcards: "Gift Cards", employees: "Employees", products: "Products", categories: "Categories",
   toppings: "Toppings", combos: "Combos", promotions: "Promotions", content: "Website Content", account: "My Account",
 };
-const adminViewOrder: AdminView[] = ["dashboard", "orders", "workspace", "schedule", "timeoff", "labor", "reports", "activity", "customers", "employees", "products", "categories", "toppings", "combos", "promotions", "content", "account"];
+const adminViewOrder: AdminView[] = ["dashboard", "orders", "messages", "workspace", "schedule", "timeoff", "labor", "reports", "activity", "customers", "giftcards", "employees", "products", "categories", "toppings", "combos", "promotions", "content", "account"];
 const viewPermissions: Partial<Record<AdminView, StaffPermission>> = {
   dashboard: "view_dashboard",
   orders: "manage_orders",
+  messages: "manage_contacts",
   workspace: "view_own_schedule",
   schedule: "view_own_schedule",
   timeoff: "view_own_schedule",
@@ -108,6 +111,7 @@ const viewPermissions: Partial<Record<AdminView, StaffPermission>> = {
   reports: "view_workforce_reports",
   activity: "view_audit_log",
   customers: "view_customers",
+  giftcards: "manage_gift_cards",
   employees: "manage_staff",
   products: "manage_catalog",
   categories: "manage_catalog",
@@ -132,10 +136,10 @@ type AdminNavGroupId = "overview" | "staff" | "planning" | "store";
 type AdminNavGroup = { id: AdminNavGroupId; label: string; shortLabel: string; icon: AdminIconName; views: AdminView[] };
 
 const adminNavGroups: AdminNavGroup[] = [
-  { id: "overview", label: "Overview", shortLabel: "Overview", icon: "dashboard", views: ["dashboard", "orders"] },
+  { id: "overview", label: "Overview", shortLabel: "Overview", icon: "dashboard", views: ["dashboard", "orders", "messages"] },
   { id: "staff", label: "Staff & Schedule", shortLabel: "Staff", icon: "workspace", views: ["workspace", "schedule", "timeoff", "employees"] },
   { id: "planning", label: "Planning & Reports", shortLabel: "Reports", icon: "reports", views: ["labor", "reports", "activity"] },
-  { id: "store", label: "Store Management", shortLabel: "Store", icon: "products", views: ["customers", "products", "categories", "toppings", "combos", "promotions", "content"] },
+  { id: "store", label: "Store Management", shortLabel: "Store", icon: "products", views: ["customers", "giftcards", "products", "categories", "toppings", "combos", "promotions", "content"] },
 ];
 
 function AdminSidebarNav({
@@ -755,14 +759,16 @@ export default function AdminApp() {
         <header className="adminTopbar"><div><span className="adminBreadcrumb">LEVIEN CAFE / {viewLabels[view]}</span><h1>{viewLabels[view]}</h1></div><div className="adminTopActions">{canManageOrders && <span className={`adminLiveBadge sync-${orderSyncStatus}`}>● {orderSyncStatus === "live" ? "Orders live" : orderSyncStatus === "polling" ? "Auto reconnecting" : "Connecting"}</span>}<span className={`adminRoleBadge role-${staff.role}`}>{staffRoleLabels[staff.role]}</span><button className="adminAvatar" title={staff.fullName}>{initials(staff.fullName)}</button></div></header>
         {view === "dashboard" && canManageCatalog && <Dashboard db={db} revenue={revenue} todayOrders={todayOrders} openView={setView} openModal={setModal} />}
         {view === "dashboard" && !canManageCatalog && canManageOrders && <OperationsDashboard db={db} todayOrders={todayOrders} openView={setView} />}
-        {view === "orders" && <Orders db={db} orders={filteredOrders} filter={orderFilter} setFilter={setOrderFilter} update={update} openModal={setModal} />}
+         {view === "orders" && <Orders db={db} orders={filteredOrders} filter={orderFilter} setFilter={setOrderFilter} update={update} openModal={setModal} />}
+         {view === "messages" && <ContactMessages notify={setToast} />}
         {view === "workspace" && <WorkforceWorkspace staff={staff} notify={setToast} unreadChanged={setUnreadNotifications} />}
         {view === "schedule" && <ScheduleWorkspace staff={staff} notify={setToast} />}
         {view === "timeoff" && <TimeOffWorkspace staff={staff} notify={setToast} />}
         {view === "labor" && <LaborPlanning />}
         {view === "reports" && <StaffReports />}
         {view === "activity" && <ActivityLog />}
-        {view === "customers" && <Customers customers={filteredCustomers} allCustomers={customers} orders={db.orders} query={customerQuery} setQuery={setCustomerQuery} openModal={setModal} />}
+         {view === "customers" && <Customers customers={filteredCustomers} allCustomers={customers} orders={db.orders} query={customerQuery} setQuery={setCustomerQuery} openModal={setModal} />}
+         {view === "giftcards" && <GiftCards notify={setToast} />}
         {view === "employees" && canManageStaff && <Employees currentStaff={staff} employees={employees} loading={employeesLoading} openEmployee={(employee) => setEmployeeModal({ employee })} refresh={refreshEmployees} showCredentials={(credentials) => setTemporaryCredentials(credentials)} notify={setToast} />}
         {view === "products" && <Products db={db} products={filteredProducts} query={query} setQuery={setQuery} openModal={setModal} update={update} />}
         {view === "categories" && <Categories db={db} openModal={setModal} update={update} />}
@@ -848,8 +854,14 @@ function Orders({ db, orders, filter, setFilter, update, openModal }: { db: DB; 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderNumber: orderId, status }),
       });
-      const result = (await response.json()) as { error?: string };
+      const result = (await response.json()) as { error?: string; giftCardRefund?: number };
       if (!response.ok) throw new Error(result.error || "Unable to update order.");
+      if (result.giftCardRefund && result.giftCardRefund > 0) {
+        update(
+          { ...db, orders: nextOrders },
+          `Order ${orderId} cancelled · ${money(result.giftCardRefund)} returned to Gift Card`,
+        );
+      }
     } catch (error) {
       update({ ...db, orders: previousOrders }, error instanceof Error ? error.message : "Unable to update order");
     }
@@ -1244,7 +1256,7 @@ function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: 
       </div>
     </ModalShell>;
   }
-  if(modal.type==="order") { const o=entity as Order; return <ModalShell title={o.id} subtitle="Order details" close={close}><div className="orderDetailHeader"><div><strong>{o.customer}</strong><span>{o.phone} · {o.type}</span></div><b>{money(o.total)}</b></div><div className="orderItemList">{o.items.map(i=><div className={i.itemType === "combo" ? "adminComboOrderItem" : ""} key={i.lineId}><strong>{i.quantity} × {i.name}</strong>{i.itemType === "combo" && i.comboItems?.length ? <div className="adminComboChildren">{i.comboItems.map(child=><span key={child.productId}><b>{child.emoji} {child.name}</b><small>{comboChildOptions(child)}</small></span>)}</div> : <small>{orderItemOptions(i)}</small>}<b>{money(i.unitPrice * i.quantity)}</b></div>)}</div><div className="adminOrderMeta"><span><b>Payment</b>{o.payment}</span>{o.pickupTime && <span><b>Pickup time</b>{o.pickupTime}</span>}{o.address && <span><b>Delivery address</b>{[o.address,o.apartment,o.city,o.zip].filter(Boolean).join(", ")}</span>}</div><div className="adminNote"><strong>Customer note</strong><p>{o.note||"No special note."}</p></div></ModalShell>; }
+  if(modal.type==="order") { const o=entity as Order; return <ModalShell title={o.id} subtitle="Order details" close={close}><div className="orderDetailHeader"><div><strong>{o.customer}</strong><span>{o.phone} · {o.type}</span></div><b>{money(o.total)}</b></div><div className="orderItemList">{o.items.map(i=><div className={i.itemType === "combo" ? "adminComboOrderItem" : ""} key={i.lineId}><strong>{i.quantity} × {i.name}</strong>{i.itemType === "combo" && i.comboItems?.length ? <div className="adminComboChildren">{i.comboItems.map(child=><span key={child.productId}><b>{child.emoji} {child.name}</b><small>{comboChildOptions(child)}</small></span>)}</div> : <small>{orderItemOptions(i)}</small>}<b>{money(i.unitPrice * i.quantity)}</b></div>)}</div><div className="adminOrderMeta"><span><b>Payment</b>{o.payment}</span>{Boolean(o.giftCardAmount) && <span><b>Gift Card</b>{money(o.giftCardAmount || 0)} applied · {money(o.amountDue ?? Math.max(0, o.total - (o.giftCardAmount || 0)))} due</span>}{o.pickupTime && <span><b>Pickup time</b>{o.pickupTime}</span>}{o.address && <span><b>Delivery address</b>{[o.address,o.apartment,o.city,o.zip].filter(Boolean).join(", ")}</span>}</div><div className="adminNote"><strong>Customer note</strong><p>{o.note||"No special note."}</p></div></ModalShell>; }
   if(modal.type==="content") { const c=db.content; return <ModalShell title="Website Content" subtitle="Logo, story, contact and map" close={close}><form onSubmit={submit} className="adminForm"><FormInput label="Store name" name="storeName" defaultValue={c.storeName}/><FormInput label="Brand tagline" name="tagline" defaultValue={c.tagline||"CAFE & EATERY"}/><FormInput label="Announcement bar" name="announcement" defaultValue={c.announcement} wide/><ImageUpload kind="logo" label="Logo image" image={logoImage} setImage={setLogoImage}/><FormInput label="Our Story title" name="aboutTitle" defaultValue={c.aboutTitle} wide/><FormTextarea label="Our Story text" name="aboutText" defaultValue={c.aboutText}/><ImageUpload kind="about" label="About Us image" image={aboutImage} setImage={setAboutImage}/><FormInput label="Address" name="address" defaultValue={c.address} wide/><FormInput label="Phone" name="phone" defaultValue={c.phone}/><FormInput label="Email" name="email" defaultValue={c.email}/><FormInput label="Opening hours" name="hours" defaultValue={c.hours} wide/><FormInput label="Footer note" name="footerText" defaultValue={c.footerText||"Made with care in Philadelphia"} wide/><FormInput label="Google Maps link" name="mapUrl" defaultValue={c.mapUrl} wide/><FormActions close={close}/></form></ModalShell>; }
   if(modal.type==="product") { const p=entity as Product|undefined; return <ModalShell title={p?"Edit product":"New product"} subtitle="Menu item details and customization" close={close}><form onSubmit={submit} className="adminForm"><FormInput label="Product name" name="name" defaultValue={p?.name||""}/><label>Category<select name="categoryId" defaultValue={p?.categoryId||db.categories[0]?.id}>{db.categories.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></label><FormInput label="Price" name="price" type="number" step="0.01" defaultValue={String(p?.price||0)}/><FormInput label="Emoji fallback" name="emoji" defaultValue={p?.emoji||"☕"}/><FormTextarea label="Description" name="description" defaultValue={p?.description||""}/><ImageUpload image={image||p?.image||""} setImage={setImage}/><fieldset className="adminChecklist wide"><legend>Customer Options</legend><Check name="allowIce" label="Allow Ice Level" checked={p?.allowIce??true}/><Check name="allowSugar" label="Allow Sugar Level" checked={p?.allowSugar??true}/><Check name="allowToppings" label="Allow Toppings" checked={p?.allowToppings??((p?.toppingIds.length||0)>0)}/></fieldset><fieldset className="adminChecklist wide"><legend>Available Toppings</legend>{db.toppings.map(t=><Check key={t.id} name="toppings" value={t.id} label={`${t.name} (+${money(t.price)})`} checked={p?.toppingIds.includes(t.id)}/>)}</fieldset><fieldset className="adminChecklist wide"><legend>Badges & Visibility</legend><Check name="bestSeller" label="Best Seller" checked={p?.bestSeller}/><Check name="mustTry" label="Must Try" checked={p?.mustTry}/><Check name="featured" label="Featured" checked={p?.featured}/><Check name="isNew" label="New" checked={p?.isNew}/><Check name="soldOut" label="Sold Out" checked={p?.soldOut}/><Check name="active" label="Published" checked={p?.active??true}/></fieldset><FormActions close={close}/></form></ModalShell>; }
   if(modal.type==="category") { const c=entity as Category|undefined; return <SimpleEntityForm title={c?"Edit category":"New category"} submit={submit} close={close}><FormInput label="Category name" name="name" defaultValue={c?.name||""}/><FormInput label="Icon" name="icon" defaultValue={c?.icon||"☕"}/><Check name="active" label="Active" checked={c?.active??true}/></SimpleEntityForm>; }
@@ -1358,6 +1370,7 @@ function AdminIcon({ name }: { name: AdminIconName }) {
   const paths: Record<AdminIconName, React.ReactNode> = {
     dashboard: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
     orders: <><path d="M6 3h12l2 4v14H4V7l2-4Z"/><path d="M4 7h16"/><path d="M9 11a3 3 0 0 0 6 0"/></>,
+    messages: <><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></>,
     schedule: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/><path d="m8 15 2 2 5-5"/></>,
     workspace: <><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/><path d="M7 13h4M7 17h7"/><circle cx="17" cy="15" r="2.5"/></>,
     timeoff: <><path d="M4 5h16v15H4z"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="m9 15 2 2 4-5"/></>,
@@ -1365,6 +1378,7 @@ function AdminIcon({ name }: { name: AdminIconName }) {
     reports: <><path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h8M8 15h5"/><path d="M16 17h2"/></>,
     activity: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M5 4 3 6M19 4l2 2"/></>,
     customers: <><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="10" r="2.5"/><path d="M15 16.5a5 5 0 0 1 6 3.5"/></>,
+    giftcards: <><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M12 7v14M3 12h18"/><path d="M12 7H8.5a2.5 2.5 0 1 1 2.5-2.5V7Zm0 0h3.5A2.5 2.5 0 1 0 13 4.5V7Z"/></>,
     employees: <><circle cx="9" cy="7" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M17 8v6M14 11h6"/><path d="M16 17h5v4h-5z"/></>,
     products: <><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4 7.5 8 4.5 8-4.5"/><path d="M12 12v9"/></>,
     categories: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,

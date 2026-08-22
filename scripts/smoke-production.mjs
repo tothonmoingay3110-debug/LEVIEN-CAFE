@@ -56,6 +56,7 @@ const homeResponse = await request("/", 200);
 await request("/menu", 200);
 await request("/admin", 200);
 await request("/order-display", 200);
+await request("/gift-card", 200);
 
 if (homeResponse) {
   const contentType = homeResponse.headers.get("content-type") || "";
@@ -94,6 +95,10 @@ if (healthResponse?.ok) {
 }
 
 await request("/api/orders/track?token=invalid", 400);
+await request("/api/contact", 405);
+await request("/api/admin/contact-messages", 401);
+await request("/api/gift-cards/balance", 405);
+await request("/api/admin/gift-cards", 401);
 
 const displayResponse = await request("/api/orders/display", 200);
 if (displayResponse?.ok) {

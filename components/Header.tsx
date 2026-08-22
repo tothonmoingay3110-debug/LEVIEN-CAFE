@@ -14,7 +14,7 @@ export function Header() {
     { label: "Menu", href: "/menu" },
     { label: "Combos", href: "/#combos" },
     { label: "Our Story", href: "/#story" },
-    { label: "Contact", href: "/#location" },
+    { label: "Contact", href: "/#contact" },
   ];
 
   const shortAddress = content.address.split(",").slice(0, 2).join(",");
