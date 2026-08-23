@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCustomerSession } from "@/components/CustomerSessionProvider";
+import { onlineGiftCardPurchaseEnabled } from "@/lib/features";
 import type { CustomerAccountData } from "@/types/account";
 
 const money = (value: number) => `$${value.toFixed(2)}`;
@@ -76,7 +77,7 @@ export default function CustomerAccountDashboard() {
           <small>Reward: {item.rewardName}{item.reviewRequired ? " · Staff review needed" : ""}</small>
         </article>)}</div>}
         <div className="accountRewards"><h3>Rewards</h3>{!data.rewards.length ? <p className="accountEmpty">No rewards issued yet.</p> : data.rewards.map((reward) => <article key={reward.id}>
-          <div><strong>{reward.name}</strong><small>{reward.code} · {reward.type === "physical_gift" ? "Show to staff" : "Select at checkout"}</small></div><span className={`rewardStatus ${reward.status}`}>{reward.status}</span>
+          <div><strong>{reward.name}</strong><small>{reward.code} · {reward.type === "physical_gift" ? "Show to staff" : `Choose at checkout${reward.productNames.length ? `: ${reward.productNames.join(" / ")}` : ""}`}</small></div><span className={`rewardStatus ${reward.status}`}>{reward.status}</span>
         </article>)}</div>
       </section>
 
@@ -93,8 +94,8 @@ export default function CustomerAccountDashboard() {
     </div>
 
     <section className="accountPanel accountWidePanel">
-      <div className="accountPanelHead"><div><span className="sectionLabel">WALLET</span><h2>Your Gift Cards</h2></div><Link href="/gift-card/buy">Buy Gift Card</Link></div>
-      {!data.giftCards.length ? <p className="accountEmpty">Gift Cards purchased while signed in will appear here.</p> : <div className="accountGiftCards">{data.giftCards.map((card) => <article key={card.id}>
+      <div className="accountPanelHead"><div><span className="sectionLabel">WALLET</span><h2>Your Gift Cards</h2></div>{onlineGiftCardPurchaseEnabled && <Link href="/gift-card/buy">Buy Gift Card</Link>}</div>
+      {!data.giftCards.length ? <p className="accountEmpty">Gift Cards linked to your account will appear here.</p> : <div className="accountGiftCards">{data.giftCards.map((card) => <article key={card.id}>
         <small>LEVIEN GIFT CARD</small><strong>{money(card.balance)}</strong><span>{revealed[card.id] || `•••• •••• •••• ${card.lastFour}`}</span><em>{card.status} · {card.recipientName || "For you"}</em>
         {!revealed[card.id] && <button type="button" onClick={() => void revealCard(card.id)}>Reveal secure code</button>}
       </article>)}</div>}

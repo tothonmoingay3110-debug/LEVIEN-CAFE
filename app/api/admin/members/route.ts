@@ -41,7 +41,7 @@ async function readMember(membershipNumber: string) {
   const nowIso = new Date().toISOString();
   const [progressResult, rewardsResult, ordersResult] = await Promise.all([
     db.from("loyalty_progress").select("rule_id,units_earned,review_required").eq("customer_profile_id", profile.id),
-    db.from("loyalty_rewards").select("id,reward_code,reward_type,reward_name,status,issued_at,expires_at").eq("customer_profile_id", profile.id).order("issued_at", { ascending: false }).limit(100),
+    db.from("loyalty_rewards").select("id,reward_code,reward_type,reward_product_id,reward_name,status,issued_at,expires_at").eq("customer_profile_id", profile.id).order("issued_at", { ascending: false }).limit(100),
     db.from("orders").select("id", { count: "exact", head: true }).eq("customer_profile_id", profile.id),
   ]);
   if (progressResult.error) throw progressResult.error;
@@ -50,10 +50,30 @@ async function readMember(membershipNumber: string) {
 
   const ruleIds = [...new Set((progressResult.data || []).map((item) => item.rule_id))];
   const rulesResult = ruleIds.length
-    ? await db.from("loyalty_rules").select("id,name,trigger_product_id,required_quantity,reward_name,active").in("id", ruleIds)
+    ? await db.from("loyalty_rules").select("id,name,trigger_product_id,required_quantity,reward_name,active,starts_on,ends_on").in("id", ruleIds)
     : { data: [], error: null };
   if (rulesResult.error) throw rulesResult.error;
-  const productIds = [...new Set((rulesResult.data || []).map((rule) => rule.trigger_product_id))];
+  const rewardIds = (rewardsResult.data || []).map((reward) => reward.id);
+  const [triggerLinksResult, rewardLinksResult] = await Promise.all([
+    ruleIds.length
+      ? db.from("loyalty_rule_trigger_products").select("rule_id,product_id,position").in("rule_id", ruleIds).order("position")
+      : Promise.resolve({ data: [], error: null }),
+    rewardIds.length
+      ? db.from("loyalty_reward_products").select("reward_id,product_id,position").in("reward_id", rewardIds).order("position")
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (triggerLinksResult.error) throw triggerLinksResult.error;
+  if (rewardLinksResult.error) throw rewardLinksResult.error;
+  const triggerIdsByRule = new Map<string, string[]>();
+  const rewardIdsByReward = new Map<string, string[]>();
+  for (const item of triggerLinksResult.data || []) triggerIdsByRule.set(item.rule_id, [...(triggerIdsByRule.get(item.rule_id) || []), item.product_id]);
+  for (const item of rewardLinksResult.data || []) rewardIdsByReward.set(item.reward_id, [...(rewardIdsByReward.get(item.reward_id) || []), item.product_id]);
+  const productIds = [...new Set([
+    ...(rulesResult.data || []).map((rule) => rule.trigger_product_id),
+    ...(triggerLinksResult.data || []).map((item) => item.product_id),
+    ...(rewardsResult.data || []).flatMap((reward) => reward.reward_product_id ? [reward.reward_product_id] : []),
+    ...(rewardLinksResult.data || []).map((item) => item.product_id),
+  ])];
   const productsResult = productIds.length
     ? await db.from("products").select("id,name").in("id", productIds)
     : { data: [], error: null };
@@ -61,15 +81,19 @@ async function readMember(membershipNumber: string) {
 
   const progressByRule = new Map((progressResult.data || []).map((item) => [item.rule_id, item]));
   const productNames = new Map((productsResult.data || []).map((product) => [product.id, product.name]));
-  const rewards = (rewardsResult.data || []).map((reward) => ({
-    id: reward.id,
-    code: reward.reward_code,
-    type: reward.reward_type,
-    name: reward.reward_name,
-    status: reward.status === "issued" && reward.expires_at && reward.expires_at <= nowIso ? "expired" : reward.status,
-    issuedAt: reward.issued_at,
-    expiresAt: reward.expires_at,
-  }));
+  const rewards = (rewardsResult.data || []).map((reward) => {
+    const eligibleIds = rewardIdsByReward.get(reward.id) || (reward.reward_product_id ? [reward.reward_product_id] : []);
+    return {
+      id: reward.id,
+      code: reward.reward_code,
+      type: reward.reward_type,
+      name: reward.reward_name,
+      products: eligibleIds.map((id) => ({ id, name: productNames.get(id) || "Eligible product" })),
+      status: reward.status === "issued" && reward.expires_at && reward.expires_at <= nowIso ? "expired" : reward.status,
+      issuedAt: reward.issued_at,
+      expiresAt: reward.expires_at,
+    };
+  });
 
   return {
     profile: {
@@ -82,13 +106,14 @@ async function readMember(membershipNumber: string) {
       memberSince: profile.created_at,
     },
     orderCount: ordersResult.count || 0,
-    progress: (rulesResult.data || []).filter((rule) => rule.active).map((rule) => {
+    progress: (rulesResult.data || []).filter((rule) => rule.active && rule.starts_on <= nowIso.slice(0, 10) && (!rule.ends_on || rule.ends_on >= nowIso.slice(0, 10))).map((rule) => {
       const progress = progressByRule.get(rule.id);
       const unitsEarned = Number(progress?.units_earned || 0);
+      const eligibleIds = triggerIdsByRule.get(rule.id) || [rule.trigger_product_id];
       return {
         ruleId: rule.id,
         name: rule.name,
-        productName: productNames.get(rule.trigger_product_id) || "Eligible product",
+        productName: eligibleIds.map((id) => productNames.get(id)).filter(Boolean).join(", ") || "Eligible products",
         requiredQuantity: rule.required_quantity,
         unitsEarned,
         currentUnits: unitsEarned % rule.required_quantity,
@@ -126,9 +151,10 @@ export async function PATCH(request: Request) {
     if (requestBodyExceeds(request, 4 * 1024)) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
     const auth = await authorize();
     if (auth.response || !auth.staff) return auth.response;
-    const body = await request.json() as { code?: unknown; rewardId?: unknown };
+    const body = await request.json() as { code?: unknown; rewardId?: unknown; rewardProductId?: unknown };
     const membershipNumber = normalizeMembershipCode(body.code);
     const rewardId = typeof body.rewardId === "string" ? body.rewardId : "";
+    const rewardProductId = typeof body.rewardProductId === "string" ? body.rewardProductId : "";
     if (!membershipNumber || !uuidPattern.test(rewardId)) return NextResponse.json({ error: "Invalid member or reward." }, { status: 400 });
 
     const db = createAdminClient();
@@ -137,7 +163,7 @@ export async function PATCH(request: Request) {
     if (!profile) return NextResponse.json({ error: "Member not found." }, { status: 404 });
     const { data: reward, error: rewardError } = await db
       .from("loyalty_rewards")
-      .select("id,reward_code,reward_name,reward_type,expires_at")
+      .select("id,reward_code,reward_name,reward_type,reward_product_id,expires_at")
       .eq("id", rewardId)
       .eq("customer_profile_id", profile.id)
       .eq("status", "issued")
@@ -149,10 +175,23 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "This reward has expired." }, { status: 409 });
     }
 
+    let redeemedProductId: string | null = null;
+    if (reward.reward_type === "free_product") {
+      if (!uuidPattern.test(rewardProductId)) return NextResponse.json({ error: "Choose the free product being handed to the customer." }, { status: 400 });
+      const { data: eligible, error: eligibleError } = await db.from("loyalty_reward_products").select("product_id").eq("reward_id", reward.id).eq("product_id", rewardProductId).maybeSingle();
+      if (eligibleError) throw eligibleError;
+      const legacyEligible = reward.reward_product_id === rewardProductId;
+      if (!eligible && !legacyEligible) return NextResponse.json({ error: "That product is not included in this reward." }, { status: 400 });
+      const { data: availableProduct, error: productError } = await db.from("products").select("id").eq("id", rewardProductId).eq("active", true).eq("sold_out", false).maybeSingle();
+      if (productError) throw productError;
+      if (!availableProduct) return NextResponse.json({ error: "That reward product is currently unavailable." }, { status: 409 });
+      redeemedProductId = rewardProductId;
+    }
+
     const redeemedAt = new Date().toISOString();
     const { data: redeemed, error: redeemError } = await db
       .from("loyalty_rewards")
-      .update({ status: "redeemed", redeemed_at: redeemedAt, redeemed_by: auth.staff.legacy ? null : auth.staff.id, updated_at: redeemedAt })
+      .update({ status: "redeemed", redeemed_product_id: redeemedProductId, redeemed_at: redeemedAt, redeemed_by: auth.staff.legacy ? null : auth.staff.id, updated_at: redeemedAt })
       .eq("id", reward.id)
       .eq("status", "issued")
       .select("id")
@@ -165,7 +204,7 @@ export async function PATCH(request: Request) {
       entityType: "loyalty_reward",
       entityId: reward.id,
       summary: `Redeemed ${reward.reward_name} (${reward.reward_code}) at the counter.`,
-      metadata: { membershipNumber, rewardType: reward.reward_type },
+      metadata: { membershipNumber, rewardType: reward.reward_type, redeemedProductId },
     } });
     return NextResponse.json({ redeemed: true });
   } catch (error) {

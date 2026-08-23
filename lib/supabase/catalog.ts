@@ -141,6 +141,8 @@ export async function readSupabaseCatalog(): Promise<SupabaseCatalog | null> {
     description: stringValue(row.description),
     priceText: stringValue(row.price_text),
     image: stringValue(row.image_url),
+    startDate: stringValue(row.starts_on),
+    endDate: row.ends_on ? stringValue(row.ends_on) : null,
   }));
 
   const contentRow = contentResult.data as Row | null;

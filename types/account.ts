@@ -18,6 +18,8 @@ export type LoyaltyProgressView = {
   description: string;
   triggerProductId: string;
   triggerProductName: string;
+  triggerProductIds: string[];
+  triggerProductNames: string[];
   requiredQuantity: number;
   unitsEarned: number;
   currentUnits: number;
@@ -32,6 +34,8 @@ export type LoyaltyRewardView = {
   ruleId: string;
   type: "free_product" | "physical_gift";
   productId: string | null;
+  productIds: string[];
+  productNames: string[];
   name: string;
   status: "issued" | "reserved" | "redeemed" | "revoked" | "expired";
   issuedAt: string;
@@ -57,4 +61,3 @@ export type CustomerAccountData = {
   rewards: LoyaltyRewardView[];
   giftCards: AccountGiftCardView[];
 };
-

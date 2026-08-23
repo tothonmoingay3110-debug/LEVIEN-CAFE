@@ -11,7 +11,7 @@ type ReportData = {
   orders: { orderNumber: string; date: string; customer: string; type: string; status: string; total: number }[];
   customers: { id: string; name: string; phone: string; email: string; orders: number; spent: number; lastOrder: string }[];
   products: { id: string; name: string; quantity: number; comboQuantity: number; sales: number; orderCount: number }[];
-  promotions: { id: string; title: string; eyebrow: string; position: number; active: boolean }[];
+  promotions: { id: string; title: string; eyebrow: string; position: number; active: boolean; startDate: string; endDate: string | null }[];
   combos: { id: string; name: string; quantity: number; sales: number; orderCount: number }[];
 };
 
@@ -94,8 +94,8 @@ function reportTable(data: ReportData, tab: ReportTab): { headers: string[]; row
     rows: data.products.map((row) => [row.name, row.quantity, row.comboQuantity, row.orderCount, money(row.sales)]),
   };
   if (tab === "promotions") return {
-    headers: ["Promotion", "Label", "Slide", "Status"],
-    rows: data.promotions.map((row) => [row.title, row.eyebrow, row.position, row.active ? "Active" : "Hidden"]),
+    headers: ["Promotion", "Label", "Slide", "Start Date", "End Date", "Status"],
+    rows: data.promotions.map((row) => { const today = dateKey(new Date()); const status = !row.active ? "Paused" : row.startDate > today ? "Scheduled" : row.endDate && row.endDate < today ? "Expired" : "Live"; return [row.title, row.eyebrow, row.position, displayDate(row.startDate), row.endDate ? displayDate(row.endDate) : "No end date", status]; }),
   };
   return {
     headers: ["Combo", "Quantity Sold", "Orders", "Sales"],

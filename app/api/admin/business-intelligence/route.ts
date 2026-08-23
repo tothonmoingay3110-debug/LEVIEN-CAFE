@@ -40,7 +40,7 @@ type CatalogProduct = { id: string; name: string; category_id: string | null; pr
 type CatalogCategory = { id: string; name: string };
 type CatalogCombo = { id: string; name: string; price: number; active: boolean };
 type CatalogComboProduct = { combo_id: string; product_id: string };
-type CatalogPromotion = { id: string; name: string; active: boolean };
+type CatalogPromotion = { id: string; name: string; active: boolean; starts_on: string; ends_on: string | null };
 type PromotionEvent = { promotion_id: string; event_type: "impression" | "click" };
 
 function validDate(value: string | null) {
@@ -220,7 +220,7 @@ export async function GET(request: Request) {
       db.from("categories").select("id,name").order("name"),
       db.from("combos").select("id,name,price,active").order("name"),
       db.from("combo_products").select("combo_id,product_id,position").order("position"),
-      db.from("promotions").select("id,name,active").order("sort_order"),
+      db.from("promotions").select("id,name,active,starts_on,ends_on").order("sort_order"),
       readPromotionEvents(from, to),
     ]);
     if (productResult.error) throw productResult.error;
@@ -440,7 +440,7 @@ export async function GET(request: Request) {
         clickThroughRate: impressions ? round(clicks / impressions * 100) : 0,
         attributedOrders: attributed.length,
         attributedRevenue: round(attributed.reduce((sum, order) => sum + orderRevenue(order), 0)),
-        active: promotion.active,
+        active: promotion.active && promotion.starts_on <= storeDateKey(new Date().toISOString()) && (!promotion.ends_on || promotion.ends_on >= storeDateKey(new Date().toISOString())),
       };
     });
 
@@ -514,7 +514,7 @@ export async function GET(request: Request) {
         lowSeller: lowProduct ? { name: lowProduct.name, quantity: lowProduct.quantity } : null,
         newCustomers: customerRows.filter((customer) => customer.segment === "New").length,
         returningCustomers: customerRows.filter((customer) => customer.segment !== "New").length,
-        activePromotions: catalogPromotions.filter((promotion) => promotion.active).length,
+        activePromotions: catalogPromotions.filter((promotion) => promotion.active && promotion.starts_on <= storeDateKey(new Date().toISOString()) && (!promotion.ends_on || promotion.ends_on >= storeDateKey(new Date().toISOString()))).length,
       },
       trend,
       customers: customerRows,

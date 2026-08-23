@@ -151,7 +151,7 @@ export async function GET(request: Request) {
     const comboChildren = await readComboChildren(comboParents.map((item) => item.id));
     const [{ data: catalogProducts, error: productError }, { data: promotions, error: promotionError }] = await Promise.all([
       db.from("products").select("id,name").order("name"),
-      db.from("promotions").select("id,name,eyebrow,sort_order,active").order("sort_order"),
+      db.from("promotions").select("id,name,eyebrow,sort_order,active,starts_on,ends_on").order("sort_order"),
     ]);
     if (productError) throw productError;
     if (promotionError) throw promotionError;
@@ -239,7 +239,7 @@ export async function GET(request: Request) {
       })),
       customers: [...customerMap.values()].map((customer) => ({ ...customer, spent: round(customer.spent) })).sort((left, right) => right.spent - left.spent),
       products: [...productMap.values()].map((product) => ({ ...product, sales: round(product.sales), orderCount: product.orders.size, orders: undefined })).sort((left, right) => right.quantity - left.quantity),
-      promotions: (promotions || []).map((promotion) => ({ id: promotion.id, title: promotion.name, eyebrow: promotion.eyebrow || "", position: promotion.sort_order, active: promotion.active })),
+      promotions: (promotions || []).map((promotion) => ({ id: promotion.id, title: promotion.name, eyebrow: promotion.eyebrow || "", position: promotion.sort_order, active: promotion.active, startDate: promotion.starts_on, endDate: promotion.ends_on })),
       combos: [...comboMap.values()].map((combo) => ({ ...combo, sales: round(combo.sales), orderCount: combo.orders.size, orders: undefined })).sort((left, right) => right.quantity - left.quantity),
     }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
