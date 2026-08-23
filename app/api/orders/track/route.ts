@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { allowRequest } from "@/lib/rate-limit";
+import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CartItem, CustomerOrder } from "@/types";
 
@@ -94,5 +96,40 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Unable to track order:", error);
     return NextResponse.json({ error: "Unable to load order." }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+  if (requestBodyExceeds(request, 2_000)) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
+  if (!allowRequest(request, "order-tracking-lookup", 12, 10 * 60 * 1000)) {
+    return NextResponse.json({ error: "Too many tracking attempts. Try again later." }, { status: 429 });
+  }
+
+  try {
+    const body = await request.json() as { orderNumber?: unknown; phone?: unknown };
+    const orderNumber = typeof body.orderNumber === "string" ? body.orderNumber.trim().replace(/\s+/g, "").toUpperCase() : "";
+    const phoneDigits = typeof body.phone === "string" ? body.phone.replace(/\D/g, "") : "";
+    if (!/^LV[A-Z0-9-]{6,28}$/.test(orderNumber) || phoneDigits.length < 4 || phoneDigits.length > 15) {
+      return NextResponse.json({ error: "Enter a valid order number and at least the last 4 phone digits." }, { status: 400 });
+    }
+
+    const supabase = createAdminClient();
+    const { data: order, error } = await supabase
+      .from("orders")
+      .select("id,phone_normalized")
+      .eq("order_number", orderNumber)
+      .maybeSingle();
+    if (error) throw error;
+
+    const storedPhone = order?.phone_normalized?.replace(/\D/g, "") || "";
+    if (!order || !storedPhone.endsWith(phoneDigits)) {
+      return NextResponse.json({ error: "We could not verify this order. Check the order number and phone digits." }, { status: 404 });
+    }
+
+    return NextResponse.json({ trackingToken: order.id }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    console.error("Unable to verify order tracking lookup:", error);
+    return NextResponse.json({ error: "Unable to verify this order right now." }, { status: 500 });
   }
 }

@@ -7,10 +7,21 @@ import ScheduleWorkspace from "@/components/admin/ScheduleWorkspace";
 import TimeOffWorkspace from "@/components/admin/TimeOffWorkspace";
 import WorkforceWorkspace from "@/components/admin/WorkforceWorkspace";
 import StaffReports from "@/components/admin/StaffReports";
+import ReportCenter from "@/components/admin/ReportCenter";
+import {
+  AiBusinessInsights,
+  CampaignAnalytics,
+  CustomerAnalytics,
+  KpiDashboard,
+  ProductAnalytics,
+} from "@/components/admin/BusinessIntelligence";
 import ActivityLog from "@/components/admin/ActivityLog";
 import ContactMessages from "@/components/admin/ContactMessages";
 import GiftCards from "@/components/admin/GiftCards";
 import LoyaltyPrograms from "@/components/admin/LoyaltyPrograms";
+import MemberScanner from "@/components/admin/MemberScanner";
+import ComboSuggestions, { type ComboSuggestionDraft } from "@/components/admin/ComboSuggestions";
+import PasswordInput from "@/components/PasswordInput";
 import {
   roleHasPermission,
   staffRoleLabels,
@@ -20,7 +31,7 @@ import {
 } from "@/lib/staff-permissions";
 import type { CustomerOrder, OrderStatus } from "@/types";
 
-type AdminView = "dashboard" | "orders" | "messages" | "workspace" | "schedule" | "timeoff" | "labor" | "reports" | "activity" | "customers" | "loyalty" | "giftcards" | "employees" | "products" | "categories" | "toppings" | "combos" | "promotions" | "content" | "account";
+type AdminView = "dashboard" | "orders" | "memberscan" | "messages" | "workspace" | "schedule" | "timeoff" | "reportcenter" | "kpidashboard" | "customeranalytics" | "productanalytics" | "campaignanalytics" | "aiinsights" | "labor" | "reports" | "activity" | "customers" | "loyalty" | "giftcards" | "employees" | "products" | "categories" | "toppings" | "combos" | "combosuggestions" | "promotions" | "content" | "account";
 type AdminIconName = AdminView | "external" | "logout" | "arrow";
 type Category = { id: string; name: string; icon: string; active: boolean };
 type Topping = { id: string; name: string; price: number; active: boolean };
@@ -97,17 +108,24 @@ const seed: DB = {
 };
 
 const viewLabels: Record<AdminView, string> = {
-  dashboard: "Dashboard", orders: "Orders", messages: "Contact Messages", workspace: "My Workspace", schedule: "Schedule", timeoff: "Time Off", labor: "Labor Planning", reports: "Staff Reports", activity: "Activity Log", customers: "Customers", loyalty: "Loyalty Programs", giftcards: "Gift Cards", employees: "Employees", products: "Products", categories: "Categories",
-  toppings: "Toppings", combos: "Combos", promotions: "Promotions", content: "Website Content", account: "My Account",
+  dashboard: "Dashboard", orders: "Orders", memberscan: "Scan Member", messages: "Contact Messages", workspace: "My Workspace", schedule: "Schedule", timeoff: "Time Off", reportcenter: "Report Center", kpidashboard: "KPI Dashboard", customeranalytics: "Customer Analytics", productanalytics: "Product Analytics", campaignanalytics: "Promotion & Combo Analytics", aiinsights: "AI Business Insights", labor: "Labor Planning", reports: "Staff Reports", activity: "Activity Log", customers: "Customers", loyalty: "Loyalty Programs", giftcards: "Gift Cards", employees: "Employees", products: "Products", categories: "Categories",
+  toppings: "Toppings", combos: "Combos", combosuggestions: "Combo Suggestions", promotions: "Promotions", content: "Website Content", account: "My Account",
 };
-const adminViewOrder: AdminView[] = ["dashboard", "orders", "messages", "workspace", "schedule", "timeoff", "labor", "reports", "activity", "customers", "loyalty", "giftcards", "employees", "products", "categories", "toppings", "combos", "promotions", "content", "account"];
+const adminViewOrder: AdminView[] = ["dashboard", "orders", "memberscan", "messages", "workspace", "schedule", "timeoff", "reportcenter", "kpidashboard", "customeranalytics", "productanalytics", "campaignanalytics", "aiinsights", "labor", "reports", "activity", "customers", "loyalty", "giftcards", "employees", "products", "categories", "toppings", "combos", "combosuggestions", "promotions", "content", "account"];
 const viewPermissions: Partial<Record<AdminView, StaffPermission>> = {
   dashboard: "view_dashboard",
   orders: "manage_orders",
+  memberscan: "manage_orders",
   messages: "manage_contacts",
   workspace: "view_own_schedule",
   schedule: "view_own_schedule",
   timeoff: "view_own_schedule",
+  reportcenter: "view_sales_reports",
+  kpidashboard: "view_sales_reports",
+  customeranalytics: "view_sales_reports",
+  productanalytics: "view_sales_reports",
+  campaignanalytics: "view_sales_reports",
+  aiinsights: "view_sales_reports",
   labor: "view_compensation",
   reports: "view_workforce_reports",
   activity: "view_audit_log",
@@ -119,6 +137,7 @@ const viewPermissions: Partial<Record<AdminView, StaffPermission>> = {
   categories: "manage_catalog",
   toppings: "manage_catalog",
   combos: "manage_catalog",
+  combosuggestions: "manage_catalog",
   promotions: "manage_catalog",
   content: "manage_catalog",
 };
@@ -138,10 +157,10 @@ type AdminNavGroupId = "overview" | "staff" | "planning" | "store";
 type AdminNavGroup = { id: AdminNavGroupId; label: string; shortLabel: string; icon: AdminIconName; views: AdminView[] };
 
 const adminNavGroups: AdminNavGroup[] = [
-  { id: "overview", label: "Overview", shortLabel: "Overview", icon: "dashboard", views: ["dashboard", "orders", "messages"] },
+  { id: "overview", label: "Overview", shortLabel: "Overview", icon: "dashboard", views: ["dashboard", "orders", "memberscan", "messages"] },
   { id: "staff", label: "Staff & Schedule", shortLabel: "Staff", icon: "workspace", views: ["workspace", "schedule", "timeoff", "employees"] },
-  { id: "planning", label: "Planning & Reports", shortLabel: "Reports", icon: "reports", views: ["labor", "reports", "activity"] },
-  { id: "store", label: "Customers & Store", shortLabel: "Store", icon: "products", views: ["customers", "loyalty", "giftcards", "products", "categories", "toppings", "combos", "promotions", "content"] },
+  { id: "planning", label: "Planning & Reports", shortLabel: "Reports", icon: "reports", views: ["reportcenter", "kpidashboard", "customeranalytics", "productanalytics", "campaignanalytics", "aiinsights", "labor", "reports", "activity"] },
+  { id: "store", label: "Customers & Store", shortLabel: "Store", icon: "products", views: ["customers", "loyalty", "giftcards", "products", "categories", "toppings", "combos", "combosuggestions", "promotions", "content"] },
 ];
 
 function AdminSidebarNav({
@@ -619,6 +638,19 @@ export default function AdminApp() {
     setToast(message);
     if (catalogChanged) void saveCloudCatalog(next);
   }
+  function createSuggestedCombo(suggestion: ComboSuggestionDraft) {
+    const combo: Combo = {
+      id: catalogId(),
+      name: suggestion.name,
+      description: suggestion.description,
+      price: suggestion.suggestedPrice,
+      productIds: [...suggestion.productIds],
+      image: "",
+      active: false,
+    };
+    update({ ...db, combos: [combo, ...db.combos] }, "Draft combo created · review it before publishing");
+    setView("combos");
+  }
   function refreshCloudOrders() {
     if (orderRefreshPromise.current) return orderRefreshPromise.current;
     const refreshRequest = (async () => {
@@ -762,10 +794,17 @@ export default function AdminApp() {
         {view === "dashboard" && canManageCatalog && <Dashboard db={db} revenue={revenue} todayOrders={todayOrders} openView={setView} openModal={setModal} />}
         {view === "dashboard" && !canManageCatalog && canManageOrders && <OperationsDashboard db={db} todayOrders={todayOrders} openView={setView} />}
          {view === "orders" && <Orders db={db} orders={filteredOrders} filter={orderFilter} setFilter={setOrderFilter} update={update} openModal={setModal} />}
+         {view === "memberscan" && <MemberScanner notify={setToast} />}
          {view === "messages" && <ContactMessages notify={setToast} />}
         {view === "workspace" && <WorkforceWorkspace staff={staff} notify={setToast} unreadChanged={setUnreadNotifications} />}
         {view === "schedule" && <ScheduleWorkspace staff={staff} notify={setToast} />}
         {view === "timeoff" && <TimeOffWorkspace staff={staff} notify={setToast} />}
+        {view === "reportcenter" && <ReportCenter />}
+        {view === "kpidashboard" && <KpiDashboard />}
+        {view === "customeranalytics" && <CustomerAnalytics />}
+        {view === "productanalytics" && <ProductAnalytics />}
+        {view === "campaignanalytics" && <CampaignAnalytics />}
+        {view === "aiinsights" && <AiBusinessInsights />}
         {view === "labor" && <LaborPlanning />}
         {view === "reports" && <StaffReports />}
         {view === "activity" && <ActivityLog />}
@@ -777,6 +816,7 @@ export default function AdminApp() {
         {view === "categories" && <Categories db={db} openModal={setModal} update={update} />}
         {view === "toppings" && <Toppings db={db} openModal={setModal} update={update} />}
         {view === "combos" && <Combos db={db} openModal={setModal} update={update} />}
+        {view === "combosuggestions" && <ComboSuggestions products={db.products} combos={db.combos} orders={db.orders} createDraft={createSuggestedCombo} />}
         {view === "promotions" && <Promotions db={db} openModal={setModal} update={update} />}
         {view === "content" && <WebsiteContent db={db} openModal={setModal} />}
         {view === "account" && <StaffAccount staff={staff} passwordChanged={handlePasswordChanged} />}
@@ -790,7 +830,7 @@ export default function AdminApp() {
 }
 
 function AdminLogin({ onLogin, toast }: { onLogin: (e: React.FormEvent<HTMLFormElement>) => void; toast: string }) {
-  return <div className="adminLoginPage"><div className="adminLoginVisual"><span>LEVIEN CAFE</span><h1>Your café,<br/>beautifully managed.</h1><p>Orders, store content and staff operations in one role-protected workspace.</p></div><form className="adminLoginCard" onSubmit={onLogin}><div className="adminLoginLogo">LV</div><span className="adminEyebrow">Staff workspace</span><h2>Welcome back</h2><p>Sign in with your staff email. The legacy Owner username remains available during migration.</p><label>Email or legacy username<input name="username" defaultValue="admin" autoComplete="username" /></label><label>Password<input name="password" type="password" autoComplete="current-password" /></label><button className="adminPrimary" type="submit">Sign in</button><small>Identity and permissions are verified securely by the server.</small>{toast && <div className="adminLoginError">{toast}</div>}</form></div>;
+  return <div className="adminLoginPage"><div className="adminLoginVisual"><span>LEVIEN CAFE</span><h1>Your café,<br/>beautifully managed.</h1><p>Orders, store content and staff operations in one role-protected workspace.</p></div><form className="adminLoginCard" onSubmit={onLogin}><div className="adminLoginLogo">LV</div><span className="adminEyebrow">Staff workspace</span><h2>Welcome back</h2><p>Sign in with your staff email. The legacy Owner username remains available during migration.</p><label>Email or legacy username<input name="username" defaultValue="admin" autoComplete="username" /></label><label>Password<PasswordInput name="password" autoComplete="current-password" required /></label><button className="adminPrimary" type="submit">Sign in</button><small>Identity and permissions are verified securely by the server.</small>{toast && <div className="adminLoginError">{toast}</div>}</form></div>;
 }
 
 function Dashboard({ db, revenue, todayOrders, openView, openModal }: { db: DB; revenue: number; todayOrders: Order[]; openView: (v: AdminView) => void; openModal: (m: { type: string; id?: string }) => void }) {
@@ -836,7 +876,7 @@ function PasswordChangeForm({ required, changed }: { required: boolean; changed:
       setSaving(false);
     }
   }
-  return <section className={`adminCard adminPasswordCard ${required ? "required" : ""}`}>{required && <div className="adminPasswordRequired"><strong>Password change required</strong><span>Use the temporary password as your current password before accessing the rest of the workspace.</span></div>}<div className="adminCardHead"><div><span className="adminEyebrow">Account security</span><h3>Change password</h3></div></div><form className="adminPasswordForm" onSubmit={submit}><label>Current password<input name="currentPassword" type="password" autoComplete="current-password" required/></label><label>New password<input name="newPassword" type="password" autoComplete="new-password" minLength={12} required/></label><label>Confirm new password<input name="confirmation" type="password" autoComplete="new-password" minLength={12} required/></label><small>Minimum 12 characters with uppercase, lowercase, number, and symbol.</small>{error && <div className="adminLoginError">{error}</div>}{message && <div className="adminFormSuccess">{message}</div>}<button className="adminPrimary" type="submit" disabled={saving}>{saving ? "Changing…" : "Change password"}</button></form></section>;
+  return <section className={`adminCard adminPasswordCard ${required ? "required" : ""}`}>{required && <div className="adminPasswordRequired"><strong>Password change required</strong><span>Use the temporary password as your current password before accessing the rest of the workspace.</span></div>}<div className="adminCardHead"><div><span className="adminEyebrow">Account security</span><h3>Change password</h3></div></div><form className="adminPasswordForm" onSubmit={submit}><label>Current password<PasswordInput name="currentPassword" autoComplete="current-password" required/></label><label>New password<PasswordInput name="newPassword" autoComplete="new-password" minLength={8} required/></label><label>Confirm new password<PasswordInput name="confirmation" autoComplete="new-password" minLength={8} required/></label><small>Minimum 8 characters with uppercase, lowercase, number, and symbol.</small>{error && <div className="adminLoginError">{error}</div>}{message && <div className="adminFormSuccess">{message}</div>}<button className="adminPrimary" type="submit" disabled={saving}>{saving ? "Changing…" : "Change password"}</button></form></section>;
 }
 function Metric({ label, value, detail }: { label: string; value: string; detail: string }) { return <div className="adminMetric"><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>; }
 function QuickAction({ icon, title, text, onClick }: { icon: AdminIconName; title: string; text: string; onClick: () => void }) { return <button className="adminQuickAction" onClick={onClick}><span><AdminIcon name={icon} /></span><div><strong>{title}</strong><small>{text}</small></div><b><AdminIcon name="arrow" /></b></button>; }
@@ -1373,10 +1413,17 @@ function AdminIcon({ name }: { name: AdminIconName }) {
   const paths: Record<AdminIconName, React.ReactNode> = {
     dashboard: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
     orders: <><path d="M6 3h12l2 4v14H4V7l2-4Z"/><path d="M4 7h16"/><path d="M9 11a3 3 0 0 0 6 0"/></>,
+    memberscan: <><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M7 10v4M10 9v6M13 10v4M16 9v6"/></>,
     messages: <><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></>,
     schedule: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/><path d="m8 15 2 2 5-5"/></>,
     workspace: <><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/><path d="M7 13h4M7 17h7"/><circle cx="17" cy="15" r="2.5"/></>,
     timeoff: <><path d="M4 5h16v15H4z"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="m9 15 2 2 4-5"/></>,
+    reportcenter: <><path d="M4 20V10M10 20V6M16 20v-8M22 20V3"/><path d="M2 20h22"/><path d="m4 7 6-3 6 5 6-8"/></>,
+    kpidashboard: <><path d="M4 20V12M10 20V7M16 20v-5M22 20V3"/><path d="M2 20h20"/><path d="m4 9 6-5 6 7 6-9"/></>,
+    customeranalytics: <><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 19v-5M19 19v-8M22 19v-3"/></>,
+    productanalytics: <><path d="M3 20h18M5 17V9M10 17V4M15 17v-6M20 17V7"/><path d="m5 6 5-4 5 6 5-4"/></>,
+    campaignanalytics: <><path d="M20 12 12 20 4 12 12 4l8 8Z"/><path d="M8 17 17 8"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/></>,
+    aiinsights: <><path d="m12 3 1.8 4.7L19 9.5l-5.2 1.8L12 16l-1.8-4.7L5 9.5l5.2-1.8L12 3Z"/><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/><path d="M4 15v6M1 18h6"/></>,
     labor: <><path d="M4 20V10M10 20V4M16 20v-7M22 20V7"/><path d="M2 20h20"/><path d="m4 7 6-4 6 7 6-5"/></>,
     reports: <><path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h8M8 15h5"/><path d="M16 17h2"/></>,
     activity: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M5 4 3 6M19 4l2 2"/></>,
@@ -1388,6 +1435,7 @@ function AdminIcon({ name }: { name: AdminIconName }) {
     categories: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
     toppings: <><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></>,
     combos: <><rect x="3" y="5" width="8" height="8" rx="2"/><rect x="13" y="11" width="8" height="8" rx="2"/><path d="M11 9h3M10 15h3"/></>,
+    combosuggestions: <><path d="m12 3 1.7 4.2L18 9l-4.3 1.8L12 15l-1.7-4.2L6 9l4.3-1.8L12 3Z"/><path d="m18 14 .9 2.1L21 17l-2.1.9L18 20l-.9-2.1L15 17l2.1-.9L18 14Z"/><path d="M4 14v6M2 17h4"/></>,
     promotions: <><path d="M20 12 12 20 4 12 12 4l8 8Z"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/><path d="m9 15 6-6"/></>,
     content: <><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></>,
     account: <><circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/><path d="M18 5.5a8.5 8.5 0 0 1 0 5"/></>,

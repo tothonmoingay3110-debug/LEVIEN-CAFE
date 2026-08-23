@@ -1,0 +1,34 @@
+LEVIEN CAFE — V3.2, V3.3, V3.4, V3.5 AND V3.7
+
+Module 6 POS Import is intentionally skipped.
+
+1. Keep the current .env.local. No new environment variable is required.
+2. Replace the changed project files.
+3. Open Supabase -> SQL Editor.
+4. Run this migration once:
+   supabase/migrations/20260825000100_v3_business_intelligence.sql
+5. In the project terminal run:
+   npm.cmd install
+6. Run strict TypeScript validation:
+   npx.cmd tsc --noEmit
+7. Run the production build:
+   npm.cmd run build -- --webpack
+8. Restart or redeploy the application.
+9. Sign in as Owner or Manager.
+10. Open Planning & Reports and test:
+    - KPI Dashboard
+    - Customer Analytics
+    - Product Analytics
+    - Promotion & Combo Analytics
+    - AI Business Insights
+    Export one CSV and one Excel file from each page.
+11. Click a homepage promotion, place an order, mark it Completed, then confirm
+    the attributed order appears under Promotion & Combo Analytics.
+
+Important:
+- Revenue excludes tax and delivery fees.
+- Combo profitability is not estimated without product cost data.
+- No customer/order data is sent to an external AI provider.
+- Existing historical orders remain compatible.
+
+Full details: docs/V3.2-V3.7-BUSINESS-INTELLIGENCE.md

@@ -15,6 +15,7 @@ export type StaffPermission =
   | "manage_schedule"
   | "view_own_schedule"
   | "view_workforce_reports"
+  | "view_sales_reports"
   | "view_audit_log";
 
 export type StaffSessionSummary = {
@@ -48,6 +49,7 @@ const permissionsByRole: Record<StaffRole, ReadonlySet<StaffPermission>> = {
     "manage_schedule",
     "view_own_schedule",
     "view_workforce_reports",
+    "view_sales_reports",
     "view_audit_log",
   ]),
   manager: new Set<StaffPermission>([
@@ -63,6 +65,7 @@ const permissionsByRole: Record<StaffRole, ReadonlySet<StaffPermission>> = {
     "manage_schedule",
     "view_own_schedule",
     "view_workforce_reports",
+    "view_sales_reports",
     "view_audit_log",
   ]),
   supervisor: new Set<StaffPermission>([

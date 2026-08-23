@@ -52,7 +52,7 @@ export function Header() {
             </Link>
             <Link className="headerAccount" href={authenticated ? "/account" : "/account/sign-in"} aria-label={authenticated ? "Open my LEVIEN account" : "Sign in to LEVIEN"}>
               <span aria-hidden="true">{authenticated ? (profile?.firstName?.[0] || "M").toUpperCase() : "♙"}</span>
-              <b>{authenticated ? "Account" : "Sign In"}</b>
+              <b>{authenticated ? (profile?.firstName?.trim() || "My Account") : "Sign In"}</b>
             </Link>
             <button className="button primary orderButton" onClick={openCart}>
               My Order <span className="orderCount">{totalItems}</span>

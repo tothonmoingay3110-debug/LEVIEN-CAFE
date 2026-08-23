@@ -74,6 +74,21 @@ export type Database = {
         image_url: string | null;
         sort_order: number;
       }>;
+      promotion_events: {
+        Row: {
+          id: string;
+          promotion_id: string;
+          event_type: "impression" | "click";
+          session_key: string;
+          created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["promotion_events"]["Row"], "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
       staff_profiles: {
         Row: {
           id: string;
@@ -628,6 +643,7 @@ export type Database = {
           stripe_payment_intent_id: string | null;
           gift_card_id: string | null;
           gift_card_amount: number;
+          promotion_id: string | null;
           loyalty_reward_id: string | null;
           loyalty_discount: number;
           subtotal: number;
@@ -639,7 +655,7 @@ export type Database = {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["orders"]["Row"], "id" | "created_at" | "updated_at" | "customer_profile_id" | "payment_status" | "payment_provider" | "amount_due" | "stripe_checkout_session_id" | "stripe_payment_intent_id" | "gift_card_id" | "gift_card_amount" | "loyalty_reward_id" | "loyalty_discount"> & {
+        Insert: Omit<Database["public"]["Tables"]["orders"]["Row"], "id" | "created_at" | "updated_at" | "customer_profile_id" | "payment_status" | "payment_provider" | "amount_due" | "stripe_checkout_session_id" | "stripe_payment_intent_id" | "gift_card_id" | "gift_card_amount" | "promotion_id" | "loyalty_reward_id" | "loyalty_discount"> & {
           id?: string;
           customer_profile_id?: string | null;
           payment_status?: Database["public"]["Tables"]["orders"]["Row"]["payment_status"];
@@ -649,6 +665,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null;
           gift_card_id?: string | null;
           gift_card_amount?: number;
+          promotion_id?: string | null;
           loyalty_reward_id?: string | null;
           loyalty_discount?: number;
           created_at?: string;

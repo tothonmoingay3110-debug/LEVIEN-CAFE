@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { readOrders } from "@/lib/orders";
@@ -15,6 +15,10 @@ export default function TrackOrderPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [syncStatus, setSyncStatus] = useState<"connecting" | "live" | "polling">("connecting");
+  const [lookupOrder, setLookupOrder] = useState("");
+  const [lookupPhone, setLookupPhone] = useState("");
+  const [lookupError, setLookupError] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -29,7 +33,7 @@ export default function TrackOrderPage() {
       if (!token) {
         if (active) {
           setOrder(localOrder);
-          setLoadError(localOrder ? "" : "We could not find this order.");
+          setLoadError("");
           setLoading(false);
         }
         return;
@@ -87,13 +91,50 @@ export default function TrackOrderPage() {
 
   const currentIndex = order ? stages.indexOf(order.status) : -1;
 
+  const findOrder = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLookupError("");
+    const normalizedOrder = lookupOrder.trim().replace(/\s+/g, "").toUpperCase();
+    const localOrder = readOrders().find((item) => item.id.toUpperCase() === normalizedOrder);
+    if (localOrder?.trackingToken) {
+      window.location.assign(`/order/track?order=${encodeURIComponent(localOrder.id)}&token=${encodeURIComponent(localOrder.trackingToken)}`);
+      return;
+    }
+
+    setLookupLoading(true);
+    try {
+      const response = await fetch("/api/orders/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNumber: normalizedOrder, phone: lookupPhone }),
+      });
+      const result = await response.json() as { trackingToken?: string; error?: string };
+      if (!response.ok || !result.trackingToken) throw new Error(result.error || "Unable to verify this order.");
+      window.location.assign(`/order/track?order=${encodeURIComponent(normalizedOrder)}&token=${encodeURIComponent(result.trackingToken)}`);
+    } catch (error) {
+      setLookupError(error instanceof Error ? error.message : "Unable to verify this order.");
+      setLookupLoading(false);
+    }
+  };
+
   return <>
     <Header />
     <main className="trackOrderPage">
       <section className="trackOrderCard">
         <span className="sectionLabel">Live order status</span>
         <h1>Track your order</h1>
-        {!order && !loading ? <div className="trackMissing"><p>{loadError || "We could not find this order."}</p><Link className="button primary" href="/menu">Browse Menu</Link></div> : order ? <>
+        {!order && !loading ? <div className="trackLookup">
+          <p>Scan the QR on your confirmation screen, or enter the order number and at least the last 4 digits of the checkout phone number.</p>
+          {loadError ? <p className="trackLookupError" role="alert">{loadError}</p> : null}
+          <form onSubmit={(event) => void findOrder(event)}>
+            <label><span>Order number</span><input value={lookupOrder} onChange={(event) => setLookupOrder(event.target.value)} placeholder="LV260823001" autoComplete="off" required /></label>
+            <label><span>Phone verification</span><input value={lookupPhone} onChange={(event) => setLookupPhone(event.target.value)} placeholder="Last 4 digits or full phone" inputMode="tel" autoComplete="tel" minLength={4} required /></label>
+            <button className="button primary" type="submit" disabled={lookupLoading}>{lookupLoading ? "Finding order…" : "Track Order"}</button>
+          </form>
+          {lookupError ? <p className="trackLookupError" role="alert">{lookupError}</p> : null}
+          <small>Your phone check prevents someone with only an order number from viewing your order details.</small>
+          <Link href="/menu">Browse Menu</Link>
+        </div> : order ? <>
           <div className="trackOrderHeader"><div><span>Order</span><strong>{order.id}</strong></div><div><span>Customer</span><strong>{order.customer}</strong></div><div><span>Type</span><strong>{order.type}</strong></div></div>
           {loadError && <p className="trackSyncWarning" role="status">{loadError}</p>}
           {order.status === "Cancelled" ? <div className="orderCancelled"><strong>Order cancelled</strong><p>Please contact LEVIEN CAFE if you have questions about this order.</p></div> : <div className="orderTimeline">{stages.map((stage, index) => <div className={index <= currentIndex ? "complete" : ""} key={stage}>

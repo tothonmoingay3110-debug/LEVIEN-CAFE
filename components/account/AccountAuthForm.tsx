@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { useCustomerSession } from "@/components/CustomerSessionProvider";
+import PasswordInput from "@/components/PasswordInput";
 import { createClient } from "@/lib/supabase/client";
 
 type AuthMode = "sign-in" | "sign-up" | "forgot" | "reset";
@@ -12,11 +13,11 @@ const modeContent: Record<AuthMode, { eyebrow: string; title: string; text: stri
   "sign-in": { eyebrow: "Welcome back", title: "Sign in to LEVIEN", text: "View orders, rewards, Gift Cards and your member card.", submit: "Sign In" },
   "sign-up": { eyebrow: "LEVIEN membership", title: "Create your account", text: "Your verified email safely connects eligible past and future orders.", submit: "Create Account" },
   forgot: { eyebrow: "Account recovery", title: "Reset your password", text: "We will send a secure recovery link if the email is registered.", submit: "Send Reset Link" },
-  reset: { eyebrow: "Choose a new password", title: "Secure your account", text: "Use at least 12 characters with uppercase, lowercase, a number and a symbol.", submit: "Save New Password" },
+  reset: { eyebrow: "Choose a new password", title: "Secure your account", text: "Use at least 8 characters with uppercase, lowercase, a number and a symbol.", submit: "Save New Password" },
 };
 
 function strongPassword(value: string) {
-  return value.length >= 12 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
+  return value.length >= 8 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
 }
 
 export default function AccountAuthForm({ mode }: { mode: AuthMode }) {
@@ -41,7 +42,7 @@ export default function AccountAuthForm({ mode }: { mode: AuthMode }) {
     setMessage("");
 
     if (mode === "sign-up" || mode === "reset") {
-      if (!strongPassword(password)) return setError("Use at least 12 characters with uppercase, lowercase, a number and a symbol.");
+      if (!strongPassword(password)) return setError("Use at least 8 characters with uppercase, lowercase, a number and a symbol.");
       if (password !== confirmation) return setError("Passwords do not match.");
     }
     if (mode === "sign-up" && (!firstName || !lastName)) return setError("First and last name are required.");
@@ -113,8 +114,8 @@ export default function AccountAuthForm({ mode }: { mode: AuthMode }) {
       </div>}
       {mode !== "reset" && <label><span>Email address</span><input name="email" type="email" autoComplete="email" maxLength={254} required /></label>}
       {mode === "sign-up" && <label><span>Phone <small>Optional</small></span><input name="phone" type="tel" autoComplete="tel" maxLength={30} /></label>}
-      {(mode === "sign-in" || mode === "sign-up" || mode === "reset") && <label><span>{mode === "reset" ? "New password" : "Password"}</span><input name="password" type="password" autoComplete={mode === "sign-in" ? "current-password" : "new-password"} minLength={mode === "sign-in" ? undefined : 12} required /></label>}
-      {(mode === "sign-up" || mode === "reset") && <label><span>Confirm password</span><input name="confirmation" type="password" autoComplete="new-password" minLength={12} required /></label>}
+      {(mode === "sign-in" || mode === "sign-up" || mode === "reset") && <label><span>{mode === "reset" ? "New password" : "Password"}</span><PasswordInput name="password" autoComplete={mode === "sign-in" ? "current-password" : "new-password"} minLength={mode === "sign-in" ? undefined : 8} required /></label>}
+      {(mode === "sign-up" || mode === "reset") && <label><span>Confirm password</span><PasswordInput name="confirmation" autoComplete="new-password" minLength={8} required /></label>}
       {mode === "sign-up" && <label className="customerAuthConsent"><input name="marketingOptIn" type="checkbox" /><span>Send me occasional LEVIEN offers. Account and order emails are always sent when required.</span></label>}
       {error && <div className="customerAuthError" role="alert">{error}</div>}
       {message && <div className="customerAuthSuccess" role="status">{message}</div>}

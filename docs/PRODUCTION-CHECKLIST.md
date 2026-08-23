@@ -5,7 +5,7 @@
 - Configure all six variables listed in `.env.example` on the hosting platform.
 - Keep `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET` server-only.
 - Use an HTTPS Supabase project URL.
-- Use an Admin password of at least 12 characters and a random session secret of at least 32 characters.
+- Use an Admin password of at least 8 characters and a random session secret of at least 32 characters.
 - Run `npm.cmd run verify:production` without sharing its environment values.
 
 ## Database

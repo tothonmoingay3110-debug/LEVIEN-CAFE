@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 function strongPassword(password: string) {
-  return password.length >= 12 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
+  return password.length >= 8 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
 }
 
 export async function POST(request: Request) {
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const currentPassword = typeof body.currentPassword === "string" ? body.currentPassword : "";
     const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
     if (!currentPassword || !strongPassword(newPassword) || currentPassword === newPassword) {
-      return NextResponse.json({ error: "Use a new 12+ character password with uppercase, lowercase, number, and symbol." }, { status: 400 });
+      return NextResponse.json({ error: "Use a new 8+ character password with uppercase, lowercase, number, and symbol." }, { status: 400 });
     }
 
     const supabase = await createClient();
