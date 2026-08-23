@@ -13,14 +13,20 @@ of the full V2 scope.
 | 5. Contact Us | Customer form, stored messages and Admin inbox | Complete |
 | 6. Gift Card | Paid online/in-store issuance, balance, redeem and transaction history | Complete |
 | 7. Online Payment | Stripe Checkout, webhook payment state, refund and order link | Complete |
-| 8. AI Combo Suggestions | Data-assisted combo recommendations for Admin | Planned |
-| 9. QR / Order Tracking | QR entry and customer order-status tracking | Partially complete |
+| 8. AI Combo Suggestions | Explainable completed-order recommendations and draft creation | Complete |
+| 9. QR / Order Tracking | Private QR entry, verified lookup and live customer order status | Complete |
 
-Order tracking by secure token already exists. Module 9 still requires the QR
-experience before it can be marked complete.
+Order confirmation now produces a private tracking QR. Customers without the QR
+can look up an order with its order number plus checkout-phone verification.
+The existing secure token, Realtime updates and polling fallback remain in use.
 
 Attendance, clock-in and payroll remain outside the agreed scope.
 
 Customer accounts, printable membership cards and configurable product-based
 loyalty rewards were added as a supporting customer-platform release. See
 `docs/V2-CUSTOMER-ACCOUNTS-PAYMENTS-LOYALTY.md`.
+
+The supporting Staff Member Scanner lets counter staff identify a member and
+redeem an issued reward by camera, 2D HID scanner or manual member number. It is
+documented together with Module 8 in
+`docs/V2-MEMBER-SCANNER-AND-COMBO-SUGGESTIONS.md`.

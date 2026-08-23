@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { OrderTrackingQr } from "@/components/OrderTrackingQr";
 import { readOrders } from "@/lib/orders";
 import type { CustomerOrder } from "@/types";
 import { useStore } from "@/components/StoreProvider";
@@ -54,6 +55,7 @@ export default function OrderSuccessPage() {
           <Link className="button primary" href={display && trackingToken ? `/order/track?order=${encodeURIComponent(display.id)}&token=${encodeURIComponent(trackingToken)}` : "/menu"}>Track Order</Link>
           <Link className="button secondary" href="/">Back Home</Link>
         </div>
+        {display && trackingToken && !paymentError ? <OrderTrackingQr orderNumber={display.id} trackingToken={trackingToken} /> : null}
       </section>
     </main>
     <Footer />

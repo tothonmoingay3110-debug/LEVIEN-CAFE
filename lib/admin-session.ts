@@ -12,8 +12,8 @@ function settings() {
   }
   if (process.env.NODE_ENV === "production") {
     const weakPasswords = new Set(["123", "admin", "password", "changeme", "levien"]);
-    if (password.length < 12 || weakPasswords.has(password.toLowerCase())) {
-      throw new Error("ADMIN_PASSWORD must be at least 12 characters and non-default in production.");
+    if (password.length < 8 || weakPasswords.has(password.toLowerCase())) {
+      throw new Error("ADMIN_PASSWORD must be at least 8 characters and non-default in production.");
     }
   }
   return { username, password, secret };

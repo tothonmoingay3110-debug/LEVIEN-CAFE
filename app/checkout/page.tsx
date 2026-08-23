@@ -12,6 +12,20 @@ import type { CustomerAccountData, LoyaltyRewardView } from "@/types/account";
 import type { CustomerOrder, FulfillmentType } from "@/types";
 
 const money = (value: number) => `$${value.toFixed(2)}`;
+const promotionAttributionKey = "levien-promotion-attribution";
+
+function currentPromotionAttribution() {
+  try {
+    const raw = window.sessionStorage.getItem(promotionAttributionKey);
+    if (!raw) return undefined;
+    const value = JSON.parse(raw) as { promotionId?: unknown; attributedAt?: unknown };
+    if (typeof value.promotionId !== "string" || typeof value.attributedAt !== "string") return undefined;
+    const age = Date.now() - Date.parse(value.attributedAt);
+    return Number.isFinite(age) && age >= 0 && age <= 7 * 86_400_000 ? value.promotionId : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 type CheckoutErrors = Partial<
   Record<"firstName" | "lastName" | "phone" | "email" | "address" | "city" | "zip", string>
@@ -166,7 +180,7 @@ export default function CheckoutPage() {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...orderDetails, giftCardCode: giftCard?.code, loyaltyRewardId: rewardId || undefined, items: cart }),
+        body: JSON.stringify({ ...orderDetails, giftCardCode: giftCard?.code, loyaltyRewardId: rewardId || undefined, promotionId: currentPromotionAttribution(), items: cart }),
       });
       const result = (await response.json()) as {
         orderNumber?: string;
@@ -182,6 +196,7 @@ export default function CheckoutPage() {
       };
       if (!response.ok || !result.orderNumber || !result.trackingToken) throw new Error(result.error || "Unable to place order.");
       const id = result.orderNumber;
+      try { window.sessionStorage.removeItem(promotionAttributionKey); } catch { /* Checkout remains successful. */ }
       if (result.checkoutUrl) {
         window.location.assign(result.checkoutUrl);
         return;

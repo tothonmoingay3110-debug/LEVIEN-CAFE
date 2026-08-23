@@ -56,8 +56,8 @@ export default function CustomerAccountDashboard() {
 
   return <div className="accountDashboard">
     <section className="accountHero">
-      <div><span className="sectionLabel">LEVIEN MEMBER</span><h1>Hi, {data.profile.firstName}.</h1><p>Orders, rewards and Gift Cards live together here.</p></div>
-      <div className="accountHeroActions"><Link className="button primary" href="/account/member-card">View Member Card</Link><Link className="button secondary" href="/menu">Order Now</Link></div>
+      <div><span className="sectionLabel accountHeroEyebrow">LEVIEN MEMBER</span><h1>Hi, {data.profile.firstName}.</h1><p>Orders, rewards and Gift Cards live together here.</p></div>
+      <div className="accountHeroActions"><Link className="button primary" href="/account/member-card">View Member Card</Link><Link className="button secondary" href="/menu">Order Now</Link><button className="button accountSignOut" onClick={async () => { await signOut(); router.replace("/"); }}>Sign out</button></div>
     </section>
     {error && <div className="customerAuthError" role="alert">{error}</div>}
 
@@ -107,6 +107,5 @@ export default function CustomerAccountDashboard() {
         {order.trackingToken && <Link href={`/order/track?order=${encodeURIComponent(order.id)}&token=${encodeURIComponent(order.trackingToken)}`}>Track order</Link>}
       </article>)}</div>}
     </section>
-    <button className="accountSignOut" onClick={async () => { await signOut(); router.replace("/"); }}>Sign out</button>
   </div>;
 }

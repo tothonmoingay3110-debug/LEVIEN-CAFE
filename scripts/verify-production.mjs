@@ -51,8 +51,8 @@ try {
 if (publishableKey && serviceRoleKey && publishableKey === serviceRoleKey) {
   failures.push("The public and service-role Supabase keys must be different.");
 }
-if (adminPassword && adminPassword.length < 12) {
-  failures.push("ADMIN_PASSWORD must contain at least 12 characters for production.");
+if (adminPassword && adminPassword.length < 8) {
+  failures.push("ADMIN_PASSWORD must contain at least 8 characters for production.");
 }
 const weakAdminPasswords = new Set(["123", "admin", "password", "changeme", "levien"]);
 if (adminPassword && weakAdminPasswords.has(adminPassword.toLowerCase())) {

@@ -126,6 +126,56 @@ refund-first cancellation and benefit restoration protect online orders.
 Follow `UPDATE-INSTRUCTIONS-V2-CUSTOMER-PLATFORM.txt` and the complete production
 guide in `docs/V2-CUSTOMER-ACCOUNTS-PAYMENTS-LOYALTY.md`.
 
+## V2 member scanner
+
+Every active staff role with Orders access can open Admin → Overview → Scan
+Member. The counter companion accepts the customer membership QR through a
+supported device camera, a 2D USB/Bluetooth scanner in keyboard mode, or manual
+member-number entry. Staff can verify progress and redeem an issued reward with
+an auditable server-side action. It does not require a POS integration or a new
+database migration.
+
+## V2 Module 8 combo suggestions
+
+Owner and Manager can open Admin → Customers & Store → Combo Suggestions to
+rank products that are repeatedly purchased together in completed orders.
+Existing combo pairs, cancelled orders, sold-out products and inactive products
+are excluded. Recommendations explain their confidence and support, and create
+an unpublished draft combo for review rather than automatically changing the
+storefront. See `docs/V2-MEMBER-SCANNER-AND-COMBO-SUGGESTIONS.md`.
+
+## V2 Module 9 QR order tracking
+
+Each confirmed order now shows a scannable QR containing its private tracking
+link. Customers can open that link on another phone, copy it for later, or use
+the tracking page to enter an order number plus at least the last four checkout
+phone digits. Manual lookup is same-origin, rate-limited and returns a secure
+token only after verification. No new database migration is required. See
+`docs/V2-MODULE-9-ORDER-TRACKING.md`.
+
+## V3 Module 1 report center
+
+Owner and Manager can open Admin → Planning & Reports → Report Center for
+simple date-range Sales, Order, Customer, Product, Promotion and Combo reports.
+The selected report can be exported as CSV or an Excel-compatible `.xls` file.
+The first release intentionally avoids tax and advanced finance breakdowns;
+those can be added when the business requests them. No database migration is
+required. See `docs/V3.1-REPORT-CENTER.md` and `docs/V3-ROADMAP.md`.
+
+## V3 Modules 2, 3, 4, 5 and 7 business intelligence
+
+Owner and Manager now have a shared Business Intelligence data layer powering
+KPI Dashboard, Customer Analytics, Product Analytics, Promotion & Combo
+Analytics, and explainable AI Business Insights. Revenue uses completed-order
+subtotal after loyalty discounts and intentionally excludes tax and delivery
+fees. Homepage promotions measure impressions, clicks, and attributed completed
+orders without storing customer contact data.
+
+Apply `supabase/migrations/20260825000100_v3_business_intelligence.sql`, then
+follow `UPDATE-INSTRUCTIONS-V3-BUSINESS-INTELLIGENCE.txt`. Full definitions and
+test cases are in `docs/V3.2-V3.7-BUSINESS-INTELLIGENCE.md`. V3 Module 6 POS
+Import remains skipped until a real POS export sample is available.
+
 ## Sprint 4 highlight
 
 The storefront now reads the same data saved in Admin. Store name, tagline, logo, announcement, products, uploaded images, categories, combos, promotions, Our Story, contact information and map settings can update without editing source code.

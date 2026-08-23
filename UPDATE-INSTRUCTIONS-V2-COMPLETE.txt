@@ -1,0 +1,17 @@
+LEVIEN CAFE — V2 FINAL MODULES
+
+1. Keep your existing .env.local.
+2. Replace the changed project files.
+3. Run: npm.cmd install
+4. Run: npm.cmd run build
+5. Restart the application.
+6. Test Admin -> Overview -> Scan Member with a valid member QR.
+7. Test Admin -> Customers & Store -> Combo Suggestions as Owner/Manager.
+8. Place a test order and scan the tracking QR from another device.
+9. Test /order/track with the order number and last 4 checkout-phone digits.
+
+No new Supabase migration and no new environment variable are required.
+
+Detailed acceptance tests:
+docs/V2-MEMBER-SCANNER-AND-COMBO-SUGGESTIONS.md
+docs/V2-MODULE-9-ORDER-TRACKING.md

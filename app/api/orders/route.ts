@@ -15,6 +15,7 @@ type CheckoutOrderRequest = {
   tax: number; deliveryFee: number; total: number; note: string;
   giftCardCode?: string;
   loyaltyRewardId?: string;
+  promotionId?: string;
   items: unknown;
 };
 
@@ -177,6 +178,18 @@ export async function POST(request: Request) {
     }
     const loyaltyRewardId = text(body.loyaltyRewardId);
     if (loyaltyRewardId && !uuidPattern.test(loyaltyRewardId)) return NextResponse.json({ error: "Invalid loyalty reward." }, { status: 400 });
+    const requestedPromotionId = text(body.promotionId);
+    let promotionId: string | null = null;
+    if (uuidPattern.test(requestedPromotionId)) {
+      const { data: promotion, error: promotionError } = await supabase
+        .from("promotions")
+        .select("id")
+        .eq("id", requestedPromotionId)
+        .eq("active", true)
+        .maybeSingle();
+      if (promotionError) console.error("Unable to validate promotion attribution:", promotionError);
+      promotionId = promotion?.id || null;
+    }
     const paymentChannel = payment === "Online Card" ? "stripe" : "offline";
     const { data, error } = await supabase.rpc("create_checkout_order_v3", {
       p_first_name: firstName, p_last_name: lastName, p_phone: phone,
@@ -202,6 +215,13 @@ export async function POST(request: Request) {
     if (!orderNumber) throw new Error("Supabase did not return an order number.");
     const orderId = created?.order_id;
     if (!orderId) throw new Error("Unable to create tracking token.");
+    if (promotionId) {
+      const { error: attributionError } = await supabase
+        .from("orders")
+        .update({ promotion_id: promotionId })
+        .eq("id", orderId);
+      if (attributionError) console.error("Unable to save promotion attribution:", attributionError);
+    }
     const amountDue = Number(created.amount_due || 0);
     let checkoutUrl: string | null = null;
     if (paymentChannel === "stripe" && amountDue > 0) {

@@ -1,0 +1,15 @@
+LEVIEN CAFE — V3.1 REPORT CENTER
+
+1. Keep the current .env.local.
+2. Replace the changed project files.
+3. No Supabase migration is required.
+4. Run: npm.cmd install
+5. Run: npx.cmd tsc --noEmit
+6. Run: npm.cmd run build -- --webpack
+7. Restart the application.
+8. Sign in as Owner or Manager.
+9. Open Planning & Reports -> Report Center.
+10. Test Sales, Orders, Customers, Products, Promotions and Combos.
+11. Export one CSV and one Excel file.
+
+Details: docs/V3.1-REPORT-CENTER.md
