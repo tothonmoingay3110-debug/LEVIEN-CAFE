@@ -40,6 +40,7 @@ export default function LoyaltyPrograms({ notify }: { notify: (message: string) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const [rewardType, setRewardType] = useState<RewardType>("free_product");
   const customerMap = useMemo(() => new Map(customers.map((item) => [item.id, item])), [customers]);
   const productMap = useMemo(() => new Map(products.map((item) => [item.id, item.name])), [products]);
@@ -98,6 +99,7 @@ export default function LoyaltyPrograms({ notify }: { notify: (message: string) 
       if (!response.ok) throw new Error(result.error || "Unable to create program.");
       form.reset();
       setRewardType("free_product");
+      setShowCreate(false);
       notify("Loyalty program created");
       await load();
     } catch (createError) {
@@ -115,36 +117,19 @@ export default function LoyaltyPrograms({ notify }: { notify: (message: string) 
     await load();
   }
 
+  function closeCreate() {
+    if (creating) return;
+    setShowCreate(false);
+    setRewardType("free_product");
+    setError("");
+  }
+
   if (loading) return <div className="adminCard">Loading loyalty programs…</div>;
 
   return <div className="adminStack loyaltyAdmin">
     {error && <div className="adminLoginError" role="alert">{error}</div>}
     <section className="adminCard">
-      <div className="adminCardHead"><div><span className="adminEyebrow">Configurable rules</span><h3>Create loyalty program</h3></div></div>
-      <form className="adminForm" onSubmit={create}>
-        <label>Program name<input name="name" placeholder="Buy 5 Vietnamese Coffees" required /></label>
-        <label>Required quantity<input name="requiredQuantity" type="number" defaultValue={5} min={1} max={1000} required /></label>
-        <fieldset className="loyaltyProductPicker wide">
-          <legend>Eligible products <span>Select one or more products that count toward this program.</span></legend>
-          <div className="loyaltyProductGrid">{products.map((item) => <label key={item.id} className="loyaltyProductChoice"><input name="triggerProductIds" type="checkbox" value={item.id} /><span><strong>{item.name}</strong><small>${item.price.toFixed(2)}</small></span></label>)}</div>
-        </fieldset>
-        <label>Reward type<select name="rewardType" value={rewardType} onChange={(event) => setRewardType(event.target.value as RewardType)}><option value="free_product">Free menu product</option><option value="physical_gift">Physical gift</option></select></label>
-        <label>Reward name<input name="rewardName" placeholder="Free coffee or LEVIEN teddy bear" required /></label>
-        {rewardType === "free_product" && <fieldset className="loyaltyProductPicker wide">
-          <legend>Reward choices <span>Customers may redeem any one of the selected products.</span></legend>
-          <div className="loyaltyProductGrid">{products.map((item) => <label key={item.id} className="loyaltyProductChoice"><input name="rewardProductIds" type="checkbox" value={item.id} /><span><strong>{item.name}</strong><small>${item.price.toFixed(2)}</small></span></label>)}</div>
-        </fieldset>}
-        <label>Start date<input name="startsOn" type="date" defaultValue={today()} required /></label>
-        <label>End date<input name="endsOn" type="date" min={today()} required /></label>
-        <label>Reward expires after (days)<input name="expiresDays" type="number" defaultValue={90} min={1} max={730} required /></label>
-        <label className="adminCheck"><input name="repeatable" type="checkbox" defaultChecked /> Repeat after every completed set</label>
-        <label className="wide">Description<textarea name="description" rows={3} maxLength={500} /></label>
-        <div className="wide"><button className="adminPrimary" disabled={creating}>{creating ? "Creating…" : "Create Program"}</button></div>
-      </form>
-      <small>Selected eligible products are counted together. A free-product reward lets the customer choose one item from the configured reward choices.</small>
-    </section>
-    <section className="adminCard">
-      <div className="adminCardHead"><div><span className="adminEyebrow">Programs</span><h3>Rules</h3></div></div>
+      <div className="adminCardHead"><div><span className="adminEyebrow">Configurable rules</span><h3>Loyalty programs</h3></div><button className="adminPrimary" type="button" onClick={() => { setError(""); setShowCreate(true); }}>Create Program</button></div>
       <div className="loyaltyRuleRows">{rules.length ? rules.map((rule) => {
         const triggerNames = rule.trigger_product_ids.map((id) => productMap.get(id)).filter(Boolean).join(", ") || productMap.get(rule.trigger_product_id) || "Product";
         const rewardNames = rule.reward_product_ids.map((id) => productMap.get(id)).filter(Boolean).join(", ");
@@ -155,5 +140,32 @@ export default function LoyaltyPrograms({ notify }: { notify: (message: string) 
       <div className="adminCardHead"><div><span className="adminEyebrow">Counter fulfillment</span><h3>Physical gifts waiting</h3></div></div>
       <div className="loyaltyRuleRows">{rewards.length ? rewards.map((reward) => { const customer = customerMap.get(reward.customer_profile_id); return <article key={reward.id}><div><strong>{reward.reward_name}</strong><span>{customer ? `${customer.first_name} ${customer.last_name} · ${customer.membership_number}` : "Member"}</span><small>{reward.reward_code} · issued {new Date(reward.issued_at).toLocaleDateString()}</small></div><button className="adminPrimary" onClick={() => void patchRule(reward.id, { action: "fulfill" })}>Mark Handed Over</button></article>; }) : <p>No physical gifts are waiting.</p>}</div>
     </section>
+    {showCreate && <div className="adminModalBackdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) closeCreate(); }}>
+      <div className="adminModal loyaltyProgramModal" role="dialog" aria-modal="true" aria-labelledby="create-loyalty-title">
+        <header><div><span className="adminEyebrow">Configurable rules</span><h2 id="create-loyalty-title">Create loyalty program</h2></div><button type="button" aria-label="Close" disabled={creating} onClick={closeCreate}>×</button></header>
+        {error && <div className="adminLoginError" role="alert">{error}</div>}
+        <form className="adminForm" onSubmit={create}>
+          <label>Program name<input name="name" placeholder="Buy 5 Vietnamese Coffees" required /></label>
+          <label>Required quantity<input name="requiredQuantity" type="number" defaultValue={5} min={1} max={1000} required /></label>
+          <fieldset className="loyaltyProductPicker wide">
+            <legend>Eligible products <span>Select one or more products that count toward this program.</span></legend>
+            <div className="loyaltyProductGrid">{products.map((item) => <label key={item.id} className="loyaltyProductChoice"><input name="triggerProductIds" type="checkbox" value={item.id} /><span><strong>{item.name}</strong><small>${item.price.toFixed(2)}</small></span></label>)}</div>
+          </fieldset>
+          <label>Reward type<select name="rewardType" value={rewardType} onChange={(event) => setRewardType(event.target.value as RewardType)}><option value="free_product">Free menu product</option><option value="physical_gift">Physical gift</option></select></label>
+          <label>Reward name<input name="rewardName" placeholder="Free coffee or LEVIEN teddy bear" required /></label>
+          {rewardType === "free_product" && <fieldset className="loyaltyProductPicker wide">
+            <legend>Reward choices <span>Customers may redeem any one of the selected products.</span></legend>
+            <div className="loyaltyProductGrid">{products.map((item) => <label key={item.id} className="loyaltyProductChoice"><input name="rewardProductIds" type="checkbox" value={item.id} /><span><strong>{item.name}</strong><small>${item.price.toFixed(2)}</small></span></label>)}</div>
+          </fieldset>}
+          <label>Start date<input name="startsOn" type="date" defaultValue={today()} required /></label>
+          <label>End date<input name="endsOn" type="date" min={today()} required /></label>
+          <label>Reward expires after (days)<input name="expiresDays" type="number" defaultValue={90} min={1} max={730} required /></label>
+          <label className="adminCheck"><input name="repeatable" type="checkbox" defaultChecked /> Repeat after every completed set</label>
+          <label className="wide">Description<textarea name="description" rows={3} maxLength={500} /></label>
+          <p className="loyaltyFormHint wide">Selected eligible products are counted together. A free-product reward lets the customer choose one item from the configured reward choices.</p>
+          <div className="adminFormActions wide"><button className="adminSecondary" type="button" disabled={creating} onClick={closeCreate}>Cancel</button><button className="adminPrimary" disabled={creating}>{creating ? "Creating…" : "Create Program"}</button></div>
+        </form>
+      </div>
+    </div>}
   </div>;
 }
