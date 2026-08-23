@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import Link from "next/link";
+import { onlineGiftCardPurchaseEnabled } from "@/lib/features";
 
 const money = (value: number) => `$${value.toFixed(2)}`;
 
@@ -47,7 +48,7 @@ export default function GiftCardPage() {
     <Header />
     <main className="giftCardPage">
       <section className="giftCardHero">
-        <div className="giftCardHeroCopy"><span className="sectionLabel">LEVIEN Gift Cards</span><h1>A little joy, ready to share.</h1><p>Buy a digital Gift Card securely or enter an existing code below to check its balance.</p><Link className="button primary" href="/gift-card/buy">Buy a Gift Card</Link><div className="giftCardPromise"><span>✓ Activated only after payment</span><span>✓ Works at checkout</span><span>✓ Recoverable in My Account</span></div></div>
+        <div className="giftCardHeroCopy"><span className="sectionLabel">LEVIEN Gift Cards</span><h1>A little joy, ready to share.</h1><p>Use an existing LEVIEN Gift Card at checkout or enter its code below to check the current balance.</p>{onlineGiftCardPurchaseEnabled && <Link className="button primary" href="/gift-card/buy">Buy a Gift Card</Link>}<div className="giftCardPromise"><span>✓ Issued securely by LEVIEN</span><span>✓ Works at checkout</span><span>✓ Balance available anytime</span></div></div>
         <div className="giftCardArtwork" aria-hidden="true"><div className="giftCardMock"><span>LEVIEN CAFE</span><strong>GIFT CARD</strong><small>Vietnamese soul, made to share.</small><b>LV</b></div></div>
       </section>
       <section className="giftCardBalanceSection">

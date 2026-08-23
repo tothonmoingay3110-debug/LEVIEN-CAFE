@@ -6,10 +6,15 @@ import { encryptSecret } from "@/lib/secret-envelope";
 import { getSiteOrigin, getStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { allowRequest } from "@/lib/rate-limit";
+import { onlineGiftCardPurchaseEnabled } from "@/lib/features";
 
 const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {
+  if (!onlineGiftCardPurchaseEnabled) {
+    return NextResponse.json({ error: "Online Gift Card purchasing is temporarily unavailable." }, { status: 503 });
+  }
+
   try {
     if (!isSameOriginRequest(request)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     if (!allowRequest(request, "gift-card-purchase", 10, 10 * 60 * 1000)) return NextResponse.json({ error: "Too many purchase attempts. Try again later." }, { status: 429 });

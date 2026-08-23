@@ -39,6 +39,8 @@ export type Promotion = {
   description: string;
   priceText: string;
   image: string;
+  startDate?: string;
+  endDate?: string | null;
 };
 
 export type ProductSelection = {

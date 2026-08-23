@@ -53,6 +53,7 @@ export async function GET() {
       promotions: (promotionResult.data || []).map((row) => ({
         id: row.id, title: row.name, eyebrow: row.eyebrow || "", description: row.description || "",
         priceText: row.price_text || "", image: row.image_url || "", order: row.sort_order, active: row.active,
+        startDate: row.starts_on, endDate: row.ends_on || "",
       })),
       content: {
         storeName: content.store_name, tagline: content.tagline, logo: content.logo_url || "",

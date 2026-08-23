@@ -18,6 +18,7 @@ type ScanReward = {
   code: string;
   type: "free_product" | "physical_gift";
   name: string;
+  products: { id: string; name: string }[];
   status: "issued" | "reserved" | "redeemed" | "revoked" | "expired";
   issuedAt: string;
   expiresAt: string | null;
@@ -58,6 +59,7 @@ export default function MemberScanner({ notify }: { notify: (message: string) =>
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraMessage, setCameraMessage] = useState("");
   const [redeeming, setRedeeming] = useState("");
+  const [rewardSelections, setRewardSelections] = useState<Record<string, string>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -86,6 +88,7 @@ export default function MemberScanner({ notify }: { notify: (message: string) =>
     setLoading(true);
     setError("");
     setMember(null);
+    setRewardSelections({});
     try {
       const response = await fetch("/api/admin/members", {
         method: "POST",
@@ -167,6 +170,11 @@ export default function MemberScanner({ notify }: { notify: (message: string) =>
 
   async function redeem(reward: ScanReward) {
     if (!member || redeeming) return;
+    const rewardProductId = reward.type === "free_product" ? rewardSelections[reward.id] || "" : "";
+    if (reward.type === "free_product" && !rewardProductId) {
+      setError("Choose the free product being handed to the customer.");
+      return;
+    }
     const action = reward.type === "physical_gift" ? "hand over this gift" : "apply this free product";
     if (!window.confirm(`Confirm that staff will ${action} now? This cannot be undone from this screen.`)) return;
     setRedeeming(reward.id);
@@ -175,7 +183,7 @@ export default function MemberScanner({ notify }: { notify: (message: string) =>
       const response = await fetch("/api/admin/members", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: member.profile.membershipNumber, rewardId: reward.id }),
+        body: JSON.stringify({ code: member.profile.membershipNumber, rewardId: reward.id, rewardProductId }),
       });
       const result = await response.json() as { redeemed?: boolean; error?: string };
       if (!response.ok || !result.redeemed) throw new Error(result.error || "Unable to redeem this reward.");
@@ -224,7 +232,7 @@ export default function MemberScanner({ notify }: { notify: (message: string) =>
         </section>
         <section className="adminCard">
           <div className="adminCardHead"><div><span className="adminEyebrow">Counter redemption</span><h3>Available rewards</h3></div></div>
-          <div className="memberRewardRows">{rewards.length ? rewards.map((reward) => <article key={reward.id}><div><strong>{reward.name}</strong><span>{reward.type === "physical_gift" ? "Physical gift" : "Free menu product"}</span><small>{reward.code}{reward.expiresAt ? ` · expires ${formatDate(reward.expiresAt)}` : " · no expiry"}</small></div><button className="adminPrimary" type="button" disabled={Boolean(redeeming)} onClick={() => void redeem(reward)}>{redeeming === reward.id ? "Redeeming…" : reward.type === "physical_gift" ? "Hand Over" : "Redeem"}</button></article>) : <p className="adminHint">No rewards available for redemption.</p>}</div>
+          <div className="memberRewardRows">{rewards.length ? rewards.map((reward) => <article key={reward.id}><div><strong>{reward.name}</strong><span>{reward.type === "physical_gift" ? "Physical gift" : "Free menu product"}</span><small>{reward.code}{reward.expiresAt ? ` · expires ${formatDate(reward.expiresAt)}` : " · no expiry"}</small>{reward.type === "free_product" && <select aria-label={`Product for ${reward.name}`} value={rewardSelections[reward.id] || ""} onChange={(event) => setRewardSelections((current) => ({ ...current, [reward.id]: event.target.value }))}><option value="">Choose product handed over</option>{reward.products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select>}</div><button className="adminPrimary" type="button" disabled={Boolean(redeeming) || (reward.type === "free_product" && !rewardSelections[reward.id])} onClick={() => void redeem(reward)}>{redeeming === reward.id ? "Redeeming…" : reward.type === "physical_gift" ? "Hand Over" : "Redeem"}</button></article>) : <p className="adminHint">No rewards available for redemption.</p>}</div>
         </section>
       </div>
     </>}

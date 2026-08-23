@@ -31,13 +31,32 @@ export async function GET() {
       ? await admin.from("loyalty_rules").select("id,name,description,trigger_product_id,required_quantity,reward_type,reward_name").in("id", ruleIds)
       : { data: [], error: null };
     if (rulesResult.error) throw rulesResult.error;
-    const productIds = [...new Set((rulesResult.data || []).map((rule) => rule.trigger_product_id))];
+    const rewardIds = (rewardsResult.data || []).map((reward) => reward.id);
+    const [triggerLinksResult, rewardLinksResult] = await Promise.all([
+      ruleIds.length
+        ? admin.from("loyalty_rule_trigger_products").select("rule_id,product_id,position").in("rule_id", ruleIds).order("position")
+        : Promise.resolve({ data: [], error: null }),
+      rewardIds.length
+        ? admin.from("loyalty_reward_products").select("reward_id,product_id,position").in("reward_id", rewardIds).order("position")
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (triggerLinksResult.error) throw triggerLinksResult.error;
+    if (rewardLinksResult.error) throw rewardLinksResult.error;
+    const triggerIdsByRule = new Map<string, string[]>();
+    const rewardIdsByReward = new Map<string, string[]>();
+    for (const item of triggerLinksResult.data || []) triggerIdsByRule.set(item.rule_id, [...(triggerIdsByRule.get(item.rule_id) || []), item.product_id]);
+    for (const item of rewardLinksResult.data || []) rewardIdsByReward.set(item.reward_id, [...(rewardIdsByReward.get(item.reward_id) || []), item.product_id]);
+    const productIds = [...new Set([
+      ...(rulesResult.data || []).map((rule) => rule.trigger_product_id),
+      ...(triggerLinksResult.data || []).map((item) => item.product_id),
+      ...(rewardsResult.data || []).flatMap((reward) => reward.reward_product_id ? [reward.reward_product_id] : []),
+      ...(rewardLinksResult.data || []).map((item) => item.product_id),
+    ])];
     const productsResult = productIds.length
       ? await admin.from("products").select("id,name").in("id", productIds)
       : { data: [], error: null };
     if (productsResult.error) throw productsResult.error;
     const productNames = new Map((productsResult.data || []).map((product) => [product.id, product.name]));
-    const rules = new Map((rulesResult.data || []).map((rule) => [rule.id, rule]));
     const progressByRule = new Map((progressResult.data || []).map((item) => [item.rule_id, item]));
     const today = new Date().toISOString().slice(0, 10);
     const now = Date.now();
@@ -48,12 +67,16 @@ export async function GET() {
       loyalty: (rulesResult.data || []).map((rule) => {
         const progress = progressByRule.get(rule.id);
         const units = Number(progress?.units_earned || 0);
+        const triggerProductIds = triggerIdsByRule.get(rule.id) || [rule.trigger_product_id];
+        const triggerProductNames = triggerProductIds.map((id) => productNames.get(id)).filter((name): name is string => Boolean(name));
         return {
           ruleId: rule.id,
           name: rule.name,
           description: rule.description,
           triggerProductId: rule.trigger_product_id,
-          triggerProductName: productNames.get(rule.trigger_product_id) || "Eligible product",
+          triggerProductName: triggerProductNames.join(", ") || "Eligible products",
+          triggerProductIds,
+          triggerProductNames,
           requiredQuantity: rule.required_quantity,
           unitsEarned: units,
           currentUnits: units % rule.required_quantity,
@@ -62,18 +85,23 @@ export async function GET() {
           reviewRequired: Boolean(progress?.review_required),
         };
       }),
-      rewards: (rewardsResult.data || []).map((reward) => ({
+      rewards: (rewardsResult.data || []).map((reward) => {
+        const productIds = rewardIdsByReward.get(reward.id) || (reward.reward_product_id ? [reward.reward_product_id] : []);
+        return {
         id: reward.id,
         code: reward.reward_code,
         ruleId: reward.rule_id,
         type: reward.reward_type,
         productId: reward.reward_product_id,
+        productIds,
+        productNames: productIds.map((id) => productNames.get(id)).filter((name): name is string => Boolean(name)),
         name: reward.reward_name,
         status: reward.status === "issued" && reward.expires_at && new Date(reward.expires_at).getTime() <= now ? "expired" : reward.status,
         issuedAt: reward.issued_at,
         expiresAt: reward.expires_at,
         redeemedAt: reward.redeemed_at,
-      })),
+        };
+      }),
       giftCards: (cardsResult.data || []).map((card) => ({
         id: card.id,
         lastFour: card.code_last_four,
@@ -127,4 +155,3 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unable to save your profile." }, { status: 500 });
   }
 }
-

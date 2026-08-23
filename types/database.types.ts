@@ -73,6 +73,8 @@ export type Database = {
         price_text: string | null;
         image_url: string | null;
         sort_order: number;
+        starts_on: string;
+        ends_on: string | null;
       }>;
       promotion_events: {
         Row: {
@@ -556,6 +558,18 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["loyalty_rules"]["Insert"]>;
         Relationships: [];
       };
+      loyalty_rule_trigger_products: {
+        Row: { rule_id: string; product_id: string; position: number };
+        Insert: { rule_id: string; product_id: string; position?: number };
+        Update: { rule_id?: string; product_id?: string; position?: number };
+        Relationships: [];
+      };
+      loyalty_rule_reward_products: {
+        Row: { rule_id: string; product_id: string; position: number };
+        Insert: { rule_id: string; product_id: string; position?: number };
+        Update: { rule_id?: string; product_id?: string; position?: number };
+        Relationships: [];
+      };
       loyalty_progress: {
         Row: {
           id: string;
@@ -589,19 +603,27 @@ export type Database = {
           source_order_id: string | null;
           redemption_order_id: string | null;
           redeemed_by: string | null;
+          redeemed_product_id: string | null;
           issued_at: string;
           expires_at: string | null;
           redeemed_at: string | null;
           updated_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["loyalty_rewards"]["Row"], "id" | "reward_code" | "status" | "issued_at" | "updated_at"> & {
+        Insert: Omit<Database["public"]["Tables"]["loyalty_rewards"]["Row"], "id" | "reward_code" | "status" | "redeemed_product_id" | "issued_at" | "updated_at"> & {
           id?: string;
           reward_code?: string;
           status?: Database["public"]["Tables"]["loyalty_rewards"]["Row"]["status"];
+          redeemed_product_id?: string | null;
           issued_at?: string;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["loyalty_rewards"]["Insert"]>;
+        Relationships: [];
+      };
+      loyalty_reward_products: {
+        Row: { reward_id: string; product_id: string; position: number };
+        Insert: { reward_id: string; product_id: string; position?: number };
+        Update: { reward_id?: string; product_id?: string; position?: number };
         Relationships: [];
       };
       loyalty_ledger: {
@@ -683,6 +705,23 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      create_loyalty_rule_v2: {
+        Args: {
+          p_name: string;
+          p_description: string;
+          p_trigger_product_ids: string[];
+          p_required_quantity: number;
+          p_reward_type: "free_product" | "physical_gift";
+          p_reward_product_ids: string[];
+          p_reward_name: string;
+          p_reward_expires_days: number;
+          p_repeatable: boolean;
+          p_starts_on: string;
+          p_ends_on: string | null;
+          p_created_by: string | null;
+        };
+        Returns: string;
+      };
       create_checkout_order: {
         Args: {
           p_first_name: string; p_last_name: string; p_phone: string;
