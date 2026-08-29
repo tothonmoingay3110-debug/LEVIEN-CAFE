@@ -12,6 +12,8 @@ import { useSiteData } from "@/components/SiteDataProvider";
 
 export default function HomePage() {
   const { products, categories, content, combos } = useSiteData();
+  const bestSellers = products.filter((item) => item.badges.includes("best-seller"));
+  const mustTry = products.filter((item) => item.badges.includes("must-try"));
   return (
     <>
       <Header />
@@ -23,17 +25,17 @@ export default function HomePage() {
           <div className="categoryGrid">{categories.map((category) => <CategoryCard key={category.id} name={category.name} icon={category.icon} caption="Made fresh" />)}</div>
         </section>
 
-        <section className="section" id="best-sellers">
+        {bestSellers.length > 0 && <section className="section" id="best-sellers">
           <div className="sectionHeading"><div><span className="sectionLabel">Customer favorites</span><h2>Best Sellers</h2></div><p>Handcrafted drinks and fresh food our guests return for again and again.</p></div>
-          <div className="productGrid">{products.filter((item) => item.badges.includes("best-seller")).map((product) => <ProductCard product={product} key={product.id} />)}</div><div className="sectionCta"><a className="button primary" href="/menu">Explore Full Menu</a></div>
-        </section>
+          <div className="productGrid">{bestSellers.map((product) => <ProductCard product={product} key={product.id} />)}</div><div className="sectionCta"><a className="button primary" href="/menu">Explore Full Menu</a></div>
+        </section>}
 
-        <section className="fullWidthSection mustTrySection">
+        {mustTry.length > 0 && <section className="fullWidthSection mustTrySection">
           <div className="section mustTryInner">
             <div className="sectionHeading"><div><span className="sectionLabel">Signature picks</span><h2>Must Try at LEVIEN</h2></div><p>A short list of drinks that express our Vietnamese roots and playful modern style.</p></div>
-            <div className="productGrid">{products.filter((item) => item.badges.includes("must-try")).map((product) => <ProductCard product={product} key={product.id} />)}</div>
+            <div className="productGrid">{mustTry.map((product) => <ProductCard product={product} key={product.id} />)}</div>
           </div>
-        </section>
+        </section>}
 
         {combos.length > 0 && <section className="section" id="combos"><ComboCard /></section>}
 
