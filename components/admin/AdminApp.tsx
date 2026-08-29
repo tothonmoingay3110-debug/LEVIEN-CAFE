@@ -17,6 +17,7 @@ import {
 import ActivityLog from "@/components/admin/ActivityLog";
 import ContactMessages from "@/components/admin/ContactMessages";
 import GiftCards from "@/components/admin/GiftCards";
+import CounterOrder from "@/components/admin/CounterOrder";
 import LoyaltyPrograms from "@/components/admin/LoyaltyPrograms";
 import MemberScanner from "@/components/admin/MemberScanner";
 import ComboSuggestions, { type ComboSuggestionDraft } from "@/components/admin/ComboSuggestions";
@@ -71,6 +72,7 @@ type Employee = {
   estimatedWeeklyPay: number;
   mustChangePassword: boolean;
   createdAt: string;
+  avatarUrl: string;
 };
 type Content = { storeName: string; tagline: string; logo: string; announcement: string; aboutTitle: string; aboutText: string; aboutImage: string; address: string; phone: string; email: string; hours: string; mapUrl: string; footerText: string };
 type DB = { categories: Category[]; toppings: Topping[]; products: Product[]; combos: Combo[]; promotions: Promotion[]; orders: Order[]; content: Content };
@@ -225,7 +227,7 @@ function initials(name: string) {
   return value || "LV";
 }
 const catalogId = () => crypto.randomUUID();
-type ImageKind = "product" | "topping" | "combo" | "promotion" | "logo" | "about";
+type ImageKind = "product" | "topping" | "combo" | "promotion" | "logo" | "about" | "avatar" | "reward";
 type ImageFrame = { width: number; height: number; padding: number; mode: "contain" | "cover"; trim: boolean };
 type ImageCrop = { x: number; y: number; width: number; height: number; background: string | null };
 const imageFrames: Record<ImageKind, ImageFrame> = {
@@ -235,6 +237,8 @@ const imageFrames: Record<ImageKind, ImageFrame> = {
   promotion: { width: 1200, height: 1400, padding: 76, mode: "contain", trim: true },
   logo: { width: 800, height: 800, padding: 36, mode: "contain", trim: true },
   about: { width: 1600, height: 1100, padding: 0, mode: "cover", trim: false },
+  avatar: { width: 600, height: 600, padding: 0, mode: "cover", trim: false },
+  reward: { width: 1000, height: 1000, padding: 64, mode: "contain", trim: true },
 };
 
 function fullImageCrop(bitmap: ImageBitmap): ImageCrop {
@@ -794,12 +798,12 @@ export default function AdminApp() {
   return (
     <div className="adminShellV3">
       <aside className="adminSidebarV3">
-        <div className="adminBrandV3"><span className="adminLogoV3">LV</span><div><strong>LEVIEN</strong><small>ADMIN PLATFORM</small></div></div>
+        <div className="adminBrandV3"><span className="adminLogoV3">{db.content.logo ? <img src={db.content.logo} alt="LEVIEN logo" /> : "LV"}</span><div><strong>LEVIEN</strong><small>ADMIN PLATFORM</small></div></div>
         <AdminSidebarNav allowedViews={allowedViews} view={view} setView={setView} newOrders={db.orders.filter((order) => order.status === "New").length} unreadNotifications={unreadNotifications} />
         <div className="adminSidebarBottom"><Link href="/"><AdminIcon name="external" /><span>View Store</span></Link><button onClick={logout}><AdminIcon name="logout" /><span>Sign out</span></button></div>
       </aside>
       <main className="adminWorkspace">
-        <header className="adminTopbar"><div><span className="adminBreadcrumb">LEVIEN CAFE / {viewLabels[view]}</span><h1>{viewLabels[view]}</h1></div><div className="adminTopActions">{canManageOrders && <span className={`adminLiveBadge sync-${orderSyncStatus}`}>● {orderSyncStatus === "live" ? "Orders live" : orderSyncStatus === "polling" ? "Auto reconnecting" : "Connecting"}</span>}<span className={`adminRoleBadge role-${staff.role}`}>{staffRoleLabels[staff.role]}</span><button className="adminAvatar" title={staff.fullName}>{initials(staff.fullName)}</button></div></header>
+        <header className="adminTopbar"><div><span className="adminBreadcrumb">LEVIEN CAFE / {viewLabels[view]}</span><h1>{viewLabels[view]}</h1></div><div className="adminTopActions">{canManageOrders && <span className={`adminLiveBadge sync-${orderSyncStatus}`}>● {orderSyncStatus === "live" ? "Orders live" : orderSyncStatus === "polling" ? "Auto reconnecting" : "Connecting"}</span>}<span className={`adminRoleBadge role-${staff.role}`}>{staffRoleLabels[staff.role]}</span><button className="adminAvatar" title={staff.fullName} onClick={() => setView("account")}>{staff.avatarUrl ? <img src={staff.avatarUrl} alt="" /> : initials(staff.fullName)}</button></div></header>
         {view === "dashboard" && canManageCatalog && <Dashboard db={db} revenue={revenue} todayOrders={todayOrders} openView={setView} openModal={setModal} />}
         {view === "dashboard" && !canManageCatalog && canManageOrders && <OperationsDashboard db={db} todayOrders={todayOrders} openView={setView} />}
          {view === "orders" && <Orders db={db} orders={filteredOrders} filter={orderFilter} setFilter={setOrderFilter} update={update} openModal={setModal} />}
@@ -827,7 +831,7 @@ export default function AdminApp() {
         {view === "combosuggestions" && <ComboSuggestions products={db.products} combos={db.combos} orders={db.orders} createDraft={createSuggestedCombo} />}
         {view === "promotions" && <Promotions db={db} openModal={setModal} update={update} />}
         {view === "content" && <WebsiteContent db={db} openModal={setModal} />}
-        {view === "account" && <StaffAccount staff={staff} passwordChanged={handlePasswordChanged} />}
+        {view === "account" && <StaffAccount staff={staff} passwordChanged={handlePasswordChanged} avatarChanged={(avatarUrl) => setStaff((current) => current ? { ...current, avatarUrl } : current)} notify={setToast} />}
       </main>
       {modal && canOpenModal && <AdminModal modal={modal} db={db} close={() => setModal(null)} update={update} />}
       {employeeModal && canManageStaff && <EmployeeModal currentStaff={staff} employee={employeeModal.employee} close={() => setEmployeeModal(null)} saved={(employee, password) => { setEmployees((current) => { const exists = current.some((item) => item.id === employee.id); return exists ? current.map((item) => item.id === employee.id ? employee : item) : [...current, employee].sort((left, right) => left.fullName.localeCompare(right.fullName)); }); setEmployeeModal(null); setToast(employeeModal.employee ? "Employee updated" : "Employee account created"); if (password) setTemporaryCredentials({ email: employee.email, password }); }} />}
@@ -847,14 +851,28 @@ function Dashboard({ db, revenue, todayOrders, openView, openModal }: { db: DB; 
 function OperationsDashboard({ db, todayOrders, openView }: { db: DB; todayOrders: Order[]; openView: (view: AdminView) => void }) {
   return <div className="adminStack"><section className="adminWelcome"><div><span>Operations workspace</span><h2>Keep today’s order queue moving.</h2></div><button className="adminPrimary" onClick={() => openView("orders")}>Open orders</button></section><section className="adminMetrics"><Metric label="Orders today" value={String(todayOrders.length)} detail="Published online orders"/><Metric label="Waiting" value={String(db.orders.filter((order) => order.status === "New").length)} detail="Need confirmation"/><Metric label="Preparing" value={String(db.orders.filter((order) => order.status === "Preparing").length)} detail="In progress"/><Metric label="Ready" value={String(db.orders.filter((order) => order.status === "Ready").length)} detail="Ready for handoff"/></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Live queue</span><h3>Recent orders</h3></div><button className="adminTextButton" onClick={() => openView("orders")}>View all →</button></div><OrderRows orders={db.orders.slice(0, 6)} /></section></div>;
 }
-function StaffAccount({ staff, passwordChanged }: { staff: StaffSessionSummary; passwordChanged: () => void }) {
+function StaffAccount({ staff, passwordChanged, avatarChanged, notify }: { staff: StaffSessionSummary; passwordChanged: () => void; avatarChanged: (url: string) => void; notify: (message: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  async function changeAvatar(file?: File) {
+    if (!file || staff.legacy) return;
+    setUploading(true);
+    try {
+      const avatarUrl = await uploadAdminImage(file, "avatar");
+      const response = await fetch("/api/admin/account/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avatarUrl }) });
+      const result = await response.json() as { avatarUrl?: string; error?: string };
+      if (!response.ok) throw new Error(result.error || "Unable to update avatar.");
+      avatarChanged(result.avatarUrl || "");
+      notify("Profile photo updated");
+    } catch (error) { notify(error instanceof Error ? error.message : "Unable to update avatar"); }
+    finally { setUploading(false); }
+  }
   const accessSummary: Record<StaffRole, string> = {
     owner: "Full store, staff, schedule, and compensation access.",
     manager: "Store, staff, schedule, and compensation management access.",
     supervisor: "Order operations and personal schedule access.",
     staff: "Operations dashboard, order management, and personal schedule access.",
   };
-  return <div className="adminAccountGrid"><section className="adminCard adminProfileCard"><div className="adminProfileAvatar">{initials(staff.fullName)}</div><span className="adminEyebrow">Authenticated staff account</span><h2>{staff.fullName}</h2><p>{staff.email}</p><span className={`adminRoleBadge role-${staff.role}`}>{staffRoleLabels[staff.role]}</span></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Access level</span><h3>{staffRoleLabels[staff.role]} permissions</h3></div></div><p className="adminAccessCopy">{accessSummary[staff.role]}</p><div className="adminSecurityNote"><strong>Protected server-side</strong><span>Navigation and every Admin API request are checked against this role. Payroll fields are not part of staff session data.</span></div>{staff.legacy && <div className="adminLegacyNotice"><strong>Legacy Owner session</strong><span>Create the first Supabase Auth Owner account before removing the legacy Admin environment credentials.</span></div>}</section>{!staff.legacy && <PasswordChangeForm required={staff.mustChangePassword} changed={passwordChanged}/>}<section className="adminCard adminSchedulePreview"><span className="adminEyebrow">Available now</span><h3>Shift registration and work schedule</h3><p>Open Schedule to register preferred shifts or review your published weekly schedule.</p></section></div>;
+  return <div className="adminAccountGrid"><section className="adminCard adminProfileCard"><div className="adminProfileAvatar">{staff.avatarUrl ? <img src={staff.avatarUrl} alt="" /> : initials(staff.fullName)}</div>{!staff.legacy && <label className="adminSecondary adminAvatarUpload">{uploading ? "Uploading…" : "Upload profile photo"}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading} onChange={(event) => void changeAvatar(event.target.files?.[0])} /></label>}<span className="adminEyebrow">Authenticated staff account</span><h2>{staff.fullName}</h2><p>{staff.email}</p><span className={`adminRoleBadge role-${staff.role}`}>{staffRoleLabels[staff.role]}</span></section><section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Access level</span><h3>{staffRoleLabels[staff.role]} permissions</h3></div></div><p className="adminAccessCopy">{accessSummary[staff.role]}</p><div className="adminSecurityNote"><strong>Protected server-side</strong><span>Navigation and every Admin API request are checked against this role. Payroll fields are not part of staff session data.</span></div>{staff.legacy && <div className="adminLegacyNotice"><strong>Legacy Owner session</strong><span>Create the first Supabase Auth Owner account before removing the legacy Admin environment credentials.</span></div>}</section>{!staff.legacy && <PasswordChangeForm required={staff.mustChangePassword} changed={passwordChanged}/>}<section className="adminCard adminSchedulePreview"><span className="adminEyebrow">Available now</span><h3>Shift registration and work schedule</h3><p>Open Schedule to register preferred shifts or review your published weekly schedule.</p></section></div>;
 }
 function PasswordChangeForm({ required, changed }: { required: boolean; changed: () => void }) {
   const [error, setError] = useState("");
@@ -891,6 +909,14 @@ function QuickAction({ icon, title, text, onClick }: { icon: AdminIconName; titl
 
 function Orders({ db, orders, filter, setFilter, update, openModal }: { db: DB; orders: Order[]; filter: "All" | OrderStatus; setFilter: (v: "All" | OrderStatus) => void; update: (d: DB, m?: string) => void; openModal: (m: { type: string; id?: string }) => void }) {
   const statuses: ("All" | OrderStatus)[] = ["All", "Pending Payment", "New", "Preparing", "Ready", "Completed", "Cancelled"];
+  const [counterOpen, setCounterOpen] = useState(false);
+
+  async function counterSaved(orderNumber: string) {
+    const response = await fetch("/api/admin/orders", { cache: "no-store" });
+    const result = await response.json() as { orders?: Order[] };
+    update(response.ok && result.orders ? { ...db, orders: result.orders } : db, `Counter order ${orderNumber} created`);
+    setCounterOpen(false);
+  }
 
   async function changeOrderStatus(orderId: string, status: OrderStatus) {
     const existingOrder = db.orders.find((order) => order.id === orderId);
@@ -926,9 +952,10 @@ function Orders({ db, orders, filter, setFilter, update, openModal }: { db: DB; 
   return <div className="adminStack">
     <section className="adminToolbar">
       <div className="adminTabs">{statuses.map(s => <button key={s} className={filter === s ? "active" : ""} onClick={() => setFilter(s)}>{s}<span>{s === "All" ? db.orders.length : db.orders.filter(o => o.status === s).length}</span></button>)}</div>
-      <Link className="adminSecondary orderDisplayAdminLink" href="/order-display" target="_blank" rel="noopener noreferrer">Open TV Display ↗</Link>
+      <div className="orderToolbarActions"><Link className="adminSecondary orderDisplayAdminLink" href="/order-display" target="_blank" rel="noopener noreferrer">Open TV Display ↗</Link><button className="adminPrimary" type="button" onClick={() => setCounterOpen(true)}>＋ Create Counter Order</button></div>
     </section>
-    <section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Online ordering</span><h3>Order queue</h3></div><span className="adminHint">Paid online orders enter the queue only after Stripe confirms payment</span></div><div className="adminTableWrap"><table className="adminTable adminOrderTable"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>{orders.map(o => <tr key={o.id}><td data-label="Order"><strong>{o.id}</strong><small>{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></td><td data-label="Customer"><strong>{o.customer}</strong><small>{o.phone}</small></td><td data-label="Type">{o.type}</td><td data-label="Total"><strong>{money(o.total)}</strong><small>{o.paymentStatus || "unpaid"}</small></td><td data-label="Status">{o.status === "Completed" ? <span className="orderStatusLocked status-completed">Completed · Locked</span> : <select className={`orderStatusSelect status-${o.status.toLowerCase()}`} value={o.status} onChange={e => void changeOrderStatus(o.id, e.target.value as OrderStatus)}>{(o.status === "Pending Payment" ? ["Pending Payment", "Cancelled"] : ["New", "Preparing", "Ready", "Completed", "Cancelled"]).map(s => <option key={s}>{s}</option>)}</select>}</td><td data-label="Details"><button className="adminIconAction" onClick={() => openModal({ type: "order", id: o.id })}>View</button></td></tr>)}</tbody></table></div></section>
+    <section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Online and counter ordering</span><h3>Order queue</h3></div><span className="adminHint">Online and staff-entered orders appear in one live queue</span></div><div className="adminTableWrap"><table className="adminTable adminOrderTable"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>{orders.map(o => <tr key={o.id}><td data-label="Order"><strong>{o.id}</strong><small>{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></td><td data-label="Customer"><strong>{o.customer}</strong><small>{o.phone}</small></td><td data-label="Type">{o.type}</td><td data-label="Total"><strong>{money(o.total)}</strong><small>{o.paymentStatus || "unpaid"}</small></td><td data-label="Status">{o.status === "Completed" ? <span className="orderStatusLocked status-completed">Completed · Locked</span> : <select className={`orderStatusSelect status-${o.status.toLowerCase()}`} value={o.status} onChange={e => void changeOrderStatus(o.id, e.target.value as OrderStatus)}>{(o.status === "Pending Payment" ? ["Pending Payment", "Cancelled"] : ["New", "Preparing", "Ready", "Completed", "Cancelled"]).map(s => <option key={s}>{s}</option>)}</select>}</td><td data-label="Details"><button className="adminIconAction" onClick={() => openModal({ type: "order", id: o.id })}>View</button></td></tr>)}</tbody></table></div></section>
+    {counterOpen && <CounterOrder close={() => setCounterOpen(false)} saved={counterSaved} />}
   </div>;
 }
 function OrderRows({ orders }: { orders: Order[] }) { return <div className="adminOrderRows">{orders.map(o => <div key={o.id}><span className={`adminOrderDot status-${o.status.toLowerCase()}`}></span><div><strong>{o.id} · {o.customer}</strong><small>{o.items.map(orderItemLabel).join(", ")}</small></div><b>{money(o.total)}</b><em>{o.status}</em></div>)}</div>; }
@@ -1048,7 +1075,7 @@ function Employees({ currentStaff, employees, loading, openEmployee, refresh, sh
           const isSelf = employee.id === currentStaff.id;
           const busy = actionId === employee.id;
           return <tr key={employee.id}>
-            <td><div className="adminEmployeeIdentity"><span className="adminEmployeeAvatar">{initials(employee.fullName)}</span><div><strong>{employee.fullName}{isSelf ? " (You)" : ""}</strong><small>{employee.email}{employee.phone ? ` · ${employee.phone}` : ""}</small></div></div></td>
+            <td><div className="adminEmployeeIdentity"><span className="adminEmployeeAvatar">{employee.avatarUrl ? <img src={employee.avatarUrl} alt="" /> : initials(employee.fullName)}</span><div><strong>{employee.fullName}{isSelf ? " (You)" : ""}</strong><small>{employee.email}{employee.phone ? ` · ${employee.phone}` : ""}</small></div></div></td>
             <td><span className={`adminRoleBadge role-${employee.role}`}>{staffRoleLabels[employee.role]}</span></td>
             <td><strong>{employee.weeklyHours.toFixed(1)}</strong></td>
             <td><strong>{money(employee.hourlyRate)}</strong></td>

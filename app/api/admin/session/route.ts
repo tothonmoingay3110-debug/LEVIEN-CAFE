@@ -75,6 +75,7 @@ export async function POST(request: Request) {
       role: "owner" as const,
       legacy: true,
       mustChangePassword: false,
+      avatarUrl: "",
     };
     const response = NextResponse.json({ authenticated: true, staff });
     response.cookies.set(ADMIN_SESSION_COOKIE, session.value, {

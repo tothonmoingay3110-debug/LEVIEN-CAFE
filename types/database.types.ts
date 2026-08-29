@@ -102,6 +102,7 @@ export type Database = {
           active: boolean;
           phone: string;
           must_change_password: boolean;
+          avatar_url: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -114,6 +115,7 @@ export type Database = {
           active?: boolean;
           phone?: string;
           must_change_password?: boolean;
+          avatar_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -534,6 +536,7 @@ export type Database = {
           required_quantity: number;
           reward_type: "free_product" | "physical_gift";
           reward_product_id: string | null;
+          reward_item_id: string | null;
           reward_name: string;
           repeatable: boolean;
           reward_expires_days: number;
@@ -599,6 +602,7 @@ export type Database = {
           reward_code: string;
           reward_type: "free_product" | "physical_gift";
           reward_product_id: string | null;
+          reward_item_id: string | null;
           reward_name: string;
           status: "issued" | "reserved" | "redeemed" | "revoked" | "expired";
           source_order_id: string | null;
@@ -619,6 +623,12 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["loyalty_rewards"]["Insert"]>;
+        Relationships: [];
+      };
+      reward_items: {
+        Row: { id: string; sku: string; name: string; image_url: string | null; stock_quantity: number; active: boolean; created_at: string; updated_at: string };
+        Insert: { id?: string; sku: string; name: string; image_url?: string | null; stock_quantity?: number; active?: boolean; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["reward_items"]["Insert"]>;
         Relationships: [];
       };
       loyalty_reward_products: {
@@ -706,6 +716,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      fulfill_physical_reward_v2: {
+        Args: { p_reward_id: string; p_staff_id: string | null };
+        Returns: string;
+      };
       create_loyalty_rule_v2: {
         Args: {
           p_name: string;

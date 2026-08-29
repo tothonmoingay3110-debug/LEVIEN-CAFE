@@ -85,6 +85,7 @@ function employee(profile: StaffProfile) {
     fullName: profile.full_name,
     role: profile.role,
     active: profile.active,
+    avatarUrl: profile.avatar_url || "",
   };
 }
 

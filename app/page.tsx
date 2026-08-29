@@ -11,7 +11,7 @@ import { PromotionSlider } from "@/components/PromotionSlider";
 import { useSiteData } from "@/components/SiteDataProvider";
 
 export default function HomePage() {
-  const { products, categories, content } = useSiteData();
+  const { products, categories, content, combos } = useSiteData();
   return (
     <>
       <Header />
@@ -35,7 +35,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="section" id="combos"><ComboCard /></section>
+        {combos.length > 0 && <section className="section" id="combos"><ComboCard /></section>}
 
         <section className="section storySection" id="story">
           <div className="storyVisual">{content.aboutImage ? <img src={content.aboutImage} alt={content.aboutTitle} /> : <div className="storyArch"><span>FROM VIETNAM<br/>TO PHILADELPHIA</span><div className="storyCounter"><div className="storyCup">LV</div></div></div>}</div>

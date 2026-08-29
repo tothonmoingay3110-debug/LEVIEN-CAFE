@@ -23,6 +23,7 @@ type Rule = {
 };
 type Reward = { id: string; reward_code: string; reward_name: string; customer_profile_id: string; issued_at: string; expires_at: string | null };
 type Customer = { id: string; first_name: string; last_name: string; email: string; membership_number: string };
+type RewardItem = { id: string; sku: string; name: string; image_url: string | null; stock_quantity: number; active: boolean };
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -37,6 +38,7 @@ export default function LoyaltyPrograms({ notify }: { notify: (message: string) 
   const [products, setProducts] = useState<Product[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [rewardItems, setRewardItems] = useState<RewardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
@@ -50,12 +52,13 @@ export default function LoyaltyPrograms({ notify }: { notify: (message: string) 
     setError("");
     try {
       const response = await fetch("/api/admin/loyalty", { cache: "no-store" });
-      const result = await response.json() as { rules?: Rule[]; products?: Product[]; physicalRewards?: Reward[]; customers?: Customer[]; error?: string };
+      const result = await response.json() as { rules?: Rule[]; products?: Product[]; physicalRewards?: Reward[]; customers?: Customer[]; rewardItems?: RewardItem[]; error?: string };
       if (!response.ok) throw new Error(result.error || "Unable to load loyalty programs.");
       setRules(result.rules || []);
       setProducts(result.products || []);
       setRewards(result.physicalRewards || []);
       setCustomers(result.customers || []);
+      setRewardItems(result.rewardItems || []);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Unable to load loyalty programs.");
     } finally {
@@ -74,6 +77,7 @@ export default function LoyaltyPrograms({ notify }: { notify: (message: string) 
     const rewardProductIds = data.getAll("rewardProductIds").map(String);
     if (!triggerProductIds.length) return setError("Choose at least one eligible product.");
     if (rewardType === "free_product" && !rewardProductIds.length) return setError("Choose at least one product customers may redeem.");
+    if (rewardType === "physical_gift" && !data.get("rewardItemId")) return setError("Choose a physical gift from inventory.");
 
     setCreating(true);
     setError("");
@@ -89,6 +93,7 @@ export default function LoyaltyPrograms({ notify }: { notify: (message: string) 
           rewardType,
           rewardProductIds,
           rewardName: data.get("rewardName"),
+          rewardItemId: data.get("rewardItemId"),
           expiresDays: Number(data.get("expiresDays")),
           repeatable: data.get("repeatable") === "on",
           startsOn: data.get("startsOn"),
@@ -117,6 +122,16 @@ export default function LoyaltyPrograms({ notify }: { notify: (message: string) 
     await load();
   }
 
+  async function createRewardItem(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); setError("");
+    try {
+      let imageUrl = ""; const image = data.get("image");
+      if (image instanceof File && image.size) { const upload = new FormData(); upload.set("file", image); upload.set("scope", "reward"); const uploaded = await fetch("/api/admin/uploads", { method: "POST", body: upload }); const result = await uploaded.json() as { url?: string; error?: string }; if (!uploaded.ok || !result.url) throw new Error(result.error || "Unable to upload reward image."); imageUrl = result.url; }
+      const response = await fetch("/api/admin/loyalty", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "reward_item", sku: data.get("sku"), name: data.get("name"), stockQuantity: Number(data.get("stockQuantity")), imageUrl }) });
+      const result = await response.json() as { error?: string }; if (!response.ok) throw new Error(result.error || "Unable to create physical gift."); form.reset(); notify("Physical gift added to inventory"); await load();
+    } catch (itemError) { setError(itemError instanceof Error ? itemError.message : "Unable to create physical gift."); }
+  }
+
   function closeCreate() {
     if (creating) return;
     setShowCreate(false);
@@ -136,10 +151,11 @@ export default function LoyaltyPrograms({ notify }: { notify: (message: string) 
         return <article key={rule.id}><div><strong>{rule.name}</strong><span>Buy {rule.required_quantity} total across: {triggerNames}</span><small>{rule.reward_name}{rewardNames ? ` · choices: ${rewardNames}` : ""}</small><small>{formatDate(rule.starts_on)} – {rule.ends_on ? formatDate(rule.ends_on) : "No end date"} · {rule.repeatable ? "Repeatable" : "One time"} · reward expires in {rule.reward_expires_days} days</small></div><button className={rule.active ? "adminSecondary" : "adminPrimary"} onClick={() => void patchRule(rule.id, { active: !rule.active })}>{rule.active ? "Pause" : "Activate"}</button></article>;
       }) : <p>No programs yet.</p>}</div>
     </section>
-    <section className="adminCard">
+    <section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Physical reward inventory</span><h3>Gift catalog</h3></div></div><form className="rewardInventoryForm" onSubmit={createRewardItem}><label>SKU<input name="sku" placeholder="GIFT-TEDDY" required /></label><label>Gift name<input name="name" placeholder="LEVIEN teddy bear" required /></label><label>Stock<input name="stockQuantity" type="number" min={0} defaultValue={0} required /></label><label>Image<input name="image" type="file" accept="image/png,image/jpeg,image/webp" /></label><button className="adminPrimary">Add Gift</button></form>{rewardItems.length > 0 && <div className="rewardInventoryGrid">{rewardItems.map((item) => <article key={item.id}>{item.image_url ? <img src={item.image_url} alt="" /> : <span>🎁</span>}<div><strong>{item.name}</strong><small>{item.sku} · {item.stock_quantity} in stock · {item.active ? "Active" : "Inactive"}</small></div></article>)}</div>}</section>
+    {rewards.length > 0 && <section className="adminCard">
       <div className="adminCardHead"><div><span className="adminEyebrow">Counter fulfillment</span><h3>Physical gifts waiting</h3></div></div>
-      <div className="loyaltyRuleRows">{rewards.length ? rewards.map((reward) => { const customer = customerMap.get(reward.customer_profile_id); return <article key={reward.id}><div><strong>{reward.reward_name}</strong><span>{customer ? `${customer.first_name} ${customer.last_name} · ${customer.membership_number}` : "Member"}</span><small>{reward.reward_code} · issued {new Date(reward.issued_at).toLocaleDateString()}</small></div><button className="adminPrimary" onClick={() => void patchRule(reward.id, { action: "fulfill" })}>Mark Handed Over</button></article>; }) : <p>No physical gifts are waiting.</p>}</div>
-    </section>
+      <div className="loyaltyRuleRows">{rewards.map((reward) => { const customer = customerMap.get(reward.customer_profile_id); return <article key={reward.id}><div><strong>{reward.reward_name}</strong><span>{customer ? `${customer.first_name} ${customer.last_name} · ${customer.membership_number}` : "Member"}</span><small>{reward.reward_code} · issued {new Date(reward.issued_at).toLocaleDateString()}</small></div><button className="adminPrimary" onClick={() => void patchRule(reward.id, { action: "fulfill" })}>Mark Handed Over</button></article>; })}</div>
+    </section>}
     {showCreate && <div className="adminModalBackdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) closeCreate(); }}>
       <div className="adminModal loyaltyProgramModal" role="dialog" aria-modal="true" aria-labelledby="create-loyalty-title">
         <header><div><span className="adminEyebrow">Configurable rules</span><h2 id="create-loyalty-title">Create loyalty program</h2></div><button type="button" aria-label="Close" disabled={creating} onClick={closeCreate}>×</button></header>
@@ -152,7 +168,7 @@ export default function LoyaltyPrograms({ notify }: { notify: (message: string) 
             <div className="loyaltyProductGrid">{products.map((item) => <label key={item.id} className="loyaltyProductChoice"><input name="triggerProductIds" type="checkbox" value={item.id} /><span><strong>{item.name}</strong><small>${item.price.toFixed(2)}</small></span></label>)}</div>
           </fieldset>
           <label>Reward type<select name="rewardType" value={rewardType} onChange={(event) => setRewardType(event.target.value as RewardType)}><option value="free_product">Free menu product</option><option value="physical_gift">Physical gift</option></select></label>
-          <label>Reward name<input name="rewardName" placeholder="Free coffee or LEVIEN teddy bear" required /></label>
+          {rewardType === "free_product" ? <label>Reward name<input name="rewardName" placeholder="Free coffee" required /></label> : <label>Physical gift<select name="rewardItemId" required defaultValue=""><option value="">Select an in-stock gift</option>{rewardItems.filter((item) => item.active && item.stock_quantity > 0).map((item) => <option key={item.id} value={item.id}>{item.name} · {item.stock_quantity} in stock</option>)}</select><input name="rewardName" value={rewardItems[0]?.name || "Physical gift"} readOnly hidden /></label>}
           {rewardType === "free_product" && <fieldset className="loyaltyProductPicker wide">
             <legend>Reward choices <span>Customers may redeem any one of the selected products.</span></legend>
             <div className="loyaltyProductGrid">{products.map((item) => <label key={item.id} className="loyaltyProductChoice"><input name="rewardProductIds" type="checkbox" value={item.id} /><span><strong>{item.name}</strong><small>${item.price.toFixed(2)}</small></span></label>)}</div>

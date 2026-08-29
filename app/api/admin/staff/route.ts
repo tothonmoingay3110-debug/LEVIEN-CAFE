@@ -36,6 +36,7 @@ function employeeResponse(profile: StaffProfile, compensation?: StaffCompensatio
     weeklyHours,
     estimatedWeeklyPay: hourlyRate * weeklyHours,
     mustChangePassword: profile.must_change_password,
+    avatarUrl: profile.avatar_url || "",
     createdAt: profile.created_at,
   };
 }

@@ -1989,6 +1989,9 @@ button,input,textarea,select{font-family:var(--font-ui)}
   .reportsDateRange { grid-template-columns: 1fr; }
   .reportsDateRange .adminSecondary { grid-column: auto; }
 }
+.adminLogoV3 img,.adminAvatar img,.adminProfileAvatar img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}.adminAvatar{overflow:hidden}.adminAvatarUpload{position:relative;cursor:pointer}.adminAvatarUpload input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}.rewardInventoryForm{display:grid;grid-template-columns:1fr 1.5fr .7fr 1.5fr auto;gap:12px;align-items:end}.rewardInventoryForm label{display:grid;gap:6px;font-weight:700}.rewardInventoryForm input{min-height:44px;border:1px solid #d7dfda;border-radius:10px;padding:8px 10px;background:#fff}.rewardInventoryGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:18px}.rewardInventoryGrid article{display:flex;align-items:center;gap:12px;border:1px solid #dfe5e1;border-radius:12px;padding:10px}.rewardInventoryGrid img,.rewardInventoryGrid article>span{width:56px;height:56px;border-radius:10px;object-fit:cover;display:grid;place-items:center;background:#f0f5f2}.rewardInventoryGrid div{display:grid;gap:4px}.rewardInventoryGrid small{color:#6d7973}
+.adminEmployeeAvatar img,.scheduleShiftAvatar img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
+@media(max-width:700px){.sliderArrow{display:none!important}.rewardInventoryForm{grid-template-columns:1fr}.trackOrderActions>a{width:100%}}
 
 /* V2.11 navigation: related admin views live inside compact accordion groups */
 .adminSidebarV3 nav.adminGroupedNav {
@@ -2663,14 +2666,16 @@ button,input,textarea,select{font-family:var(--font-ui)}
   font-weight: 900;
 }
 .headerAccount > b { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+.headerAccount{border:1px solid #cbdad3;background:#edf5f1;padding:5px 12px 5px 7px}
+.headerAccount:hover,.headerAccount:focus-visible{background:#125a42;border-color:#125a42;color:#fff}.headerAccount:hover>span,.headerAccount:focus-visible>span{background:#ffffff22;color:#fff}
 
 /* 2026-08 UX consistency pass */
 .headerSearch input{width:116px;border:0;outline:0;background:transparent;color:#34483f;font:inherit;min-width:0}
 .headerSearch input::placeholder{color:#7a847f;opacity:1}
 .menuSearch span{display:grid;place-items:center;align-self:stretch;line-height:1;transform:none}
-.sliderArrow{display:grid;place-items:center;min-width:50px;min-height:50px;line-height:1;transition:background .2s,transform .2s,box-shadow .2s}
-.sliderArrow:hover,.sliderArrow:focus-visible{background:#0b3528;box-shadow:0 0 0 3px rgba(255,255,255,.2);transform:translateY(-50%) scale(1.05)}
-.heroSlider .sliderArrow.left{left:14px}.heroSlider .sliderArrow.right{right:14px}
+.sliderArrow{display:grid;place-items:center;min-width:52px;min-height:52px;line-height:1;border:2px solid #fff;background:var(--gold);color:#123e2e;box-shadow:0 8px 24px #001d1455;transition:background .2s,transform .2s,box-shadow .2s}
+.sliderArrow:hover,.sliderArrow:focus-visible{background:#fff;box-shadow:0 0 0 4px rgba(243,195,66,.3),0 10px 26px #001d1466;transform:translateY(-50%) scale(1.07)}
+.heroSlider .sliderArrow.left{left:24px}.heroSlider .sliderArrow.right{right:24px}
 .adminModal{padding:0 24px 24px}
 .adminModal>header{position:sticky;top:0;z-index:8;background:#fff;padding-top:24px}
 .adminModal>header button{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;line-height:1;margin-right:2px}
@@ -2692,11 +2697,15 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .boardShift,.boardAdd{width:100%;border:0;border-radius:9px;min-height:44px}.boardShift{padding:8px;background:rgba(20,78,56,.09);color:#123e2e;text-align:left}.boardShift strong,.boardShift small,.boardTimeOff small{display:block}.boardShift small,.boardTimeOff small{font-size:9px;margin-top:3px}.boardAdd{background:transparent;color:#7c8a83;font-size:18px}.boardAdd:hover{background:#eef4f0;color:#144e38}.boardTimeOff{display:block;padding:8px;border-radius:9px;background:#fde5e2;color:#9b3932;font-size:10px;font-weight:850}
 .weeklyShiftBoard .employeeColor0 th{border-left:5px solid #66a86c}.weeklyShiftBoard .employeeColor1 th{border-left:5px solid #e2ca61}.weeklyShiftBoard .employeeColor2 th{border-left:5px solid #94a9c7}.weeklyShiftBoard .employeeColor3 th{border-left:5px solid #d77c78}.weeklyShiftBoard .employeeColor4 th{border-left:5px solid #718dc5}.weeklyShiftBoard .employeeColor5 th{border-left:5px solid #d9ae63}.weeklyShiftBoard .employeeColor6 th{border-left:5px solid #58a9c5}
 .boardEmpty{text-align:center;padding:32px!important;color:#77847e}
+.boardAvailability{display:block;margin:4px 0;padding:7px 8px;border:1px solid #a9d8c2;border-radius:9px;background:#e9f7f0;color:#176044;font-size:9px;font-weight:900}.boardAvailability small{display:block;margin-top:3px;font-size:9px;font-weight:700}
 .adminEntityIcon img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
 .toppingOptionImage,.toppingOptionFallback{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#edf4ef;display:grid;place-items:center;color:#14533d;flex:0 0 44px}
 .productTransferActions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.productTransferActions button{white-space:nowrap}
 .customerToolbarActions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.customerMemberBadge,.customerGuestBadge{display:inline-flex;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:850}.customerMemberBadge{background:#dff2e7;color:#17613b}.customerGuestBadge{background:#edf0ee;color:#65716b}
 .giftCardFieldLabel{display:flex!important;align-items:center;gap:4px}.giftCardFieldLabel b{color:#b63d34}.issuedGiftCardModal{width:min(680px,100%);padding:24px}.issuedGiftCardModal .issuedGiftCard{margin:0}
+.trackOrderActions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+.quickAdd{width:48px;height:48px;right:16px;bottom:16px;border:2px solid #fff!important;background:#125a42!important;color:#fff!important;box-shadow:0 8px 20px #06291e44;font-size:25px!important}.quickAdd:hover:not(:disabled),.quickAdd:focus-visible:not(:disabled){background:var(--gold)!important;color:#123e2e!important;transform:translateY(-2px) scale(1.05)}
+.orderToolbarActions{display:flex;gap:9px;flex-wrap:wrap}.counterOrderModal{width:min(1180px,96vw)}.counterOrderLayout{display:grid;grid-template-columns:1.35fr .75fr;gap:20px}.counterProductSearch{max-width:none;margin-bottom:12px}.counterProductGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-height:62vh;overflow:auto}.counterProductGrid>button{display:grid;grid-template-columns:52px minmax(0,1fr);grid-template-rows:auto auto;gap:3px 10px;align-items:center;text-align:left;border:1px solid #dce5e0;border-radius:13px;background:#fff;padding:9px;color:#173c2e}.counterProductGrid img,.counterProductGrid>button>span{grid-row:1/3;width:52px;height:52px;border-radius:9px;object-fit:cover;background:#edf4f0;display:grid;place-items:center}.counterProductGrid small{color:#557066}.counterOrderLayout aside{display:grid;align-content:start;gap:12px;padding:16px;border-radius:16px;background:#f5f8f6}.counterOrderLayout label{display:grid;gap:6px;font-size:11px;font-weight:800}.counterOrderLayout input,.counterOrderLayout select,.counterOrderLayout textarea{width:100%;border:1px solid #d6dfda;border-radius:10px;background:#fff;padding:10px;font:inherit}.counterGuestFields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.counterGuestFields label:last-child{grid-column:1/-1}.counterCart{display:grid;gap:8px;max-height:32vh;overflow:auto}.counterCart article{position:relative;border:1px solid #dce5e0;border-radius:11px;background:#fff;padding:10px}.counterCart article>div:first-child{display:flex;justify-content:space-between;gap:8px}.counterCart article>div:first-child span{display:flex;align-items:center;gap:8px}.counterCart article button{border:1px solid #d6dfda;background:#fff;border-radius:7px}.counterToppings{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.counterToppings label{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:700}.counterToppings input{width:auto}.counterRemove{margin-top:7px;color:#9b332e}.counterTotal{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #dbe3df;padding-top:12px}.counterTotal strong{font-size:24px;color:#14553f}
 .intelligenceSegment em{display:block;margin-top:6px;color:#6b7470;font-size:9px;font-style:normal;line-height:1.4}
 @media(max-width:720px){
   .productTransferActions{display:grid;grid-template-columns:1fr 1fr}.productTransferActions .adminPrimary{grid-column:1/-1}.productAdminToolbar .adminSearch{max-width:none}
@@ -2706,15 +2715,18 @@ button,input,textarea,select{font-family:var(--font-ui)}
   .adminOrderTable td:last-child{border-bottom:0}.adminOrderTable td::before{content:attr(data-label);color:#79847f;font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
   .adminOrderTable td>*{min-width:0}.adminOrderTable select,.adminOrderTable button{max-width:100%}
 }
+@media(max-width:850px){.counterOrderLayout{grid-template-columns:1fr}.counterProductGrid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:34vh}}
+@media(max-width:650px){.headerAccount{padding:5px}.headerAccount>b{display:none}.quickAdd{width:44px;height:44px;right:12px;bottom:12px}.counterProductGrid{grid-template-columns:1fr}.orderToolbarActions{width:100%}.orderToolbarActions>*{flex:1}}
 .accountHero .accountHeroEyebrow { color: var(--gold); }
+.accountHeroActions .button.primary { background:var(--gold); color:#123e2e; border-color:var(--gold); box-shadow:0 9px 20px rgba(0,0,0,.14) }
 .accountHeroActions .button.secondary { background: #fff; color: var(--green); border-color: #fff; }
 .button.accountSignOut {
   margin: 0;
   border: 1px solid rgba(255,255,255,.42);
-  background: rgba(255,255,255,.07);
+  background: transparent;
   color: #fff;
 }
-.button.accountSignOut:hover { background: rgba(255,255,255,.14); }
+.button.accountSignOut:hover { background: #fff0ef; border-color:#ffd1cd; color:#9b3028; }
 .passwordField { position: relative; width: 100%; }
 .passwordField input { width: 100%; padding-right: 48px !important; }
 .passwordVisibility {

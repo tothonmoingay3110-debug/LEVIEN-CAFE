@@ -4,6 +4,7 @@ import Link from "next/link";
 import { type FormEvent, useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { useCustomerSession } from "@/components/CustomerSessionProvider";
 import { readOrders } from "@/lib/orders";
 import type { CustomerOrder, OrderStatus } from "@/types";
 
@@ -11,6 +12,7 @@ const stages: OrderStatus[] = ["New", "Preparing", "Ready", "Completed"];
 type TrackedOrder = Pick<CustomerOrder, "id" | "customer" | "type" | "status" | "total" | "giftCardAmount" | "amountDue" | "items">;
 
 export default function TrackOrderPage() {
+  const { authenticated } = useCustomerSession();
   const [order, setOrder] = useState<TrackedOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -143,6 +145,7 @@ export default function TrackOrderPage() {
             <small>{stage === "New" ? "Your order is waiting for confirmation." : stage === "Preparing" ? "The team is preparing your order." : stage === "Ready" ? "Your order is ready for pickup or delivery." : "Your order has been completed."}</small>
           </div>)}</div>}
           <div className="trackOrderItems"><h2>Order details</h2>{order.items.map((item) => <article className={item.itemType === "combo" ? "trackComboItem" : ""} key={item.lineId}><div><strong>{item.quantity} × {item.name}</strong>{item.itemType === "combo" && item.comboItems?.length ? <div className="trackComboChildren">{item.comboItems.map((child) => <span key={child.productId}><b>{child.emoji} {child.name}</b><small>{[child.ice && `Ice ${child.ice}`, child.sugar && `Sugar ${child.sugar}`, ...child.toppings.map((t) => `+ ${t.name}`), child.note && `Note: ${child.note}`].filter(Boolean).join(" · ")}</small></span>)}</div> : <small>{[item.ice && `Ice ${item.ice}`, item.sugar && `Sugar ${item.sugar}`, ...item.toppings.map((t) => `+ ${t.name}`)].filter(Boolean).join(" · ")}</small>}</div><b>${(item.unitPrice * item.quantity).toFixed(2)}</b></article>)}{Boolean(order.giftCardAmount) && <div className="trackTotal trackGiftCardDiscount"><span>Gift Card</span><strong>−${order.giftCardAmount?.toFixed(2)}</strong></div>}<div className="trackTotal"><span>{order.giftCardAmount ? "Amount due" : "Total"}</span><strong>${(order.amountDue ?? order.total).toFixed(2)}</strong></div></div>
+          <div className="trackOrderActions"><Link className="button primary" href={authenticated ? "/account" : "/menu"}>{authenticated ? "Back to My Account" : "Back to Menu"}</Link><Link className="button secondary" href="/menu">{order.status === "Completed" ? "Order Again" : "View Menu"}</Link></div>
           <p className={`trackRefreshNote sync-${syncStatus}`}>{syncStatus === "live" ? "Live order updates connected." : "Automatic status checks are active while live updates reconnect."}</p>
         </> : null}
       </section>

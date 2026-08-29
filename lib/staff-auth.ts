@@ -16,7 +16,7 @@ export async function getActiveStaffProfile(
 ): Promise<StaffSessionSummary | null> {
   const { data: profile, error } = await createAdminClient()
     .from("staff_profiles")
-    .select("id,auth_user_id,email,full_name,role,active,must_change_password")
+    .select("id,auth_user_id,email,full_name,role,active,must_change_password,avatar_url")
     .eq("auth_user_id", authUser.id)
     .maybeSingle();
 
@@ -31,6 +31,7 @@ export async function getActiveStaffProfile(
     role: profile.role,
     legacy: false,
     mustChangePassword: profile.must_change_password,
+    avatarUrl: profile.avatar_url || "",
   };
 }
 
@@ -46,6 +47,7 @@ async function legacyOwnerSession(): Promise<StaffSessionSummary | null> {
       role: "owner",
       legacy: true,
       mustChangePassword: false,
+      avatarUrl: "",
     };
   } catch {
     return null;

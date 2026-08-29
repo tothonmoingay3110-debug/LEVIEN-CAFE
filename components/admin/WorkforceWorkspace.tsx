@@ -164,7 +164,7 @@ export default function WorkforceWorkspace({
   return <div className="adminStack workforceWorkspace">
     <section className="adminWelcome workforceWelcome">
       <div><span>V2.11 staff operations</span><h2>Everything you need for your work week.</h2><p>Schedule updates, coverage requests and availability in one private workspace.</p></div>
-      {!data.legacy && <button className="adminPrimary" type="button" onClick={() => setOfferOpen(true)} disabled={!offerableShifts.length || !data.team.length}>Offer a shift</button>}
+      {!data.legacy && <button className="adminPrimary" type="button" onClick={() => setOfferOpen(true)}>Register availability</button>}
     </section>
 
     <section className="workforceMetrics">
@@ -218,15 +218,15 @@ export default function WorkforceWorkspace({
             </div>
           </article>;
         })}
-        {!data.swaps.length && <div className="workforceEmpty"><strong>No coverage requests</strong><span>Use Offer a shift when a coworker can cover one of your future shifts.</span></div>}
+        {!data.swaps.length && <div className="workforceEmpty"><strong>No coverage requests</strong><span>Coverage requests will appear here when shift reassignment is enabled.</span></div>}
       </div>
     </section>
 
-    {offerOpen && <OfferShiftModal shifts={offerableShifts} team={data.team} close={() => setOfferOpen(false)} saved={async () => { setOfferOpen(false); notify("Coverage request submitted"); await refresh(); }} />}
+    {offerOpen && <AvailabilityModal close={() => setOfferOpen(false)} saved={async () => { setOfferOpen(false); notify("Availability registered"); await refresh(); }} />}
   </div>;
 }
 
-function OfferShiftModal({ shifts, team, close, saved }: { shifts: WorkspaceShift[]; team: WorkspaceData["team"]; close: () => void; saved: () => Promise<void> }) {
+function AvailabilityModal({ close, saved }: { close: () => void; saved: () => Promise<void> }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -235,15 +235,16 @@ function OfferShiftModal({ shifts, team, close, saved }: { shifts: WorkspaceShif
     setSaving(true);
     setError("");
     try {
-      const response = await fetch("/api/admin/workspace", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shiftId: form.get("shiftId"), offeredTo: form.get("offeredTo"), note: form.get("note") }) });
+      const response = await fetch("/api/admin/schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "request", date: form.get("date"), startTime: form.get("startTime"), endTime: form.get("endTime"), note: form.get("note") }) });
       const result = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(result.error || "Unable to offer this shift.");
+      if (!response.ok) throw new Error(result.error || "Unable to register availability.");
       await saved();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Unable to offer this shift.");
+      setError(submitError instanceof Error ? submitError.message : "Unable to register availability.");
     } finally {
       setSaving(false);
     }
   }
-  return <div className="adminModalBackdrop" onMouseDown={(event) => { if (event.currentTarget === event.target) close(); }}><div className="adminModal workforceModal"><header><div><span className="adminEyebrow">Manager-reviewed coverage</span><h2>Offer a shift</h2></div><button type="button" onClick={close}>×</button></header><form className="workforceForm" onSubmit={submit}><label className="wide">My future shift<select name="shiftId" required defaultValue={shifts[0]?.id}>{shifts.map((shift) => <option value={shift.id} key={shift.id}>{displayDate(shift.date)} · {shift.startTime}–{shift.endTime}{shift.position ? ` · ${shift.position}` : ""}</option>)}</select></label><label className="wide">Coworker<select name="offeredTo" required defaultValue={team[0]?.id}>{team.map((employee) => <option value={employee.id} key={employee.id}>{employee.fullName} · {staffRoleLabels[employee.role]}</option>)}</select></label><label className="wide">Note<textarea name="note" rows={4} maxLength={500} placeholder="Why do you need coverage?" /></label><div className="workforceFormNote wide"><strong>The shift stays assigned to you until approved.</strong><span>The server checks time off and overlapping shifts again during approval.</span></div>{error && <div className="adminLoginError wide">{error}</div>}<div className="adminFormActions wide"><button className="adminSecondary" type="button" onClick={close}>Cancel</button><button className="adminPrimary" type="submit" disabled={saving || !shifts.length || !team.length}>{saving ? "Submitting…" : "Submit request"}</button></div></form></div></div>;
+  const currentDate = dateKey(new Date());
+  return <div className="adminModalBackdrop" onMouseDown={(event) => { if (event.currentTarget === event.target) close(); }}><div className="adminModal workforceModal"><header><div><span className="adminEyebrow">Preferred working time</span><h2>Register availability</h2></div><button type="button" onClick={close}>×</button></header><form className="workforceForm" onSubmit={submit}><label>Date<input name="date" type="date" min={currentDate} defaultValue={currentDate} required /></label><label>Start time<input name="startTime" type="time" defaultValue="09:00" required /></label><label>End time<input name="endTime" type="time" defaultValue="17:00" required /></label><label className="wide">Note<textarea name="note" rows={4} maxLength={500} placeholder="Optional availability note" /></label><div className="workforceFormNote wide"><strong>This is availability, not a published shift.</strong><span>Managers can see overlapping employee availability and decide who to schedule.</span></div>{error && <div className="adminLoginError wide">{error}</div>}<div className="adminFormActions wide"><button className="adminSecondary" type="button" onClick={close}>Cancel</button><button className="adminPrimary" type="submit" disabled={saving}>{saving ? "Submitting…" : "Register availability"}</button></div></form></div></div>;
 }
