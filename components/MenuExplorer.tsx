@@ -11,14 +11,22 @@ export function MenuExplorer() {
   const menuCategories = ["All", ...categories.map((item) => item.name)];
 
   useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get("category");
+    const parameters = new URLSearchParams(window.location.search);
+    const requested = parameters.get("category");
+    const requestedQuery = parameters.get("q");
     if (requested && menuCategories.includes(requested)) {
       setCategory(requested);
-      requestAnimationFrame(() => document.querySelector(".menuTools")?.scrollIntoView({ behavior: "smooth", block: "start" }));
     }
+    if (requestedQuery) setQuery(requestedQuery);
+    if (requested || requestedQuery) requestAnimationFrame(() => document.querySelector(".menuTools")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }, [categories.length]);
 
-  const filtered = useMemo(() => products.filter((product) => (category === "All" || product.category === category) && `${product.name} ${product.description}`.toLowerCase().includes(query.toLowerCase())), [products, category, query]);
+  const filtered = useMemo(() => products
+    .filter((product) => (category === "All" || product.category === category) && `${product.name} ${product.description}`.toLowerCase().includes(query.toLowerCase()))
+    .sort((left, right) => {
+      const priority = (badges: typeof left.badges) => badges.includes("new") ? 0 : badges.includes("best-seller") ? 1 : badges.includes("must-try") ? 2 : 3;
+      return priority(left.badges) - priority(right.badges);
+    }), [products, category, query]);
   return (
     <>
       <div className="menuTools"><label className="menuSearch"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search coffee, milk tea, food..." /></label><span className="menuResultCount">{filtered.length} items</span></div>

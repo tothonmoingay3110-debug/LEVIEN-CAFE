@@ -38,9 +38,10 @@ export type Database = {
         Relationships: [];
       };
       categories: GenericCatalogRow<{ icon: string; sort_order: number }>;
-      toppings: GenericCatalogRow<{ price: number }>;
+      toppings: GenericCatalogRow<{ price: number; image_url: string | null }>;
       products: GenericCatalogRow<{
         category_id: string | null;
+        sku: string;
         description: string | null;
         price: number;
         image_url: string | null;
@@ -340,9 +341,9 @@ export type Database = {
       customer_profiles: {
         Row: {
           id: string;
-          auth_user_id: string;
+          auth_user_id: string | null;
           legacy_customer_id: string | null;
-          email: string;
+          email: string | null;
           first_name: string;
           last_name: string;
           phone: string;
@@ -354,9 +355,9 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          auth_user_id: string;
+          auth_user_id?: string | null;
           legacy_customer_id?: string | null;
-          email: string;
+          email?: string | null;
           first_name?: string;
           last_name?: string;
           phone?: string;

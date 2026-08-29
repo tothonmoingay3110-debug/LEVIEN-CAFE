@@ -36,9 +36,9 @@ export async function GET() {
     const content = contentResult.data;
     return NextResponse.json({ catalog: {
       categories: (categoryResult.data || []).map((row) => ({ id: row.id, name: row.name, icon: row.icon, active: row.active })),
-      toppings: (toppingResult.data || []).map((row) => ({ id: row.id, name: row.name, price: Number(row.price), active: row.active })),
+      toppings: (toppingResult.data || []).map((row) => ({ id: row.id, name: row.name, price: Number(row.price), image: row.image_url || "", active: row.active })),
       products: (productResult.data || []).map((row) => ({
-        id: row.id, name: row.name, categoryId: row.category_id || "", price: Number(row.price),
+        id: row.id, sku: row.sku || "", name: row.name, categoryId: row.category_id || "", price: Number(row.price),
         description: row.description || "", image: row.image_url || "", emoji: row.emoji,
         toppingIds: productToppings.filter((link) => link.product_id === row.id).map((link) => link.topping_id),
         allowIce: row.allow_ice, allowSugar: row.allow_sugar, allowToppings: row.allow_toppings,

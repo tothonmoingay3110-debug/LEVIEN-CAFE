@@ -71,11 +71,13 @@ const permissionsByRole: Record<StaffRole, ReadonlySet<StaffPermission>> = {
   supervisor: new Set<StaffPermission>([
     "view_dashboard",
     "manage_orders",
+    "view_customers",
     "view_own_schedule",
   ]),
   staff: new Set<StaffPermission>([
     "view_dashboard",
     "manage_orders",
+    "view_customers",
     "view_own_schedule",
   ]),
 };

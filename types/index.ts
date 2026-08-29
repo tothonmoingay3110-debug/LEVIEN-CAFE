@@ -4,6 +4,7 @@ export type ProductTopping = {
   id: string;
   name: string;
   price: number;
+  image?: string;
 };
 
 export type Product = {

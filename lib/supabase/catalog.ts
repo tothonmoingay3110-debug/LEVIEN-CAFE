@@ -12,6 +12,7 @@ export type CatalogTopping = {
   id: string;
   name: string;
   price: number;
+  image?: string;
   active: boolean;
 };
 
@@ -82,6 +83,7 @@ export async function readSupabaseCatalog(): Promise<SupabaseCatalog | null> {
     id: stringValue(row.id),
     name: stringValue(row.name),
     price: numberValue(row.price),
+    image: stringValue(row.image_url),
     active: row.active !== false,
   }));
   const toppingMap = new Map(toppings.map((topping) => [topping.id, topping]));
@@ -113,8 +115,7 @@ export async function readSupabaseCatalog(): Promise<SupabaseCatalog | null> {
     allowToppings: Boolean(row.allow_toppings),
     toppings: (toppingIdsByProduct.get(stringValue(row.id)) || [])
       .map((id) => toppingMap.get(id))
-      .filter((item): item is CatalogTopping => Boolean(item))
-      .map(({ id, name, price }) => ({ id, name, price })),
+      .flatMap((item) => item ? [{ id: item.id, name: item.name, price: item.price, image: item.image }] : []),
   }));
 
   const productIdsByCombo = new Map<string, string[]>();
