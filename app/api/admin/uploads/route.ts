@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffAccess } from "@/lib/staff-auth";
 
 const BUCKET = "catalog-images";
-const scopes = new Set(["product", "combo", "promotion", "logo", "about"]);
+const scopes = new Set(["product", "topping", "combo", "promotion", "logo", "about"]);
 const extensions: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",

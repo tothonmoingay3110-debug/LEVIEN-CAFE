@@ -57,6 +57,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Incorrect email, username, or password." }, { status: 401 });
     }
 
+    // A storefront customer and the legacy Owner share Supabase auth cookies.
+    // Clear the customer session before creating the independent legacy staff session.
+    try {
+      const supabase = await createClient();
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Unable to clear customer session before legacy staff login:", error);
+    }
+
     const session = createAdminSession();
     const staff = {
       id: "legacy-owner",

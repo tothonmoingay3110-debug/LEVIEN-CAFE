@@ -2389,6 +2389,9 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .contactFormGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 16px; }
 .contactFormGrid label { display: grid; gap: 8px; color: #40564d; font-size: 10px; font-weight: 850; letter-spacing: .04em; }
 .contactFormGrid label > span { color: #c08b25; }
+.contactFormGrid .fieldLabel { display:flex; align-items:center; gap:4px; color:#40564d; }
+.contactFormGrid .fieldLabel b { color:#b93b32; }
+.contactFormGrid .fieldLabel small { margin-left:auto; color:#89958f; font-size:8px; }
 .contactFormGrid label > small { float: right; color: #97a29d; font-size: 8px; font-weight: 700; }
 .contactFormGrid .wide { grid-column: 1/-1; }
 .contactFormGrid input,.contactFormGrid select,.contactFormGrid textarea {
@@ -2660,6 +2663,49 @@ button,input,textarea,select{font-family:var(--font-ui)}
   font-weight: 900;
 }
 .headerAccount > b { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+
+/* 2026-08 UX consistency pass */
+.headerSearch input{width:116px;border:0;outline:0;background:transparent;color:#34483f;font:inherit;min-width:0}
+.headerSearch input::placeholder{color:#7a847f;opacity:1}
+.menuSearch span{display:grid;place-items:center;align-self:stretch;line-height:1;transform:none}
+.sliderArrow{display:grid;place-items:center;min-width:50px;min-height:50px;line-height:1;transition:background .2s,transform .2s,box-shadow .2s}
+.sliderArrow:hover,.sliderArrow:focus-visible{background:#0b3528;box-shadow:0 0 0 3px rgba(255,255,255,.2);transform:translateY(-50%) scale(1.05)}
+.heroSlider .sliderArrow.left{left:14px}.heroSlider .sliderArrow.right{right:14px}
+.adminModal{padding:0 24px 24px}
+.adminModal>header{position:sticky;top:0;z-index:8;background:#fff;padding-top:24px}
+.adminModal>header button{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;line-height:1;margin-right:2px}
+@media(max-width:720px){
+  .adminModal{padding:0 18px 18px;max-height:96vh}
+  .adminModal>header{padding-top:18px}
+  .adminTableWrap{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
+  .orderDisplayAdminLink{width:100%;text-align:center;justify-content:center}
+}
+.orderStatusLocked{display:inline-flex;align-items:center;border-radius:999px;padding:7px 10px;font-weight:800;font-size:10px;white-space:nowrap}
+.weeklyShiftBoard{width:100%;overflow:auto;border:1px solid #dfe6e2;border-radius:16px;overscroll-behavior-inline:contain}
+.weeklyShiftBoard table{width:100%;min-width:980px;border-collapse:separate;border-spacing:0;background:#fff}
+.weeklyShiftBoard th,.weeklyShiftBoard td{border-right:1px solid #e5eae7;border-bottom:1px solid #e5eae7;padding:10px;min-width:118px;vertical-align:top}
+.weeklyShiftBoard thead th{position:sticky;top:0;z-index:3;background:#f4f7f5;text-align:center}
+.weeklyShiftBoard thead th:first-child{left:0;z-index:4;min-width:190px;text-align:left}
+.weeklyShiftBoard tbody th{position:sticky;left:0;z-index:2;min-width:190px;text-align:left;display:flex;align-items:center;gap:9px;background:#f8faf9}
+.weeklyShiftBoard thead span,.weeklyShiftBoard thead strong{display:block}.weeklyShiftBoard thead span{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#6d7973}.weeklyShiftBoard thead strong{font-size:17px;margin-top:3px}
+.weeklyShiftBoard .today{background:#edf6f1}
+.boardShift,.boardAdd{width:100%;border:0;border-radius:9px;min-height:44px}.boardShift{padding:8px;background:rgba(20,78,56,.09);color:#123e2e;text-align:left}.boardShift strong,.boardShift small,.boardTimeOff small{display:block}.boardShift small,.boardTimeOff small{font-size:9px;margin-top:3px}.boardAdd{background:transparent;color:#7c8a83;font-size:18px}.boardAdd:hover{background:#eef4f0;color:#144e38}.boardTimeOff{display:block;padding:8px;border-radius:9px;background:#fde5e2;color:#9b3932;font-size:10px;font-weight:850}
+.weeklyShiftBoard .employeeColor0 th{border-left:5px solid #66a86c}.weeklyShiftBoard .employeeColor1 th{border-left:5px solid #e2ca61}.weeklyShiftBoard .employeeColor2 th{border-left:5px solid #94a9c7}.weeklyShiftBoard .employeeColor3 th{border-left:5px solid #d77c78}.weeklyShiftBoard .employeeColor4 th{border-left:5px solid #718dc5}.weeklyShiftBoard .employeeColor5 th{border-left:5px solid #d9ae63}.weeklyShiftBoard .employeeColor6 th{border-left:5px solid #58a9c5}
+.boardEmpty{text-align:center;padding:32px!important;color:#77847e}
+.adminEntityIcon img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.toppingOptionImage,.toppingOptionFallback{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#edf4ef;display:grid;place-items:center;color:#14533d;flex:0 0 44px}
+.productTransferActions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.productTransferActions button{white-space:nowrap}
+.customerToolbarActions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.customerMemberBadge,.customerGuestBadge{display:inline-flex;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:850}.customerMemberBadge{background:#dff2e7;color:#17613b}.customerGuestBadge{background:#edf0ee;color:#65716b}
+.giftCardFieldLabel{display:flex!important;align-items:center;gap:4px}.giftCardFieldLabel b{color:#b63d34}.issuedGiftCardModal{width:min(680px,100%);padding:24px}.issuedGiftCardModal .issuedGiftCard{margin:0}
+.intelligenceSegment em{display:block;margin-top:6px;color:#6b7470;font-size:9px;font-style:normal;line-height:1.4}
+@media(max-width:720px){
+  .productTransferActions{display:grid;grid-template-columns:1fr 1fr}.productTransferActions .adminPrimary{grid-column:1/-1}.productAdminToolbar .adminSearch{max-width:none}
+  .adminOrderTable,.adminOrderTable tbody,.adminOrderTable tr,.adminOrderTable td{display:block;width:100%}
+  .adminOrderTable thead{display:none}.adminOrderTable tbody{display:grid;gap:12px}.adminOrderTable tr{padding:13px;border:1px solid #dfe6e2;border-radius:14px;background:#fff}
+  .adminOrderTable td{display:grid;grid-template-columns:92px minmax(0,1fr);align-items:center;gap:10px;padding:8px 2px;border:0;border-bottom:1px solid #edf1ef}
+  .adminOrderTable td:last-child{border-bottom:0}.adminOrderTable td::before{content:attr(data-label);color:#79847f;font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+  .adminOrderTable td>*{min-width:0}.adminOrderTable select,.adminOrderTable button{max-width:100%}
+}
 .accountHero .accountHeroEyebrow { color: var(--gold); }
 .accountHeroActions .button.secondary { background: #fff; color: var(--green); border-color: #fff; }
 .button.accountSignOut {

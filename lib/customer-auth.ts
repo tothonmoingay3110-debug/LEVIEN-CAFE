@@ -18,8 +18,8 @@ export type CustomerSessionProfile = {
 
 function mapProfile(profile: {
   id: string;
-  auth_user_id: string;
-  email: string;
+  auth_user_id: string | null;
+  email: string | null;
   first_name: string;
   last_name: string;
   phone: string;
@@ -30,8 +30,8 @@ function mapProfile(profile: {
 }): CustomerSessionProfile {
   return {
     id: profile.id,
-    authUserId: profile.auth_user_id,
-    email: profile.email,
+    authUserId: profile.auth_user_id || "",
+    email: profile.email || "",
     firstName: profile.first_name,
     lastName: profile.last_name,
     phone: profile.phone,
@@ -78,7 +78,7 @@ export async function getCustomerSession(options: { syncOrders?: boolean } = {})
     const updated = await admin
       .from("customer_profiles")
       .update({
-        email: (data.user.email || profile.email).toLowerCase(),
+        email: (data.user.email || profile.email || "").toLowerCase(),
         email_verified_at: data.user.email_confirmed_at,
       })
       .eq("id", profile.id)
@@ -97,4 +97,3 @@ export async function getCustomerSession(options: { syncOrders?: boolean } = {})
 
   return { user: data.user, profile: mapProfile(profile) };
 }
-

@@ -23,7 +23,7 @@ type SiteContent = {
 };
 
 type SiteCategory = { id: string; name: string; icon: string; active: boolean };
-type SiteTopping = { id: string; name: string; price: number; active: boolean };
+type SiteTopping = { id: string; name: string; price: number; image?: string; active: boolean };
 
 type AdminDB = {
   categories?: SiteCategory[];
@@ -96,7 +96,7 @@ function localCatalog(db: AdminDB | null): SupabaseCatalog | null {
     allowIce: item.allowIce ?? true,
     allowSugar: item.allowSugar ?? true,
     allowToppings: item.allowToppings ?? (item.toppingIds || []).length > 0,
-    toppings: (item.toppingIds || []).map((id) => toppingMap.get(id)).filter(Boolean).map((topping) => ({ id: topping!.id, name: topping!.name, price: Number(topping!.price) })),
+    toppings: (item.toppingIds || []).map((id) => toppingMap.get(id)).filter(Boolean).map((topping) => ({ id: topping!.id, name: topping!.name, price: Number(topping!.price), image: topping!.image || "" })),
   })) : [];
   const promotions = db.promotions?.length
     ? db.promotions.filter((item) => item.active !== false).sort((a, b) => (a.order || 0) - (b.order || 0)).map(({ order: _order, active: _active, ...item }) => item)

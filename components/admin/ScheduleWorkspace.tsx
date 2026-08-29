@@ -194,28 +194,23 @@ export default function ScheduleWorkspace({ staff, notify }: { staff: StaffSessi
         <div><button type="button" onClick={() => setWeekStart(addDays(weekStart, -7))}>← Previous</button><button type="button" onClick={() => setWeekStart(mondayOf(today))}>This week</button><button type="button" onClick={() => setWeekStart(addDays(weekStart, 7))}>Next →</button></div>
       </div>
       {error && <div className="scheduleError"><strong>Schedule unavailable</strong><span>{error}</span><button type="button" onClick={() => void refresh()}>Try again</button></div>}
-      {!error && <div className="scheduleWeekGrid">
-        {weekDays.map((day) => {
-          const shifts = data.shifts.filter((shift) => shift.date === day);
-          const timeOff = data.timeOff.filter((request) => request.startDate <= day && request.endDate >= day);
-          return <article className={`scheduleDay ${day === today ? "today" : ""}`} key={day}>
-            <header><div><span>{fromDateKey(day).toLocaleDateString("en-US", { weekday: "short" })}</span><strong>{fromDateKey(day).getDate()}</strong></div>{day >= today && <button type="button" title={data.canManage ? "Add work shift" : "Register preferred shift"} onClick={() => data.canManage ? setShiftEditor({ date: day }) : setRequestDate(day)}>＋</button>}</header>
-            <div className="scheduleDayShifts">
-              {timeOff.map((request) => {
-                const employee = employeeById.get(request.staffId);
-                return <div className="scheduleTimeOff" key={request.id}><span>OFF</span><div><strong>{data.canManage ? employee?.fullName || "Unknown employee" : "Approved time off"}</strong><small>{request.reason || "Unavailable"}</small></div></div>;
-              })}
-              {shifts.map((shift) => {
-                const employee = employeeById.get(shift.staffId);
-                return <button className="scheduleShift" type="button" key={shift.id} onClick={() => data.canManage && setShiftEditor({ date: shift.date, shift })} disabled={!data.canManage}>
-                  {data.canManage && <span className="scheduleShiftAvatar">{initials(employee?.fullName || "Staff")}</span>}
-                  <span><strong>{shift.startTime}–{shift.endTime}</strong><small>{data.canManage ? employee?.fullName || "Unknown employee" : shift.position || "Work shift"}</small>{data.canManage && shift.position && <em>{shift.position}</em>}</span>
-                </button>;
-              })}
-              {!shifts.length && !timeOff.length && <small className="scheduleEmptyDay">{loading ? "Loading…" : "No shifts"}</small>}
-            </div>
-          </article>;
-        })}
+      {!error && <div className="weeklyShiftBoard" role="region" aria-label="Weekly employee shift board" tabIndex={0}>
+        <table>
+          <thead><tr><th>Employee</th>{weekDays.map((day) => <th className={day === today ? "today" : ""} key={day}><span>{fromDateKey(day).toLocaleDateString("en-US", { weekday: "short" })}</span><strong>{fromDateKey(day).getDate()}</strong></th>)}</tr></thead>
+          <tbody>{data.team.filter((employee) => employee.active).map((employee, employeeIndex) => <tr key={employee.id} className={`employeeColor${employeeIndex % 7}`}>
+            <th><span className="scheduleShiftAvatar">{initials(employee.fullName)}</span><strong>{employee.fullName}</strong></th>
+            {weekDays.map((day) => {
+              const shifts = data.shifts.filter((shift) => shift.staffId === employee.id && shift.date === day);
+              const timeOff = data.timeOff.find((request) => request.staffId === employee.id && request.startDate <= day && request.endDate >= day);
+              return <td className={day === today ? "today" : ""} key={day}>
+                {timeOff ? <span className="boardTimeOff">OFF<small>{timeOff.reason || "Unavailable"}</small></span> : shifts.map((shift) => <button type="button" className="boardShift" key={shift.id} disabled={!data.canManage} onClick={() => data.canManage && setShiftEditor({ date: day, shift })}><strong>{shift.startTime}–{shift.endTime}</strong>{shift.position && <small>{shift.position}</small>}</button>)}
+                {!timeOff && !shifts.length && day >= today && <button type="button" className="boardAdd" aria-label={`${data.canManage ? "Add work shift" : "Register preferred shift"} for ${employee.fullName} on ${longDate(day)}`} onClick={() => data.canManage ? setShiftEditor({ date: day }) : employee.id === staff.id && setRequestDate(day)}>{data.canManage || employee.id === staff.id ? "+" : ""}</button>}
+              </td>;
+            })}
+          </tr>)}
+          {!data.team.length && <tr><td colSpan={8} className="boardEmpty">{loading ? "Loading schedule…" : "No active employees found."}</td></tr>}
+          </tbody>
+        </table>
       </div>}
     </section>
 
@@ -333,5 +328,6 @@ function WorkShiftModal({ staff, date, shift, team, close, saved, cancelled }: {
 }
 
 function ScheduleModal({ title, eyebrow, close, children }: { title: string; eyebrow: string; close: () => void; children: React.ReactNode }) {
-  return <div className="adminModalBackdrop" onMouseDown={(event) => { if (event.currentTarget === event.target) close(); }}><div className="adminModal scheduleModal"><header><div><span className="adminEyebrow">{eyebrow}</span><h2>{title}</h2></div><button type="button" onClick={close}>×</button></header>{children}</div></div>;
+  useEffect(() => { const key = (event: KeyboardEvent) => { if (event.key === "Escape") close(); }; window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key); }, [close]);
+  return <div className="adminModalBackdrop" onMouseDown={(event) => { if (event.currentTarget === event.target) close(); }}><div className="adminModal scheduleModal" role="dialog" aria-modal="true" aria-label={title}><header><div><span className="adminEyebrow">{eyebrow}</span><h2>{title}</h2></div><button type="button" onClick={close} aria-label="Close dialog">×</button></header>{children}</div></div>;
 }

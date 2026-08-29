@@ -46,9 +46,12 @@ export async function PATCH(request: Request) {
     }
 
     const db = createAdminClient();
-    const { data: current, error: currentError } = await db.from("orders").select("id,order_number,payment_provider,payment_status,stripe_payment_intent_id,amount_due").eq("order_number", orderNumber).maybeSingle();
+    const { data: current, error: currentError } = await db.from("orders").select("id,order_number,status,payment_provider,payment_status,stripe_payment_intent_id,amount_due").eq("order_number", orderNumber).maybeSingle();
     if (currentError) throw currentError;
     if (!current) return NextResponse.json({ error: "Order not found." }, { status: 404 });
+    if (current.status === "Completed" && status !== "Completed") {
+      return NextResponse.json({ error: "A completed order is locked and cannot be reopened." }, { status: 409 });
+    }
     let stripeRefunded = false;
     if (status === "Cancelled" && current.payment_status === "paid" && ["stripe", "mixed"].includes(current.payment_provider)) {
       if (!current.stripe_payment_intent_id) return NextResponse.json({ error: "This paid order is missing its Stripe payment reference. Refund it in Stripe and contact support before cancelling." }, { status: 409 });

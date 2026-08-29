@@ -57,11 +57,11 @@ export function ContactSection() {
       <form className="contactForm" onSubmit={submit}>
         <div className="contactFormHeading"><span>Send a message</span><strong>How can we help?</strong></div>
         <div className="contactFormGrid">
-          <label>Name <span>*</span><input name="name" type="text" minLength={2} maxLength={100} autoComplete="name" required /></label>
-          <label>Email <span>*</span><input name="email" type="email" maxLength={254} autoComplete="email" required /></label>
-          <label>Phone <small>Optional</small><input name="phone" type="tel" maxLength={30} autoComplete="tel" /></label>
-          <label>Subject <span>*</span><select name="subject" defaultValue="General question" required><option>General question</option><option>Order support</option><option>Catering</option><option>Feedback</option><option>Other</option></select></label>
-          <label className="wide">Message <span>*</span><textarea name="message" minLength={10} maxLength={2000} rows={6} required placeholder="Tell us how we can help…" /></label>
+          <label><span className="fieldLabel">Name <b>*</b></span><input name="name" type="text" minLength={2} maxLength={100} autoComplete="name" required /></label>
+          <label><span className="fieldLabel">Email <b>*</b></span><input name="email" type="email" maxLength={254} autoComplete="email" required /></label>
+          <label><span className="fieldLabel">Phone <small>Optional</small></span><input name="phone" type="tel" maxLength={30} autoComplete="tel" /></label>
+          <label><span className="fieldLabel">Subject <b>*</b></span><select name="subject" defaultValue="General question" required><option>General question</option><option>Order support</option><option>Catering</option><option>Feedback</option><option>Other</option></select></label>
+          <label className="wide"><span className="fieldLabel">Message <b>*</b></span><textarea name="message" minLength={10} maxLength={2000} rows={6} required placeholder="Tell us how we can help…" /></label>
           <label className="contactHoneypot" aria-hidden="true">Company<input name="company" type="text" tabIndex={-1} autoComplete="off" /></label>
         </div>
         {error && <div className="contactFormError" role="alert">{error}</div>}

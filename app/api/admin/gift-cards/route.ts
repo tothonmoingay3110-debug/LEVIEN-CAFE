@@ -24,7 +24,7 @@ export async function GET() {
     const [{ data: cards, error: cardError }, { data: transactions, error: transactionError }, { data: sales, error: salesError }] = await Promise.all([
       supabase.from("gift_cards").select("id,code_last_four,initial_balance,balance,currency,recipient_name,recipient_email,note,status,expires_on,issued_by,created_at,updated_at").order("created_at", { ascending: false }).limit(500),
       supabase.from("gift_card_transactions").select("id,gift_card_id,transaction_type,amount,balance_after,order_id,created_by,note,created_at").order("created_at", { ascending: false }).limit(2000),
-      supabase.from("gift_card_sales").select("gift_card_id,sales_channel,tender_type,receipt_reference,status,delivery_status,paid_at").order("created_at", { ascending: false }).limit(500),
+      supabase.from("gift_card_sales").select("gift_card_id,purchaser_profile_id,purchaser_email,sales_channel,tender_type,receipt_reference,status,delivery_status,paid_at").order("created_at", { ascending: false }).limit(500),
     ]);
     if (cardError) throw cardError;
     if (transactionError) throw transactionError;
@@ -57,6 +57,8 @@ export async function GET() {
         updatedAt: card.updated_at,
         sale: saleByCard.get(card.id) ? {
           channel: saleByCard.get(card.id)!.sales_channel,
+          purchaserProfileId: saleByCard.get(card.id)!.purchaser_profile_id,
+          purchaserEmail: saleByCard.get(card.id)!.purchaser_email,
           tenderType: saleByCard.get(card.id)!.tender_type,
           receiptReference: saleByCard.get(card.id)!.receipt_reference,
           status: saleByCard.get(card.id)!.status,
@@ -87,7 +89,7 @@ export async function POST(request: Request) {
     if (authorization.response || !authorization.staff) return authorization.response;
     if (requestBodyExceeds(request, 12 * 1024)) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
 
-    let body: { amount?: unknown; recipientName?: unknown; recipientEmail?: unknown; note?: unknown; expiresOn?: unknown; tenderType?: unknown; receiptReference?: unknown };
+    let body: { amount?: unknown; purchaserProfileId?: unknown; purchaserEmail?: unknown; recipientName?: unknown; recipientEmail?: unknown; note?: unknown; expiresOn?: unknown; tenderType?: unknown; receiptReference?: unknown };
     try {
       body = (await request.json()) as typeof body;
     } catch {
@@ -100,6 +102,8 @@ export async function POST(request: Request) {
     const expiresOn = typeof body.expiresOn === "string" ? body.expiresOn.trim() : "";
     const tenderType = body.tenderType === "cash" || body.tenderType === "card_terminal" || body.tenderType === "complimentary" ? body.tenderType : null;
     const receiptReference = typeof body.receiptReference === "string" ? body.receiptReference.trim().slice(0, 120) : "";
+    const purchaserProfileId = typeof body.purchaserProfileId === "string" && uuidPattern.test(body.purchaserProfileId) ? body.purchaserProfileId : null;
+    let purchaserEmail = typeof body.purchaserEmail === "string" ? body.purchaserEmail.trim().toLowerCase().slice(0, 254) : "";
     const today = new Date().toISOString().slice(0, 10);
     if (amount < 5 || amount > 1000) return NextResponse.json({ error: "Amount must be between $5 and $1,000." }, { status: 400 });
     if (recipientEmail && !emailPattern.test(recipientEmail)) return NextResponse.json({ error: "Enter a valid recipient email." }, { status: 400 });
@@ -109,7 +113,14 @@ export async function POST(request: Request) {
     if (tenderType !== "complimentary" && receiptReference.length < 2) return NextResponse.json({ error: "A receipt or terminal reference is required." }, { status: 400 });
 
     const code = generateGiftCardCode();
-    const { data, error } = await createAdminClient().rpc("issue_gift_card_v3", {
+    const db = createAdminClient();
+    if (purchaserProfileId) {
+      const { data: purchaser } = await db.from("customer_profiles").select("email").eq("id", purchaserProfileId).maybeSingle();
+      if (!purchaser) return NextResponse.json({ error: "Selected purchaser no longer exists." }, { status: 409 });
+      purchaserEmail = purchaser.email || "";
+    }
+    if (purchaserEmail && !emailPattern.test(purchaserEmail)) return NextResponse.json({ error: "Enter a valid purchaser email." }, { status: 400 });
+    const { data, error } = await db.rpc("issue_gift_card_v3", {
       p_code_hash: code.hash,
       p_code_last_four: code.lastFour,
       p_code_ciphertext: encryptSecret(code.formatted),
@@ -121,11 +132,12 @@ export async function POST(request: Request) {
       p_tender_type: tenderType,
       p_receipt_reference: receiptReference,
       p_created_by: authorization.staff.legacy ? null : authorization.staff.id,
-      p_purchaser_email: authorization.staff.email,
+      p_purchaser_email: purchaserEmail,
     });
     if (error) throw error;
     const giftCardId = data?.[0]?.gift_card_id;
     if (!giftCardId) throw new Error("Gift Card was not created.");
+    await db.from("gift_card_sales").update({ purchaser_profile_id: purchaserProfileId, purchaser_email: purchaserEmail }).eq("id", data?.[0]?.sale_id);
 
     await recordWorkforceEvent({ activity: {
       actorId: authorization.staff.legacy ? null : authorization.staff.id,

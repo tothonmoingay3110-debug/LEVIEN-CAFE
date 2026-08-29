@@ -57,7 +57,8 @@ export async function getStaffSession(): Promise<StaffSessionSummary | null> {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.getUser();
     if (!error && data.user) {
-      return getActiveStaffProfile(data.user);
+      const staff = await getActiveStaffProfile(data.user);
+      if (staff) return staff;
     }
   } catch (error) {
     console.error("Unable to verify Supabase staff session:", error);

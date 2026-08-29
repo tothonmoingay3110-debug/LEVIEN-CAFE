@@ -51,6 +51,7 @@ export function ProductCustomizer({ product, close }: { product: Product; close:
               const checked = selected.some((item) => item.id === topping.id);
               return <label className={`toppingOption ${checked ? "selected" : ""}`} key={topping.id}>
                 <input type="checkbox" checked={checked} onChange={() => toggleTopping(topping)} />
+                {topping.image ? <img className="toppingOptionImage" src={topping.image} alt=""/> : <span className="toppingOptionFallback">＋</span>}
                 <span><strong>{topping.name}</strong><small>+${topping.price.toFixed(2)}</small></span>
               </label>;
             })}</div>
