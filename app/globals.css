@@ -184,6 +184,7 @@ button,input,textarea,select{font-family:var(--font-ui)}
 }
 .comboSavings span { text-decoration: line-through; opacity: 0.62; }
 .comboSavings strong { color: #9a6b00; }
+.comboCardTop{display:flex;align-items:center;justify-content:space-between;gap:18px}.comboNavigation{display:flex;align-items:center;gap:9px}.comboNavigation button{min-height:38px;padding:0 14px;border:1px solid rgba(255,255,255,.32);border-radius:999px;background:rgba(255,255,255,.1);color:#fff;font:700 12px var(--font-ui);cursor:pointer;transition:background .2s,border-color .2s,transform .2s}.comboNavigation button:hover,.comboNavigation button:focus-visible{background:#fff;border-color:#fff;color:var(--green);transform:translateY(-1px)}.comboNavigation span{min-width:36px;text-align:center;color:#d4e3dc;font-size:11px;font-weight:800}.comboArtPair{display:flex;align-items:center;gap:24px}.comboArtPair>span{font-family:Georgia,serif;font-size:52px;color:var(--gold)}.comboArtPair>b{width:150px;height:190px;border-radius:34px;background:rgba(255,255,255,.94);display:grid;place-items:center;font-size:94px;box-shadow:0 24px 42px rgba(0,0,0,.2);overflow:hidden}.comboArtPair img{width:100%;height:100%;object-fit:cover}
 .comboSoldOut { opacity: 0.72; }
 .comboBottom button:disabled,
 .customizerFooter button:disabled { cursor: not-allowed; opacity: 0.55; }
@@ -2717,6 +2718,7 @@ button,input,textarea,select{font-family:var(--font-ui)}
 }
 @media(max-width:850px){.counterOrderLayout{grid-template-columns:1fr}.counterProductGrid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:34vh}}
 @media(max-width:650px){.headerAccount{padding:5px}.headerAccount>b{display:none}.quickAdd{width:44px;height:44px;right:12px;bottom:12px}.counterProductGrid{grid-template-columns:1fr}.orderToolbarActions{width:100%}.orderToolbarActions>*{flex:1}}
+@media(max-width:650px){.comboCardTop{align-items:flex-start;flex-direction:column}.comboNavigation{width:100%;justify-content:space-between}.comboArtPair{gap:10px}.comboArtPair>span{font-size:34px}.comboArtPair>b{width:105px;height:135px;border-radius:24px;font-size:66px}}
 .accountHero .accountHeroEyebrow { color: var(--gold); }
 .accountHeroActions .button.primary { background:var(--gold); color:#123e2e; border-color:var(--gold); box-shadow:0 9px 20px rgba(0,0,0,.14) }
 .accountHeroActions .button.secondary { background: #fff; color: var(--green); border-color: #fff; }
