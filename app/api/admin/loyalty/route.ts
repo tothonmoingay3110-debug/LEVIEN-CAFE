@@ -23,12 +23,13 @@ export async function GET() {
   try {
     const auth = await authorize(); if (auth.response) return auth.response;
     const db = createAdminClient();
-    const [rules, products, rewards] = await Promise.all([
+    const [rules, products, rewards, rewardItems] = await Promise.all([
       db.from("loyalty_rules").select("*").order("created_at", { ascending: false }),
       db.from("products").select("id,name,price,active,sold_out").eq("active", true).order("name"),
       db.from("loyalty_rewards").select("id,reward_code,reward_name,reward_type,status,issued_at,expires_at,customer_profile_id").eq("reward_type", "physical_gift").eq("status", "issued").order("issued_at"),
+      db.from("reward_items").select("*").order("name"),
     ]);
-    if (rules.error) throw rules.error; if (products.error) throw products.error; if (rewards.error) throw rewards.error;
+    if (rules.error) throw rules.error; if (products.error) throw products.error; if (rewards.error) throw rewards.error; if (rewardItems.error) throw rewardItems.error;
     const ruleIds = (rules.data || []).map((rule) => rule.id);
     const [triggerProducts, rewardProducts] = ruleIds.length ? await Promise.all([
       db.from("loyalty_rule_trigger_products").select("rule_id,product_id,position").in("rule_id", ruleIds).order("position"),
@@ -52,6 +53,7 @@ export async function GET() {
       products: products.data || [],
       physicalRewards: rewards.data || [],
       customers: profiles.data || [],
+      rewardItems: rewardItems.data || [],
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { console.error(error); return NextResponse.json({ error: "Unable to load loyalty programs." }, { status: 500 }); }
 }
@@ -62,19 +64,36 @@ export async function POST(request: Request) {
     const auth = await authorize(); if (auth.response || !auth.staff) return auth.response;
     if (requestBodyExceeds(request, 32 * 1024)) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
     const body = await request.json() as Record<string, unknown>;
+    const db = createAdminClient();
+    if (body.kind === "reward_item") {
+      const sku = typeof body.sku === "string" ? body.sku.trim().toUpperCase().slice(0, 64) : "";
+      const itemName = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
+      const imageUrl = typeof body.imageUrl === "string" ? body.imageUrl.trim().slice(0, 2000) : "";
+      const stockQuantity = Number(body.stockQuantity);
+      if (sku.length < 2 || itemName.length < 2 || !Number.isInteger(stockQuantity) || stockQuantity < 0) return NextResponse.json({ error: "Enter a valid SKU, name and stock quantity." }, { status: 400 });
+      const { data, error } = await db.from("reward_items").insert({ sku, name: itemName, image_url: imageUrl || null, stock_quantity: stockQuantity, active: body.active !== false }).select("*").single();
+      if (error) throw error;
+      return NextResponse.json({ rewardItem: data }, { status: 201 });
+    }
     const name = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
     const description = typeof body.description === "string" ? body.description.trim().slice(0, 500) : "";
     const triggerProductIds = uniqueProductIds(body.triggerProductIds);
     const requiredQuantity = Number(body.requiredQuantity);
     const rewardType = body.rewardType === "physical_gift" ? "physical_gift" : "free_product";
+    const rewardItemId = rewardType === "physical_gift" && typeof body.rewardItemId === "string" && uuid.test(body.rewardItemId) ? body.rewardItemId : null;
     const rewardProductIds = rewardType === "free_product" ? uniqueProductIds(body.rewardProductIds) : [];
-    const rewardName = typeof body.rewardName === "string" ? body.rewardName.trim().slice(0, 120) : "";
+    let rewardName = typeof body.rewardName === "string" ? body.rewardName.trim().slice(0, 120) : "";
     const expiresDays = Number(body.expiresDays || 90);
     const startsOn = typeof body.startsOn === "string" ? body.startsOn : "";
     const endsOn = typeof body.endsOn === "string" ? body.endsOn : "";
     const validDates = isoDate.test(startsOn) && isoDate.test(endsOn) && endsOn >= startsOn;
-    if (name.length < 2 || !triggerProductIds.length || !Number.isInteger(requiredQuantity) || requiredQuantity < 1 || requiredQuantity > 1000 || rewardName.length < 2 || (rewardType === "free_product" && !rewardProductIds.length) || !Number.isInteger(expiresDays) || expiresDays < 1 || expiresDays > 730 || !validDates) return NextResponse.json({ error: "Enter valid products, quantity, reward and program dates." }, { status: 400 });
-    const db = createAdminClient();
+    if (name.length < 2 || !triggerProductIds.length || !Number.isInteger(requiredQuantity) || requiredQuantity < 1 || requiredQuantity > 1000 || rewardName.length < 2 || (rewardType === "free_product" && !rewardProductIds.length) || (rewardType === "physical_gift" && !rewardItemId) || !Number.isInteger(expiresDays) || expiresDays < 1 || expiresDays > 730 || !validDates) return NextResponse.json({ error: "Enter valid products, quantity, reward and program dates." }, { status: 400 });
+    if (rewardItemId) {
+      const item = await db.from("reward_items").select("id,name").eq("id", rewardItemId).eq("active", true).gt("stock_quantity", 0).maybeSingle();
+      if (item.error) throw item.error;
+      if (!item.data) return NextResponse.json({ error: "Choose an active physical gift that is in stock." }, { status: 400 });
+      rewardName = item.data.name;
+    }
     const selectedProductIds = [...new Set([...triggerProductIds, ...rewardProductIds])];
     const productCheck = await db.from("products").select("id").in("id", selectedProductIds).eq("active", true);
     if (productCheck.error) throw productCheck.error;
@@ -94,6 +113,10 @@ export async function POST(request: Request) {
       p_created_by: auth.staff.legacy ? null : auth.staff.id,
     });
     if (error) throw error;
+    if (rewardItemId) {
+      const linked = await db.from("loyalty_rules").update({ reward_item_id: rewardItemId }).eq("id", ruleId);
+      if (linked.error) throw linked.error;
+    }
     await recordWorkforceEvent({ activity: { actorId: auth.staff.legacy ? null : auth.staff.id, action: "loyalty_rule_created", entityType: "loyalty_rule", entityId: ruleId, summary: `Created loyalty rule ${name}.`, metadata: { requiredQuantity, rewardType, triggerProductIds, rewardProductIds, startsOn, endsOn } } });
     return NextResponse.json({ ruleId }, { status: 201 });
   } catch (error) { console.error(error); return NextResponse.json({ error: "Unable to create loyalty rule." }, { status: 500 }); }
@@ -107,9 +130,19 @@ export async function PATCH(request: Request) {
     const id = typeof body.id === "string" ? body.id : "";
     if (!uuid.test(id)) return NextResponse.json({ error: "Invalid loyalty record." }, { status: 400 });
     const db = createAdminClient();
+    if (body.action === "update_reward_item") {
+      const stockQuantity = Number(body.stockQuantity);
+      if (!Number.isInteger(stockQuantity) || stockQuantity < 0 || typeof body.active !== "boolean") return NextResponse.json({ error: "Invalid reward item update." }, { status: 400 });
+      const { data, error } = await db.from("reward_items").update({ stock_quantity: stockQuantity, active: body.active }).eq("id", id).select("*").single();
+      if (error) throw error;
+      return NextResponse.json({ rewardItem: data });
+    }
     if (body.action === "fulfill") {
-      const { data, error } = await db.from("loyalty_rewards").update({ status: "redeemed", redeemed_at: new Date().toISOString(), redeemed_by: auth.staff.legacy ? null : auth.staff.id }).eq("id", id).eq("reward_type", "physical_gift").eq("status", "issued").select("id,reward_code,reward_name").maybeSingle();
-      if (error) throw error; if (!data) return NextResponse.json({ error: "Reward is no longer available." }, { status: 409 });
+      const reward = await db.from("loyalty_rewards").select("id,reward_code,reward_name").eq("id", id).maybeSingle();
+      if (reward.error) throw reward.error; if (!reward.data) return NextResponse.json({ error: "Reward is no longer available." }, { status: 409 });
+      const { error } = await db.rpc("fulfill_physical_reward_v2", { p_reward_id: id, p_staff_id: auth.staff.legacy ? null : auth.staff.id });
+      if (error) return NextResponse.json({ error: error.message.includes("stock") ? "This physical gift is out of stock." : "Reward is no longer available." }, { status: 409 });
+      const data = reward.data;
       await recordWorkforceEvent({ activity: { actorId: auth.staff.legacy ? null : auth.staff.id, action: "loyalty_gift_fulfilled", entityType: "loyalty_reward", entityId: data.id, summary: `Fulfilled ${data.reward_name} (${data.reward_code}).`, metadata: {} } });
       return NextResponse.json({ reward: data });
     }

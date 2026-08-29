@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getStaffAccess } from "@/lib/staff-auth";
+import { getStaffAccess, getStaffSession } from "@/lib/staff-auth";
 
 const BUCKET = "catalog-images";
-const scopes = new Set(["product", "topping", "combo", "promotion", "logo", "about"]);
+const scopes = new Set(["product", "topping", "combo", "promotion", "logo", "about", "avatar", "reward"]);
 const extensions: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -18,16 +18,19 @@ export async function POST(request: Request) {
     if (requestBodyExceeds(request, 6 * 1024 * 1024)) {
       return NextResponse.json({ error: "Image upload is too large." }, { status: 413 });
     }
-    const access = await getStaffAccess("manage_catalog");
-    if (!access.staff) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    if (!access.allowed) return NextResponse.json({ error: "Image uploads require Manager or Owner permission." }, { status: 403 });
-
     const formData = await request.formData();
     const file = formData.get("file");
     const scope = String(formData.get("scope") || "");
     if (!(file instanceof File) || !scopes.has(scope)) {
       return NextResponse.json({ error: "Invalid image upload." }, { status: 400 });
     }
+    const staff = await getStaffSession();
+    if (!staff) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    if (scope !== "avatar" && scope !== "reward") {
+      const access = await getStaffAccess("manage_catalog");
+      if (!access.allowed) return NextResponse.json({ error: "Image uploads require Manager or Owner permission." }, { status: 403 });
+    }
+    if (scope === "reward" && !["owner", "manager"].includes(staff.role)) return NextResponse.json({ error: "Reward images require Manager or Owner permission." }, { status: 403 });
     const extension = extensions[file.type];
     if (!extension || file.size === 0 || file.size > 5 * 1024 * 1024) {
       return NextResponse.json({ error: "Use a JPG, PNG, or WebP image up to 5 MB." }, { status: 400 });

@@ -210,7 +210,7 @@ export function SiteDataProvider({ children }: { children: React.ReactNode }) {
     products: catalog?.products.length ? catalog.products : fallbackProducts,
     promotions: catalog?.promotions.length ? catalog.promotions : fallbackPromotions,
     categories: catalog?.categories.length ? catalog.categories : fallbackCategories,
-    combos: catalog?.combos.length ? catalog.combos : fallbackCombos,
+    combos: catalog ? catalog.combos.filter((combo) => combo.active) : fallbackCombos,
     ready,
     source,
     refresh,

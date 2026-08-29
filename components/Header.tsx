@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/components/StoreProvider";
 import { useSiteData } from "@/components/SiteDataProvider";
 import { useCustomerSession } from "@/components/CustomerSessionProvider";
@@ -12,12 +12,13 @@ export function Header() {
   const [search, setSearch] = useState("");
   const router = useRouter();
   const { totalItems, openCart } = useStore();
-  const { content } = useSiteData();
+  const { content, combos } = useSiteData();
+  const pathname = usePathname();
   const { authenticated, profile } = useCustomerSession();
   const links = [
     { label: "Home", href: "/" },
     { label: "Menu", href: "/menu" },
-    { label: "Combos", href: "/#combos" },
+    ...(combos.some((combo) => combo.active) ? [{ label: "Combos", href: "/#combos" }] : []),
     { label: "Our Story", href: "/#story" },
     { label: "Contact", href: "/#contact" },
   ];
@@ -49,9 +50,9 @@ export function Header() {
           </nav>
 
           <div className="headerActions">
-            <form className="headerSearch" role="search" onSubmit={(event) => { event.preventDefault(); router.push(`/menu${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ""}`); }}>
+            <form className="headerSearch" role="search" onSubmit={(event) => { event.preventDefault(); const value=search.trim(); window.dispatchEvent(new CustomEvent("levien-menu-search",{detail:value})); router.push(`/menu${value ? `?q=${encodeURIComponent(value)}` : ""}`); }}>
               <span aria-hidden="true">⌕</span>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search menu..." aria-label="Search the LEVIEN menu" />
+              <input value={search} onChange={(event) => { const value=event.target.value; setSearch(value); if(pathname==="/menu") window.dispatchEvent(new CustomEvent("levien-menu-search",{detail:value})); }} placeholder="Search menu..." aria-label="Search the LEVIEN menu" />
             </form>
             <button className="button primary orderButton" onClick={openCart}>
               My Order <span className="orderCount">{totalItems}</span>

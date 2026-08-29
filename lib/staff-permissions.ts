@@ -26,6 +26,7 @@ export type StaffSessionSummary = {
   role: StaffRole;
   legacy: boolean;
   mustChangePassword: boolean;
+  avatarUrl: string;
 };
 
 export const staffRoleLabels: Record<StaffRole, string> = {

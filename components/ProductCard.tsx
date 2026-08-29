@@ -19,7 +19,7 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="productImage">
           <div className="badges">{product.badges.map((badge) => <span className={`badge ${badge}`} key={badge}>{badgeNames[badge]}</span>)}</div>
           {product.image ? <img src={product.image} alt={product.name} /> : <div className={`drinkIllustration drink${product.id}`}><span>{product.emoji}</span><small>LEVIEN</small></div>}
-          <button className="quickAdd" disabled={product.soldOut} onClick={add} aria-label={`${hasCustomization ? "Customize" : "Add"} ${product.name}`} title={hasCustomization ? "Customize" : "Quick add"}>{product.soldOut ? "×" : "+"}</button>
+          <button className="quickAdd" disabled={product.soldOut} onClick={add} aria-label={`${hasCustomization ? "Customize" : "Add"} ${product.name}`} title={hasCustomization ? "Customize product" : "Add to order"}>{product.soldOut ? "×" : <span aria-hidden="true">+</span>}</button>
         </div>
         <div className="productBody"><div className="productMeta"><span>{product.category}</span><strong>${product.price.toFixed(2)}</strong></div><h3>{product.name}</h3><p>{product.description}</p><button className="productAddButton" disabled={product.soldOut} onClick={add}>{product.soldOut ? "Sold Out" : hasCustomization ? "Customize & Add" : "Add to Order"}</button></div>
       </article>

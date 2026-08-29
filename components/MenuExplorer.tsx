@@ -17,9 +17,15 @@ export function MenuExplorer() {
     if (requested && menuCategories.includes(requested)) {
       setCategory(requested);
     }
-    if (requestedQuery) setQuery(requestedQuery);
+    if (requestedQuery !== null) setQuery(requestedQuery);
     if (requested || requestedQuery) requestAnimationFrame(() => document.querySelector(".menuTools")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }, [categories.length]);
+
+  useEffect(() => {
+    const search = (event: Event) => setQuery(String((event as CustomEvent<string>).detail || ""));
+    window.addEventListener("levien-menu-search", search);
+    return () => window.removeEventListener("levien-menu-search", search);
+  }, []);
 
   const filtered = useMemo(() => products
     .filter((product) => (category === "All" || product.category === category) && `${product.name} ${product.description}`.toLowerCase().includes(query.toLowerCase()))

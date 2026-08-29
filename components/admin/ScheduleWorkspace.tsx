@@ -8,6 +8,7 @@ type ScheduleEmployee = {
   fullName: string;
   role: StaffRole;
   active: boolean;
+  avatarUrl: string;
 };
 
 type ShiftRequest = {
@@ -119,7 +120,7 @@ export default function ScheduleWorkspace({ staff, notify }: { staff: StaffSessi
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [requestDate, setRequestDate] = useState<string | null>(null);
-  const [shiftEditor, setShiftEditor] = useState<{ date: string; shift?: WorkShift } | null>(null);
+  const [shiftEditor, setShiftEditor] = useState<{ date: string; staffId?: string; shift?: WorkShift } | null>(null);
   const [copyWeekOpen, setCopyWeekOpen] = useState(false);
   const [actionId, setActionId] = useState("");
   const weekEnd = addDays(weekStart, 6);
@@ -198,13 +199,15 @@ export default function ScheduleWorkspace({ staff, notify }: { staff: StaffSessi
         <table>
           <thead><tr><th>Employee</th>{weekDays.map((day) => <th className={day === today ? "today" : ""} key={day}><span>{fromDateKey(day).toLocaleDateString("en-US", { weekday: "short" })}</span><strong>{fromDateKey(day).getDate()}</strong></th>)}</tr></thead>
           <tbody>{data.team.filter((employee) => employee.active).map((employee, employeeIndex) => <tr key={employee.id} className={`employeeColor${employeeIndex % 7}`}>
-            <th><span className="scheduleShiftAvatar">{initials(employee.fullName)}</span><strong>{employee.fullName}</strong></th>
+            <th><span className="scheduleShiftAvatar">{employee.avatarUrl ? <img src={employee.avatarUrl} alt="" /> : initials(employee.fullName)}</span><strong>{employee.fullName}</strong></th>
             {weekDays.map((day) => {
               const shifts = data.shifts.filter((shift) => shift.staffId === employee.id && shift.date === day);
+              const availability = data.requests.filter((request) => request.staffId === employee.id && request.date === day && request.status === "pending");
               const timeOff = data.timeOff.find((request) => request.staffId === employee.id && request.startDate <= day && request.endDate >= day);
               return <td className={day === today ? "today" : ""} key={day}>
-                {timeOff ? <span className="boardTimeOff">OFF<small>{timeOff.reason || "Unavailable"}</small></span> : shifts.map((shift) => <button type="button" className="boardShift" key={shift.id} disabled={!data.canManage} onClick={() => data.canManage && setShiftEditor({ date: day, shift })}><strong>{shift.startTime}–{shift.endTime}</strong>{shift.position && <small>{shift.position}</small>}</button>)}
-                {!timeOff && !shifts.length && day >= today && <button type="button" className="boardAdd" aria-label={`${data.canManage ? "Add work shift" : "Register preferred shift"} for ${employee.fullName} on ${longDate(day)}`} onClick={() => data.canManage ? setShiftEditor({ date: day }) : employee.id === staff.id && setRequestDate(day)}>{data.canManage || employee.id === staff.id ? "+" : ""}</button>}
+                {timeOff ? <span className="boardTimeOff">OFF<small>{timeOff.reason || "Unavailable"}</small></span> : shifts.map((shift) => <button type="button" className="boardShift" key={shift.id} disabled={!data.canManage} onClick={() => data.canManage && setShiftEditor({ date: day, staffId: employee.id, shift })}><strong>{shift.startTime}–{shift.endTime}</strong>{shift.position && <small>{shift.position}</small>}</button>)}
+                {!timeOff && data.canManage && availability.map((request) => <span className="boardAvailability" key={request.id}>Available<small>{request.startTime}–{request.endTime}</small></span>)}
+                {!timeOff && !shifts.length && day >= today && <button type="button" className="boardAdd" aria-label={`${data.canManage ? "Add work shift" : "Register preferred shift"} for ${employee.fullName} on ${longDate(day)}`} onClick={() => data.canManage ? setShiftEditor({ date: day, staffId: employee.id }) : employee.id === staff.id && setRequestDate(day)}>{data.canManage || employee.id === staff.id ? "+" : ""}</button>}
               </td>;
             })}
           </tr>)}
@@ -235,7 +238,7 @@ export default function ScheduleWorkspace({ staff, notify }: { staff: StaffSessi
     </section>
 
     {requestDate && <ShiftRequestModal date={requestDate} close={() => setRequestDate(null)} saved={async () => { setRequestDate(null); notify("Shift request submitted"); await refresh(); }} />}
-    {shiftEditor && <WorkShiftModal staff={staff} date={shiftEditor.date} shift={shiftEditor.shift} team={data.team} close={() => setShiftEditor(null)} saved={async () => { setShiftEditor(null); notify(shiftEditor.shift ? "Work shift updated" : "Work shift published"); await refresh(); }} cancelled={shiftEditor.shift ? async () => { await change({ kind: "shift", action: "cancel", id: shiftEditor.shift?.id }, "Work shift cancelled"); setShiftEditor(null); } : undefined} />}
+    {shiftEditor && <WorkShiftModal staff={staff} date={shiftEditor.date} selectedStaffId={shiftEditor.staffId} shift={shiftEditor.shift} team={data.team} close={() => setShiftEditor(null)} saved={async () => { setShiftEditor(null); notify(shiftEditor.shift ? "Work shift updated" : "Work shift published"); await refresh(); }} cancelled={shiftEditor.shift ? async () => { await change({ kind: "shift", action: "cancel", id: shiftEditor.shift?.id }, "Work shift cancelled"); setShiftEditor(null); } : undefined} />}
     {copyWeekOpen && <CopyWeekModal currentWeek={weekStart} close={() => setCopyWeekOpen(false)} copied={(result) => { setCopyWeekOpen(false); setWeekStart(result.targetStart); const skipped = result.sourceCount - result.createdCount; notify(`${result.createdCount} shift${result.createdCount === 1 ? "" : "s"} copied${skipped ? ` · ${skipped} skipped` : ""}`); }} />}
   </div>;
 }
@@ -303,7 +306,7 @@ function ShiftRequestModal({ date, close, saved }: { date: string; close: () => 
   return <ScheduleModal title="Register preferred shift" eyebrow="Send to Owner or Manager" close={close}><form className="scheduleForm" onSubmit={submit}><label>Date<input name="date" type="date" min={dateKey(new Date())} defaultValue={date} required /></label><label>Start time<input name="startTime" type="time" defaultValue="09:00" required /></label><label>End time<input name="endTime" type="time" defaultValue="17:00" required /></label><label className="wide">Note<textarea name="note" rows={3} maxLength={500} placeholder="Optional availability note" /></label>{error && <div className="adminLoginError wide">{error}</div>}<div className="adminFormActions wide"><button className="adminSecondary" type="button" onClick={close}>Cancel</button><button className="adminPrimary" type="submit" disabled={saving}>{saving ? "Submitting…" : "Submit request"}</button></div></form></ScheduleModal>;
 }
 
-function WorkShiftModal({ staff, date, shift, team, close, saved, cancelled }: { staff: StaffSessionSummary; date: string; shift?: WorkShift; team: ScheduleEmployee[]; close: () => void; saved: () => Promise<void>; cancelled?: () => Promise<void> }) {
+function WorkShiftModal({ staff, date, selectedStaffId, shift, team, close, saved, cancelled }: { staff: StaffSessionSummary; date: string; selectedStaffId?: string; shift?: WorkShift; team: ScheduleEmployee[]; close: () => void; saved: () => Promise<void>; cancelled?: () => Promise<void> }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const availableTeam = team.filter((employee) => employee.active && (staff.role === "owner" || employee.role !== "owner"));
@@ -324,7 +327,7 @@ function WorkShiftModal({ staff, date, shift, team, close, saved, cancelled }: {
       setSaving(false);
     }
   }
-  return <ScheduleModal title={shift ? "Edit work shift" : "Add work shift"} eyebrow="Published team schedule" close={close}><form className="scheduleForm" onSubmit={submit}><label className="wide">Employee<select name="staffId" defaultValue={shift?.staffId || availableTeam[0]?.id} required>{availableTeam.map((employee) => <option value={employee.id} key={employee.id}>{employee.fullName} · {staffRoleLabels[employee.role]}</option>)}</select></label><label>Date<input name="date" type="date" min={dateKey(new Date())} defaultValue={shift?.date || date} required /></label><label>Start time<input name="startTime" type="time" defaultValue={shift?.startTime || "09:00"} required /></label><label>End time<input name="endTime" type="time" defaultValue={shift?.endTime || "17:00"} required /></label><label>Position / station<input name="position" maxLength={80} defaultValue={shift?.position || ""} placeholder="Bar, kitchen, register…" /></label><label className="wide">Manager note<textarea name="note" rows={3} maxLength={500} defaultValue={shift?.note || ""} /></label>{error && <div className="adminLoginError wide">{error}</div>}<div className="adminFormActions scheduleShiftFormActions wide">{cancelled && <button className="adminDangerButton" type="button" onClick={() => void cancelled()} disabled={saving}>Cancel shift</button>}<span/><button className="adminSecondary" type="button" onClick={close}>Close</button><button className="adminPrimary" type="submit" disabled={saving || !availableTeam.length}>{saving ? "Saving…" : shift ? "Save shift" : "Publish shift"}</button></div></form></ScheduleModal>;
+  return <ScheduleModal title={shift ? "Edit work shift" : "Add work shift"} eyebrow="Published team schedule" close={close}><form className="scheduleForm" onSubmit={submit}><label className="wide">Employee<select name="staffId" defaultValue={shift?.staffId || selectedStaffId || availableTeam[0]?.id} required>{availableTeam.map((employee) => <option value={employee.id} key={employee.id}>{employee.fullName} · {staffRoleLabels[employee.role]}</option>)}</select></label><label>Date<input name="date" type="date" min={dateKey(new Date())} defaultValue={shift?.date || date} required /></label><label>Start time<input name="startTime" type="time" defaultValue={shift?.startTime || "09:00"} required /></label><label>End time<input name="endTime" type="time" defaultValue={shift?.endTime || "17:00"} required /></label><label>Position / station<input name="position" maxLength={80} defaultValue={shift?.position || ""} placeholder="Bar, kitchen, register…" /></label><label className="wide">Manager note<textarea name="note" rows={3} maxLength={500} defaultValue={shift?.note || ""} /></label>{error && <div className="adminLoginError wide">{error}</div>}<div className="adminFormActions scheduleShiftFormActions wide">{cancelled && <button className="adminDangerButton" type="button" onClick={() => void cancelled()} disabled={saving}>Cancel shift</button>}<span/><button className="adminSecondary" type="button" onClick={close}>Close</button><button className="adminPrimary" type="submit" disabled={saving || !availableTeam.length}>{saving ? "Saving…" : shift ? "Save shift" : "Publish shift"}</button></div></form></ScheduleModal>;
 }
 
 function ScheduleModal({ title, eyebrow, close, children }: { title: string; eyebrow: string; close: () => void; children: React.ReactNode }) {
