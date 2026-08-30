@@ -22,7 +22,7 @@
 @keyframes drinkFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}@keyframes cardFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
 @media(max-width:1020px){.menuProductGrid{grid-template-columns:repeat(3,1fr)}.menuHero{margin:18px 18px 0}.menuHeroArt span{width:90px;height:90px;font-size:40px}}
 @media(max-width:800px){.navWrap nav{display:none;position:absolute;top:100%;left:15px;right:15px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px;box-shadow:var(--shadow);flex-direction:column;gap:3px}.navWrap nav.open{display:flex}.navWrap nav a{padding:11px}.mobileMenuButton{display:block}.iconButton{display:none}.menuProductGrid{grid-template-columns:repeat(2,1fr)}.menuHero{padding:45px 28px}.menuHeroArt{display:none}}
-@media(max-width:560px){.announcement span:last-child,.announcementDot{display:none}.orderButton{padding:10px 12px}.orderButton{font-size:0}.orderButton:before{content:"Order";font-size:13px}.brandText{display:none}.menuProductGrid{grid-template-columns:1fr}.menuHero{border-radius:20px}.menuTools{align-items:stretch;flex-direction:column}.menuSearch{max-width:none}.cartLine{grid-template-columns:50px 1fr}.cartLineEnd{grid-column:2;text-align:left;display:flex;justify-content:space-between}.menuCategoryTabs{flex-wrap:nowrap;overflow:auto;padding-bottom:5px}.menuCategoryTabs button{white-space:nowrap}}
+@media(max-width:560px){.announcement span:last-child,.announcementDot{display:none}.headerActions .orderButton{min-width:68px;padding:8px 10px}.headerAccountMenu .headerAccount>b{display:none}.headerAccountMenu .headerAccount{padding-right:9px}.brandText{display:none}.menuProductGrid{grid-template-columns:1fr}.menuHero{border-radius:20px}.menuTools{align-items:stretch;flex-direction:column}.menuSearch{max-width:none}.cartLine{grid-template-columns:50px 1fr}.cartLineEnd{grid-column:2;text-align:left;display:flex;justify-content:space-between}.menuCategoryTabs{flex-wrap:nowrap;overflow:auto;padding-bottom:5px}.menuCategoryTabs button{white-space:nowrap}}
 
 /* Sprint 2.5 — typography and premium polish */
 :root{
@@ -2648,12 +2648,15 @@ button,input,textarea,select{font-family:var(--font-ui)}
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 44px;
+  height: 48px;
   padding: 5px 7px;
-  border-radius: 12px;
+  border-radius: 13px;
   color: var(--text);
   white-space: nowrap;
 }
+.headerActions .orderButton{height:48px;min-width:76px;border-radius:999px;padding:8px 11px;gap:7px}
+.orderCartIcon{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.headerAccountMenu{position:relative}.headerAccountMenu>summary{list-style:none;cursor:pointer}.headerAccountMenu>summary::-webkit-details-marker{display:none}
 .headerAccount > span {
   display: grid;
   flex: 0 0 30px;
@@ -2661,14 +2664,18 @@ button,input,textarea,select{font-family:var(--font-ui)}
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #e8f1ec;
-  color: var(--green);
+  background: #e4f1eb;
+  color: #0f5a41;
   font-size: 12px;
   font-weight: 900;
 }
+.headerAccount > span svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .headerAccount > b { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
-.headerAccount{border:1px solid #cbdad3;background:#edf5f1;padding:5px 12px 5px 7px}
-.headerAccount:hover,.headerAccount:focus-visible{background:#125a42;border-color:#125a42;color:#fff}.headerAccount:hover>span,.headerAccount:focus-visible>span{background:#ffffff22;color:#fff}
+.headerAccount{border:1px solid #b9d1c6;background:#fff;padding:5px 14px 5px 7px;box-shadow:0 5px 14px rgba(20,78,56,.07);transition:background .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s}
+.headerAccount:hover,.headerAccount:focus-visible{background:#125a42;border-color:#125a42;color:#fff;box-shadow:0 9px 20px rgba(20,78,56,.18);transform:translateY(-1px)}.headerAccount:hover>span,.headerAccount:focus-visible>span{background:#ffffff22;color:#fff}
+.accountChevron{width:10px;height:7px;fill:none;stroke:currentColor;stroke-width:1.8;transition:transform .2s}.headerAccountMenu[open] .accountChevron{transform:rotate(180deg)}
+.headerAccountDropdown{position:absolute;top:calc(100% + 9px);right:0;z-index:40;width:174px;padding:7px;background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:0 18px 45px rgba(9,45,33,.16)}
+.headerAccountDropdown a{display:block;padding:11px 12px;border-radius:9px;color:var(--text);font-weight:750}.headerAccountDropdown a:hover,.headerAccountDropdown a:focus-visible{background:#edf4ef;color:var(--green)}
 
 /* 2026-08 UX consistency pass */
 .headerSearch input{width:116px;border:0;outline:0;background:transparent;color:#34483f;font:inherit;min-width:0}
