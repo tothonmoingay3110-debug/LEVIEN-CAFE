@@ -54,13 +54,23 @@ export function Header() {
               <span aria-hidden="true">⌕</span>
               <input value={search} onChange={(event) => { const value=event.target.value; setSearch(value); if(pathname==="/menu") window.dispatchEvent(new CustomEvent("levien-menu-search",{detail:value})); }} placeholder="Search menu..." aria-label="Search the LEVIEN menu" />
             </form>
-            <button className="button primary orderButton" onClick={openCart}>
-              My Order <span className="orderCount">{totalItems}</span>
+            <button className="button primary orderButton" onClick={openCart} aria-label={`View order, ${totalItems} ${totalItems === 1 ? "item" : "items"}`} title="View Order">
+              <svg className="orderCartIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 5h2l1.8 9.1a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 1.9-1.4L21 8H6.1"/><circle cx="9.5" cy="19" r="1.25"/><circle cx="17.5" cy="19" r="1.25"/></svg>
+              <span className="orderCount">{totalItems}</span>
             </button>
-            <Link className="headerAccount" href={authenticated ? "/account" : "/account/sign-in"} aria-label={authenticated ? "Open my LEVIEN account" : "Sign in to LEVIEN"}>
-              <span aria-hidden="true">{authenticated ? (profile?.firstName?.[0] || "M").toUpperCase() : <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.25"/><path d="M5.75 19c.55-3.45 2.65-5.25 6.25-5.25s5.7 1.8 6.25 5.25"/></svg>}</span>
-              <b>{authenticated ? (profile?.firstName?.trim() || "My Account") : "Sign In"}</b>
-            </Link>
+            {authenticated ? <Link className="headerAccount" href="/account" aria-label="Open my LEVIEN account">
+              <span aria-hidden="true">{(profile?.firstName?.[0] || "M").toUpperCase()}</span>
+              <b>{profile?.firstName?.trim() || "My Account"}</b>
+            </Link> : <details className="headerAccountMenu">
+              <summary className="headerAccount" aria-label="Open account options">
+                <span aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.25"/><path d="M5.75 19c.55-3.45 2.65-5.25 6.25-5.25s5.7 1.8 6.25 5.25"/></svg></span>
+                <b>Account</b><svg className="accountChevron" viewBox="0 0 12 8" aria-hidden="true"><path d="m1 1 5 5 5-5"/></svg>
+              </summary>
+              <div className="headerAccountDropdown">
+                <Link href="/account/sign-in">Sign In</Link>
+                <Link href="/account/sign-up">Create Account</Link>
+              </div>
+            </details>}
             <button className="mobileMenuButton" onClick={() => setMenuOpen((current) => !current)} aria-label="Toggle menu" aria-expanded={menuOpen}>
               {menuOpen ? "×" : "☰"}
             </button>
