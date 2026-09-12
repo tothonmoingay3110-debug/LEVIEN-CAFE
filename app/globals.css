@@ -3111,3 +3111,8 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .comboArt:before{content:"";position:absolute;inset:4%;background:linear-gradient(135deg,rgba(255,255,255,.075),transparent 52%);clip-path:polygon(8% 0,100% 0,88% 100%,0 100%);pointer-events:none}.comboShowcaseItem figure:before{display:none}.comboShowcaseItem figure{width:225px;height:285px}.comboShowcase.count-1 .comboShowcaseItem figure{width:330px;height:320px}.comboShowcaseItem img{filter:drop-shadow(0 30px 26px rgba(0,0,0,.4))}.comboShowcase.count-1 .comboShowcaseItem img{width:92%;height:92%}
 @media(max-width:900px){.comboShowcase.count-1 .comboShowcaseItem figure{width:290px;height:270px}}
 @media(max-width:650px){.comboShowcaseItem figure{width:140px;height:185px}.comboShowcase.count-1 .comboShowcaseItem figure{width:235px;height:220px}}
+
+/* Mobile admin containment and notification access. */
+@media(max-width:720px){.adminToolbar,.adminToolbar>*{min-width:0;max-width:100%}.adminTabs{width:100%;max-width:100%}.orderToolbarActions{width:100%;min-width:0}.adminCard{min-width:0}.adminTableWrap{max-width:100%}}
+@media(max-width:460px){.adminTopActions{display:flex}.adminTopActions>.adminRoleBadge,.adminTopActions>.adminAvatar{display:none}.adminTopbar{gap:12px}.adminTopbar>div:first-child{min-width:0}.adminTopbar h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.adminNotificationPanel{right:12px;left:12px;width:auto}}
+.adminBell svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}

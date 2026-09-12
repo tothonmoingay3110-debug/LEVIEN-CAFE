@@ -289,11 +289,11 @@ export default function CheckoutPage() {
           </section>
 
           <section className="checkoutCard">
-            <div className="checkoutCardHead"><span>02</span><div><h2>Order type</h2><p>Choose pickup or local delivery.</p></div></div>
+            <div className="checkoutCardHead"><span>02</span><div><h2>Order type</h2><p>Choose pickup, local delivery, or request an event.</p></div></div>
             <div className="fulfillmentOptions">
               {(["Pickup", "Delivery", "Event"] as const).map((option) => <label className={type === option ? "selected" : ""} key={option}>
                 <input type="radio" name="type" value={option} checked={type === option} onChange={() => { setType(option); if (option === "Pickup") setErrors((current) => ({ firstName: current.firstName, lastName: current.lastName, phone: current.phone, email: current.email })); }} />
-                <span className="fulfillmentIcon" aria-hidden="true">{option === "Pickup" ? <svg viewBox="0 0 24 24"><path d="M4 10h16v10H4z"/><path d="M3 10 5 4h14l2 6"/><path d="M9 20v-6h6v6"/></svg> : <svg viewBox="0 0 24 24"><path d="M3 6h11v11H3z"/><path d="M14 9h4l3 4v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>}</span>
+                <span className="fulfillmentIcon" aria-hidden="true">{option === "Pickup" ? <svg viewBox="0 0 24 24"><path d="M4 10h16v10H4z"/><path d="M3 10 5 4h14l2 6"/><path d="M9 20v-6h6v6"/></svg> : option === "Delivery" ? <svg viewBox="0 0 24 24"><path d="M3 6h11v11H3z"/><path d="M14 9h4l3 4v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg> : <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>}</span>
                 <span><strong>{option === "Event"?"Book an Event":option}</strong><small>{option === "Pickup" ? "Collect at LEVIEN CAFE" : option === "Delivery" ? "Delivered to your address" : "Request a celebration or private gathering"}</small></span>
               </label>)}
             </div>
