@@ -5,11 +5,13 @@ import type { Product } from "@/types";
 import { useStore } from "@/components/StoreProvider";
 import { ProductCustomizer } from "@/components/ProductCustomizer";
 import NormalizedProductImage from "@/components/NormalizedProductImage";
+import { useSiteData } from "@/components/SiteDataProvider";
 
 const badgeNames = { "best-seller": "BEST SELLER", "must-try": "MUST TRY", featured: "FEATURED", new: "NEW" };
 
 export function ProductCard({ product }: { product: Product }) {
   const { addProduct } = useStore();
+  const { content } = useSiteData();
   const [customizing, setCustomizing] = useState(false);
   const hasCustomization = Boolean(product.allowIce || product.allowSugar || (product.allowToppings && product.toppings?.length));
   const isDrink = /(coffee|tea|matcha|smoothie|shake|drink)/i.test(product.category);
@@ -19,6 +21,7 @@ export function ProductCard({ product }: { product: Product }) {
     <>
       <article className="productCard">
         <div className={`productImage ${isDrink ? "drinkProductStage" : ""}`}>
+          {isDrink&&content.logo&&<img className="drinkStageLogo" src={content.logo} alt="" aria-hidden="true"/>}
           <div className="badges">{product.badges.map((badge) => <span className={`badge ${badge}`} key={badge}>{badgeNames[badge]}</span>)}</div>
           {product.image ? <NormalizedProductImage src={product.image} alt={product.name} normalize={isDrink} /> : <div className={`drinkIllustration drink${product.id}`}><span>{product.emoji}</span><small>LEVIEN</small></div>}
           <button className="quickAdd" disabled={product.soldOut} onClick={add} aria-label={`${hasCustomization ? "Customize" : "Add"} ${product.name}`} title={hasCustomization ? "Customize product" : "Add to order"}>{product.soldOut ? "×" : <span aria-hidden="true">+</span>}</button>

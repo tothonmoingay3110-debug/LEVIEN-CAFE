@@ -464,7 +464,8 @@ button,input,textarea,select{font-family:var(--font-ui)}
   padding: 16px;
 }
 .productImage>.normalizedProductImage{position:relative;z-index:1;width:100%;height:100%;padding:12px;object-fit:contain;opacity:0;transition:opacity .18s,transform .35s}.productImage>.normalizedProductImage.ready{opacity:1}.productCard:hover .normalizedProductImage{transform:scale(1.035)}
-.productImage.drinkProductStage{isolation:isolate;background:linear-gradient(145deg,#f7f2e8,#e5eee8)}.productImage.drinkProductStage:before{content:"";position:absolute;z-index:0;width:72%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff9e9 0,#e4d5b9 56%,rgba(228,213,185,0) 72%);filter:blur(1px)}.productImage.drinkProductStage:after{content:"";position:absolute;z-index:0;left:25%;right:25%;bottom:25px;height:18px;border-radius:50%;background:rgba(24,65,49,.18);filter:blur(12px)}.drinkProductStage .quickAdd{z-index:3}
+.productImage.drinkProductStage{isolation:isolate;background:linear-gradient(145deg,#f8f6f0 0%,#eef2ed 58%,#e3ebe5 100%)}.productImage.drinkProductStage:before{content:"";position:absolute;z-index:0;inset:0;background:linear-gradient(110deg,rgba(255,255,255,.44),transparent 42%);pointer-events:none}.productImage.drinkProductStage:after{content:"";position:absolute;z-index:0;left:29%;right:29%;bottom:22px;height:12px;border-radius:50%;background:rgba(24,65,49,.14);filter:blur(10px)}.drinkProductStage>.drinkStageLogo{position:absolute;z-index:0;width:58%;height:58%;padding:0;object-fit:contain;opacity:.075;filter:grayscale(1) blur(1.4px);transform:none!important;pointer-events:none}.drinkProductStage .quickAdd{z-index:3}
+.checkoutFields.twoColumns>label{align-self:start}.checkoutFields .memberLookupNote{min-height:14px;margin:2px 0 0 4px;line-height:1.4}
 
 
 /* Sprint 4.5 — Customers */
