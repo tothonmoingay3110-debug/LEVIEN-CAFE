@@ -50,11 +50,12 @@ export async function GET() {
         productIds: comboProducts.filter((link) => link.combo_id === row.id).map((link) => link.product_id),
         image: row.image_url || "", active: row.active,
       })),
-      promotions: (promotionResult.data || []).map((row) => ({
+      promotions: (promotionResult.data || []).map((typedRow) => { const row=typedRow as typeof typedRow & {mobile_image_url?:string;display_mode?:string;link_url?:string}; return ({
         id: row.id, title: row.name, eyebrow: row.eyebrow || "", description: row.description || "",
         priceText: row.price_text || "", image: row.image_url || "", order: row.sort_order, active: row.active,
+        mobileImage: row.mobile_image_url || "", displayMode: row.display_mode || "designed", linkUrl: row.link_url || "/menu",
         startDate: row.starts_on, endDate: row.ends_on || "",
-      })),
+      });}),
       content: {
         storeName: content.store_name, tagline: content.tagline, logo: content.logo_url || "",
         announcement: content.announcement || "", aboutTitle: content.about_title || "",
@@ -85,8 +86,11 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Invalid catalog." }, { status: 400 });
     }
     const catalog = JSON.parse(JSON.stringify(body.catalog)) as Json;
-    const { error } = await createAdminClient().rpc("save_admin_catalog", { p_catalog: catalog });
+    const db=createAdminClient();
+    const { error } = await db.rpc("save_admin_catalog", { p_catalog: catalog });
     if (error) throw error;
+    const promotions=(body.catalog as {promotions?:Array<Record<string,unknown>>}).promotions||[];
+    for(const promotion of promotions){if(typeof promotion.id!=="string")continue;const result=await (db.from("promotions") as any).update({display_mode:promotion.displayMode==="full_image"?"full_image":"designed",mobile_image_url:typeof promotion.mobileImage==="string"?promotion.mobileImage:"",link_url:typeof promotion.linkUrl==="string"?promotion.linkUrl:"/menu"}).eq("id",promotion.id);if(result.error)throw result.error;}
     return NextResponse.json({ saved: true });
   } catch (error) {
     console.error("Unable to save admin catalog:", error);

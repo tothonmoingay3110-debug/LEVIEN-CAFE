@@ -65,7 +65,8 @@ export function PromotionSlider() {
   };
 
   return (
-    <section className="heroSlider" aria-label="Current promotions">
+    <section className={`heroSlider ${promotion.displayMode==="full_image"?"fullAdvertisement":""}`} aria-label="Current promotions">
+      {promotion.displayMode==="full_image"&&promotion.image&&<a className="fullAdvertisementLink" href={promotion.linkUrl||"/menu"} onClick={selectPromotion}><picture>{promotion.mobileImage&&<source media="(max-width:650px)" srcSet={promotion.mobileImage}/>}<img src={promotion.image} alt={promotion.title}/></picture></a>}
       <div className="heroPattern" />
       <button className="sliderArrow left" onClick={() => move(-1)} aria-label="Previous promotion">‹</button>
       <div className="heroCopy" key={`copy-${promotion.id}`}>

@@ -16,6 +16,8 @@ import {
 } from "@/components/admin/BusinessIntelligence";
 import ActivityLog from "@/components/admin/ActivityLog";
 import ContactMessages from "@/components/admin/ContactMessages";
+import EventBookings from "@/components/admin/EventBookings";
+import NotificationCenter from "@/components/admin/NotificationCenter";
 import GiftCards from "@/components/admin/GiftCards";
 import CounterOrder from "@/components/admin/CounterOrder";
 import LoyaltyPrograms from "@/components/admin/LoyaltyPrograms";
@@ -31,7 +33,7 @@ import {
 } from "@/lib/staff-permissions";
 import type { CustomerOrder, OrderStatus } from "@/types";
 
-type AdminView = "dashboard" | "orders" | "memberscan" | "messages" | "workspace" | "schedule" | "timeoff" | "reportcenter" | "kpidashboard" | "customeranalytics" | "productanalytics" | "campaignanalytics" | "aiinsights" | "reports" | "activity" | "customers" | "loyalty" | "giftcards" | "employees" | "products" | "categories" | "toppings" | "combos" | "combosuggestions" | "promotions" | "content" | "account";
+type AdminView = "dashboard" | "orders" | "memberscan" | "messages" | "eventbookings" | "workspace" | "schedule" | "timeoff" | "reportcenter" | "kpidashboard" | "customeranalytics" | "productanalytics" | "campaignanalytics" | "aiinsights" | "reports" | "activity" | "customers" | "loyalty" | "giftcards" | "employees" | "products" | "categories" | "toppings" | "combos" | "combosuggestions" | "promotions" | "content" | "account";
 type AdminIconName = AdminView | "external" | "logout" | "arrow";
 const categoryIconOptions = ["🍟","🥖","🍜","🥪","🍚","☕","🧋","🍹","🥤","🍵","🍰","🍱","🍗","🥗","🍳"];
 type Category = { id: string; name: string; icon: string; active: boolean };
@@ -42,7 +44,7 @@ type Product = {
   featured: boolean; isNew: boolean; soldOut: boolean; active: boolean;
 };
 type Combo = { id: string; name: string; description: string; price: number; productIds: string[]; image: string; active: boolean };
-type Promotion = { id: string; title: string; eyebrow: string; description: string; priceText: string; image: string; order: number; active: boolean; startDate: string; endDate: string };
+type Promotion = { id: string; title: string; eyebrow: string; description: string; priceText: string; image: string; mobileImage:string; displayMode:"designed"|"full_image"; linkUrl:string; order: number; active: boolean; startDate: string; endDate: string };
 type Order = CustomerOrder;
 type Customer = {
   id: string;
@@ -101,8 +103,8 @@ const seed: DB = {
     { id: "cb1", name: "Coffee & Bánh Mì Combo", description: "Vietnamese coffee paired with a fresh bánh mì.", price: 10.99, productIds: ["p1"], image: "", active: true },
   ],
   promotions: [
-    { id: "pr1", title: "Vietnamese Milk Coffee", eyebrow: "Morning special", description: "Available every day from 7 AM to 9 AM.", priceText: "Only $4.99", image: "", order: 1, active: true, startDate: "2026-01-01", endDate: "2026-12-31" },
-    { id: "pr2", title: "Coffee & Bánh Mì", eyebrow: "Combo deal", description: "A satisfying Vietnamese pairing.", priceText: "$10.99", image: "", order: 2, active: true, startDate: "2026-01-01", endDate: "2026-12-31" },
+    { id: "pr1", title: "Vietnamese Milk Coffee", eyebrow: "Morning special", description: "Available every day from 7 AM to 9 AM.", priceText: "Only $4.99", image: "", mobileImage:"",displayMode:"designed",linkUrl:"/menu",order: 1, active: true, startDate: "2026-01-01", endDate: "2026-12-31" },
+    { id: "pr2", title: "Coffee & Bánh Mì", eyebrow: "Combo deal", description: "A satisfying Vietnamese pairing.", priceText: "$10.99", image: "", mobileImage:"",displayMode:"designed",linkUrl:"/menu",order: 2, active: true, startDate: "2026-01-01", endDate: "2026-12-31" },
   ],
   orders: [],
   content: {
@@ -114,15 +116,16 @@ const seed: DB = {
 };
 
 const viewLabels: Record<AdminView, string> = {
-  dashboard: "Dashboard", orders: "Orders", memberscan: "Scan Member", messages: "Contact Messages", workspace: "My Workspace", schedule: "Schedule", timeoff: "Time Off", reportcenter: "Report Center", kpidashboard: "KPI Dashboard", customeranalytics: "Customer Analytics", productanalytics: "Product Analytics", campaignanalytics: "Promotion & Combo Analytics", aiinsights: "AI Business Insights", reports: "Staff Reports", activity: "Activity Log", customers: "Customers", loyalty: "Loyalty Programs", giftcards: "Gift Cards", employees: "Employees", products: "Products", categories: "Categories",
+  dashboard: "Dashboard", orders: "Orders", memberscan: "Scan Member", messages: "Contact Messages", eventbookings: "Event Bookings", workspace: "My Workspace", schedule: "Schedule", timeoff: "Time Off", reportcenter: "Report Center", kpidashboard: "KPI Dashboard", customeranalytics: "Customer Analytics", productanalytics: "Product Analytics", campaignanalytics: "Promotion & Combo Analytics", aiinsights: "AI Business Insights", reports: "Staff Reports", activity: "Activity Log", customers: "Customers", loyalty: "Loyalty Programs", giftcards: "Gift Cards", employees: "Employees", products: "Products", categories: "Categories",
   toppings: "Toppings", combos: "Combos", combosuggestions: "Combo Suggestions", promotions: "Promotions", content: "Website Content", account: "My Account",
 };
-const adminViewOrder: AdminView[] = ["dashboard", "orders", "memberscan", "messages", "workspace", "schedule", "timeoff", "reportcenter", "kpidashboard", "customeranalytics", "productanalytics", "campaignanalytics", "aiinsights", "reports", "activity", "customers", "loyalty", "giftcards", "employees", "products", "categories", "toppings", "combos", "combosuggestions", "promotions", "content", "account"];
+const adminViewOrder: AdminView[] = ["dashboard", "orders", "memberscan", "messages", "eventbookings", "workspace", "schedule", "timeoff", "reportcenter", "kpidashboard", "customeranalytics", "productanalytics", "campaignanalytics", "aiinsights", "reports", "activity", "customers", "loyalty", "giftcards", "employees", "products", "categories", "toppings", "combos", "combosuggestions", "promotions", "content", "account"];
 const viewPermissions: Partial<Record<AdminView, StaffPermission>> = {
   dashboard: "view_dashboard",
   orders: "manage_orders",
   memberscan: "manage_orders",
   messages: "manage_contacts",
+  eventbookings: "manage_contacts",
   workspace: "view_own_schedule",
   schedule: "view_own_schedule",
   timeoff: "view_own_schedule",
@@ -162,7 +165,7 @@ type AdminNavGroupId = "overview" | "staff" | "planning" | "store";
 type AdminNavGroup = { id: AdminNavGroupId; label: string; shortLabel: string; icon: AdminIconName; views: AdminView[] };
 
 const adminNavGroups: AdminNavGroup[] = [
-  { id: "overview", label: "Overview", shortLabel: "Overview", icon: "dashboard", views: ["dashboard", "orders", "memberscan", "messages"] },
+  { id: "overview", label: "Overview", shortLabel: "Overview", icon: "dashboard", views: ["dashboard", "orders", "memberscan", "messages", "eventbookings"] },
   { id: "staff", label: "Staff & Schedule", shortLabel: "Staff", icon: "workspace", views: ["workspace", "schedule", "timeoff", "employees"] },
   { id: "planning", label: "Reports", shortLabel: "Reports", icon: "reports", views: ["reportcenter", "kpidashboard", "customeranalytics", "productanalytics", "campaignanalytics", "aiinsights", "reports", "activity"] },
   { id: "store", label: "Customers & Store", shortLabel: "Store", icon: "products", views: ["customers", "loyalty", "giftcards", "products", "categories", "toppings", "combos", "combosuggestions", "promotions", "content"] },
@@ -228,7 +231,7 @@ function initials(name: string) {
   return value || "LV";
 }
 const catalogId = () => crypto.randomUUID();
-type ImageKind = "product" | "topping" | "combo" | "promotion" | "logo" | "about" | "avatar" | "reward";
+type ImageKind = "product" | "topping" | "combo" | "promotion" | "promotionAd" | "promotionMobile" | "logo" | "about" | "avatar" | "reward";
 type ImageFrame = { width: number; height: number; padding: number; mode: "contain" | "cover"; trim: boolean };
 type ImageCrop = { x: number; y: number; width: number; height: number; background: string | null };
 const imageFrames: Record<ImageKind, ImageFrame> = {
@@ -236,6 +239,8 @@ const imageFrames: Record<ImageKind, ImageFrame> = {
   topping: { width: 800, height: 800, padding: 64, mode: "contain", trim: true },
   combo: { width: 1600, height: 1000, padding: 72, mode: "contain", trim: true },
   promotion: { width: 1200, height: 1400, padding: 76, mode: "contain", trim: true },
+  promotionAd: { width: 1600, height: 800, padding: 0, mode: "cover", trim: false },
+  promotionMobile: { width: 1080, height: 1350, padding: 0, mode: "cover", trim: false },
   logo: { width: 800, height: 800, padding: 36, mode: "contain", trim: true },
   about: { width: 1600, height: 1100, padding: 0, mode: "cover", trim: false },
   avatar: { width: 600, height: 600, padding: 0, mode: "cover", trim: false },
@@ -560,6 +565,7 @@ export default function AdminApp() {
   const [employeeModal, setEmployeeModal] = useState<{ employee?: Employee } | null>(null);
   const [temporaryCredentials, setTemporaryCredentials] = useState<{ email: string; password: string } | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [focusedEventBooking, setFocusedEventBooking] = useState<string>();
   const orderRefreshPromise = useRef<Promise<void> | null>(null);
   const loggedIn = Boolean(staff);
 
@@ -804,12 +810,13 @@ export default function AdminApp() {
         <div className="adminSidebarBottom"><Link href="/"><AdminIcon name="external" /><span>View Store</span></Link><button onClick={logout}><AdminIcon name="logout" /><span>Sign out</span></button></div>
       </aside>
       <main className="adminWorkspace">
-        <header className="adminTopbar"><div><span className="adminBreadcrumb">LEVIEN CAFE / {viewLabels[view]}</span><h1>{viewLabels[view]}</h1></div><div className="adminTopActions">{canManageOrders && <span className={`adminLiveBadge sync-${orderSyncStatus}`}>● {orderSyncStatus === "live" ? "Orders live" : orderSyncStatus === "polling" ? "Auto reconnecting" : "Connecting"}</span>}<span className={`adminRoleBadge role-${staff.role}`}>{staffRoleLabels[staff.role]}</span><button className="adminAvatar" title={staff.fullName} onClick={() => setView("account")}>{staff.avatarUrl ? <img src={staff.avatarUrl} alt="" /> : initials(staff.fullName)}</button></div></header>
+        <header className="adminTopbar"><div><span className="adminBreadcrumb">LEVIEN CAFE / {viewLabels[view]}</span><h1>{viewLabels[view]}</h1></div><div className="adminTopActions">{canManageOrders && <span className={`adminLiveBadge sync-${orderSyncStatus}`}>● {orderSyncStatus === "live" ? "Orders live" : orderSyncStatus === "polling" ? "Auto reconnecting" : "Connecting"}</span>}{roleHasPermission(staff.role,"manage_contacts")&&<NotificationCenter openTarget={(target,id)=>{if(target==="eventbookings"){setFocusedEventBooking(id);setView("eventbookings")}}}/>}<span className={`adminRoleBadge role-${staff.role}`}>{staffRoleLabels[staff.role]}</span><button className="adminAvatar" title={staff.fullName} onClick={() => setView("account")}>{staff.avatarUrl ? <img src={staff.avatarUrl} alt="" /> : initials(staff.fullName)}</button></div></header>
         {view === "dashboard" && canManageCatalog && <Dashboard db={db} revenue={revenue} todayOrders={todayOrders} openView={setView} openModal={setModal} />}
         {view === "dashboard" && !canManageCatalog && canManageOrders && <OperationsDashboard db={db} todayOrders={todayOrders} openView={setView} />}
          {view === "orders" && <Orders db={db} orders={filteredOrders} filter={orderFilter} setFilter={setOrderFilter} update={update} openModal={setModal} />}
          {view === "memberscan" && <MemberScanner notify={setToast} />}
          {view === "messages" && <ContactMessages notify={setToast} />}
+         {view === "eventbookings" && <EventBookings notify={setToast} focusId={focusedEventBooking} />}
         {view === "workspace" && <WorkforceWorkspace staff={staff} notify={setToast} unreadChanged={setUnreadNotifications} />}
         {view === "schedule" && <ScheduleWorkspace staff={staff} notify={setToast} />}
         {view === "timeoff" && <TimeOffWorkspace staff={staff} notify={setToast} />}
@@ -1239,6 +1246,7 @@ function WebsiteContent({ db, openModal }: { db: DB; openModal: (m: { type: stri
 
 function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: string }; db: DB; close: () => void; update: (d: DB, m?: string) => void }) {
   const [image, setImage] = useState("");
+  const [mobileImage, setMobileImage] = useState("");
   const [logoImage, setLogoImage] = useState(db.content.logo);
   const [aboutImage, setAboutImage] = useState(db.content.aboutImage);
   const [selectedComboProductIds, setSelectedComboProductIds] = useState<string[]>([]);
@@ -1255,6 +1263,7 @@ function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: 
   }, [modal, db]);
   useEffect(() => {
     setImage((entity as Product | Topping | Combo | Promotion | undefined)?.image || "");
+    setMobileImage((entity as Promotion | undefined)?.mobileImage || "");
     const combo = modal.type === "combo" ? entity as Combo | undefined : undefined;
     setSelectedComboProductIds(combo?.productIds || []);
     setComboPricePreview(Number(combo?.price || 0));
@@ -1329,7 +1338,7 @@ function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: 
         old ? "Combo updated" : "Combo created",
       );
     }
-    if(modal.type==="promotion") { const old=entity as Promotion|undefined; const startDate=String(f.get("startDate")); const endDate=String(f.get("endDate")); if(endDate<startDate){update(db,"Promotion end date must be on or after its start date");return;} const item:Promotion={id:old?.id||catalogId(),title:String(f.get("title")),eyebrow:String(f.get("eyebrow")),description:String(f.get("description")),priceText:String(f.get("priceText")),order:Number(f.get("order")),image:image||old?.image||"",active:f.get("active")==="on",startDate,endDate}; update({...db,promotions:old?db.promotions.map(x=>x.id===old.id?item:x):[...db.promotions,item]},"Promotion saved"); }
+    if(modal.type==="promotion") { const old=entity as Promotion|undefined; const startDate=String(f.get("startDate")); const endDate=String(f.get("endDate")); if(endDate<startDate){update(db,"Promotion end date must be on or after its start date");return;} const item:Promotion={id:old?.id||catalogId(),title:String(f.get("title")),eyebrow:String(f.get("eyebrow")),description:String(f.get("description")),priceText:String(f.get("priceText")),order:Number(f.get("order")),image:image||old?.image||"",mobileImage:mobileImage||old?.mobileImage||"",displayMode:f.get("displayMode")==="full_image"?"full_image":"designed",linkUrl:String(f.get("linkUrl")||"/menu"),active:f.get("active")==="on",startDate,endDate}; update({...db,promotions:old?db.promotions.map(x=>x.id===old.id?item:x):[...db.promotions,item]},"Promotion saved"); }
     if(modal.type==="content") { const c=db.content; const next={...c,storeName:String(f.get("storeName")),tagline:String(f.get("tagline")),announcement:String(f.get("announcement")),aboutTitle:String(f.get("aboutTitle")),aboutText:String(f.get("aboutText")),address:String(f.get("address")),phone:String(f.get("phone")),email:String(f.get("email")),hours:String(f.get("hours")),footerText:String(f.get("footerText")),mapUrl:String(f.get("mapUrl")),logo:logoImage,aboutImage}; update({...db,content:next},"Website content saved"); }
     close();
   }
@@ -1459,7 +1468,7 @@ function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: 
       </form>
     </ModalShell>;
   }
-  const p=entity as Promotion|undefined; const date=new Date().toISOString().slice(0,10); return <ModalShell title={p?"Edit promotion":"New promotion"} subtitle="Homepage slider content" close={close}><form onSubmit={submit} className="adminForm"><FormInput label="Headline" name="title" defaultValue={p?.title||""}/><FormInput label="Eyebrow" name="eyebrow" defaultValue={p?.eyebrow||""}/><FormInput label="Price text" name="priceText" defaultValue={p?.priceText||""}/><FormInput label="Slide order" name="order" type="number" defaultValue={String(p?.order||db.promotions.length+1)}/><FormInput label="Start date" name="startDate" type="date" defaultValue={p?.startDate||date}/><FormInput label="End date" name="endDate" type="date" defaultValue={p?.endDate||date}/><FormTextarea label="Description" name="description" defaultValue={p?.description||""}/><ImageUpload kind="promotion" image={image||p?.image||""} setImage={setImage}/><Check name="active" label="Active within this date range" checked={p?.active??true}/><FormActions close={close}/></form></ModalShell>;
+  const p=entity as Promotion|undefined; const date=new Date().toISOString().slice(0,10); return <ModalShell title={p?"Edit promotion":"New promotion"} subtitle="Homepage slider content" close={close}><form onSubmit={submit} className="adminForm"><label>Display style<select name="displayMode" defaultValue={p?.displayMode||"designed"}><option value="designed">Designed layout</option><option value="full_image">Full advertisement image</option></select></label><FormInput label="Click destination" name="linkUrl" defaultValue={p?.linkUrl||"/menu"}/><FormInput label="Headline" name="title" defaultValue={p?.title||""}/><FormInput label="Eyebrow" name="eyebrow" defaultValue={p?.eyebrow||""}/><FormInput label="Price text" name="priceText" defaultValue={p?.priceText||""}/><FormInput label="Slide order" name="order" type="number" defaultValue={String(p?.order||db.promotions.length+1)}/><FormInput label="Start date" name="startDate" type="date" defaultValue={p?.startDate||date}/><FormInput label="End date" name="endDate" type="date" defaultValue={p?.endDate||date}/><FormTextarea label="Description" name="description" defaultValue={p?.description||""}/><ImageUpload kind="promotion" label="Desktop advertisement (1600 × 800)" image={image||p?.image||""} setImage={setImage}/><ImageUpload kind="promotion" label="Mobile advertisement (1080 × 1350)" image={mobileImage||p?.mobileImage||""} setImage={setMobileImage}/><Check name="active" label="Active within this date range" checked={p?.active??true}/><FormActions close={close}/></form></ModalShell>;
 }
 function ModalShell({title,subtitle,close,children}:{title:string;subtitle:string;close:()=>void;children:React.ReactNode}){useEffect(()=>{const key=(event:KeyboardEvent)=>{if(event.key==="Escape")close()};window.addEventListener("keydown",key);return()=>window.removeEventListener("keydown",key)},[close]);return <div className="adminModalBackdrop" onMouseDown={e=>{if(e.currentTarget===e.target)close()}}><div className="adminModal" role="dialog" aria-modal="true" aria-label={title}><header><div><span className="adminEyebrow">{subtitle}</span><h2>{title}</h2></div><button type="button" onClick={close} aria-label="Close dialog">×</button></header>{children}</div></div>}
 function CategoryIconPicker({value}:{value:string}){const [selected,setSelected]=useState(value);return <fieldset className="categoryIconPicker wide"><legend>Category icon</legend><input type="hidden" name="icon" value={selected}/><div>{categoryIconOptions.map(icon=><button type="button" key={icon} className={selected===icon?"selected":""} aria-label={`Choose ${icon}`} aria-pressed={selected===icon} onClick={()=>setSelected(icon)}>{icon}</button>)}</div><small>Choose an icon for this category.</small></fieldset>}
@@ -1470,20 +1479,21 @@ function Check({name,label,checked=false,value}:{name:string;label:string;checke
 function ImageUpload({image,setImage,label="Image",kind="product"}:{image:string;setImage:(v:string)=>void;label?:string;kind?:ImageKind}) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const effectiveKind: ImageKind = label.startsWith("Desktop advertisement") ? "promotionAd" : label.startsWith("Mobile advertisement") ? "promotionMobile" : kind;
   const upload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     setUploading(true);
     setError("");
     try {
-      setImage(await uploadAdminImage(file, kind));
+      setImage(await uploadAdminImage(file, effectiveKind));
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Unable to upload image.");
     } finally {
       setUploading(false);
     }
   };
-  const frame = imageFrames[kind];
+  const frame = imageFrames[effectiveKind];
   return <div className="adminUploadField wide"><label>{label}</label><input type="hidden" name="_imageUploading" value={uploading ? "1" : "0"}/><div className="adminUploadRow"><div className={`adminImagePreview landscape normalizedPreview ${kind === "logo" ? "logoPreview" : ""}`}>{image?<img src={image} alt="Preview"/>:<span>Upload</span>}</div><div><input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={e=>void upload(e)}/><small>{error || (uploading ? "Detecting the subject and uploading…" : `Auto-trimmed and centered to ${frame.width} × ${frame.height} WebP.`)}</small></div></div></div>;
 }
 function FormActions({close}:{close:()=>void}){return <div className="adminFormActions wide"><button type="button" className="adminSecondary" onClick={close}>Cancel</button><button type="submit" className="adminPrimary">Save changes</button></div>}
@@ -1494,6 +1504,7 @@ function AdminIcon({ name }: { name: AdminIconName }) {
     orders: <><path d="M6 3h12l2 4v14H4V7l2-4Z"/><path d="M4 7h16"/><path d="M9 11a3 3 0 0 0 6 0"/></>,
     memberscan: <><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M7 10v4M10 9v6M13 10v4M16 9v6"/></>,
     messages: <><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></>,
+    eventbookings: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="m9 16 2 2 4-5"/></>,
     schedule: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/><path d="m8 15 2 2 5-5"/></>,
     workspace: <><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/><path d="M7 13h4M7 17h7"/><circle cx="17" cy="15" r="2.5"/></>,
     timeoff: <><path d="M4 5h16v15H4z"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="m9 15 2 2 4-5"/></>,

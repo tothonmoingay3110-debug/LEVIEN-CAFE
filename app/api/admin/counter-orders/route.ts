@@ -27,7 +27,7 @@ export async function GET() {
       db.from("product_toppings").select("product_id,topping_id"),
       db.from("categories").select("id,name").eq("active", true).order("sort_order").order("name"),
       db.from("customer_profiles").select("id,first_name,last_name,email,phone,membership_number").order("first_name"),
-      db.from("loyalty_rewards").select("id,customer_profile_id,reward_code,reward_name,reward_type,reward_product_id,expires_at,status").eq("status", "issued").eq("reward_type", "free_product").order("issued_at"),
+      db.from("loyalty_rewards").select("id,customer_profile_id,reward_code,reward_name,reward_type,reward_product_id,expires_at,status").eq("status", "issued").eq("reward_type", "free_product").or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).order("issued_at"),
       db.from("loyalty_reward_products").select("reward_id,product_id,position").order("position"),
     ]);
     const error = [products, toppings, links, categories, customers, rewards, rewardLinks].map((result) => result.error).find(Boolean);
