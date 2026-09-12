@@ -16,7 +16,7 @@ export async function POST(request:Request){
     if(!customerName && !customerPhone) return NextResponse.json({error:"Enter your name or phone number."},{status:400});
     if(customerEmail && !/^\S+@\S+\.\S+$/.test(customerEmail)) return NextResponse.json({error:"Enter a valid email address."},{status:400});
     const guestCount=body.guestCount ? Number(body.guestCount) : null;
-    const {data,error}=await createAdminClient().from("event_booking_requests").insert({event_name:eventName,event_type:eventType,event_date:eventDate,start_time:startTime,end_time:endTime||null,customer_name:customerName,customer_phone:customerPhone,customer_email:customerEmail||null,guest_count:Number.isInteger(guestCount)?guestCount:null,notes,status:"new"}).select("reference_code").single();
+    const {data,error}=await (createAdminClient().from("event_booking_requests" as any) as any).insert({event_name:eventName,event_type:eventType,event_date:eventDate,start_time:startTime,end_time:endTime||null,customer_name:customerName,customer_phone:customerPhone,customer_email:customerEmail||null,guest_count:Number.isInteger(guestCount)?guestCount:null,notes,status:"new"}).select("reference_code").single();
     if(error) throw error;
     return NextResponse.json({received:true,referenceCode:data.reference_code},{status:201});
   }catch(error){ console.error("Unable to save event booking request:",error); return NextResponse.json({error:"Unable to submit your event request."},{status:500}); }
