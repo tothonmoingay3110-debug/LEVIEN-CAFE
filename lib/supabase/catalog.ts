@@ -84,6 +84,9 @@ export async function readSupabaseCatalog(): Promise<SupabaseCatalog | null> {
     name: stringValue(row.name),
     price: numberValue(row.price),
     image: stringValue(row.image_url),
+    mobileImage: stringValue(row.mobile_image_url),
+    displayMode: row.display_mode === "full_image" ? "full_image" : "designed",
+    linkUrl: stringValue(row.link_url,"/menu"),
     active: row.active !== false,
   }));
   const toppingMap = new Map(toppings.map((topping) => [topping.id, topping]));

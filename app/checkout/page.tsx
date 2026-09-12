@@ -42,7 +42,8 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { profile } = useCustomerSession();
   const { cart, subtotal, clearCart, ready } = useStore();
-  const [type, setType] = useState<FulfillmentType>("Pickup");
+  const [type, setType] = useState<FulfillmentType | "Event">("Pickup");
+  const [memberLookup, setMemberLookup] = useState<{loading:boolean;found:boolean;message:string;member?:{firstName:string;lastInitial:string;maskedEmail:string;membershipNumber:string;rewards:Array<{id:string;reward_name:string}>}}>({loading:false,found:false,message:""});
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [giftCardInput, setGiftCardInput] = useState("");
@@ -75,6 +76,8 @@ export default function CheckoutPage() {
       setRewards(account.rewards.filter((reward) => reward.status === "issued" && reward.type === "free_product"));
     });
   }, [profile]);
+
+  function lookupMember(phone:string){clearError("phone");const normalized=phone.replace(/\D/g,"");if(normalized.length<10){setMemberLookup({loading:false,found:false,message:""});return}setMemberLookup({loading:true,found:false,message:"Checking membership…"});window.clearTimeout((lookupMember as typeof lookupMember & {timer?:number}).timer);(lookupMember as typeof lookupMember & {timer?:number}).timer=window.setTimeout(()=>{void fetch("/api/member-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})}).then(async r=>{const x=await r.json();if(!r.ok)throw new Error(x.error);setMemberLookup(x.found?{loading:false,found:true,message:"Member found",member:x.member}:{loading:false,found:false,message:"No member account found. You can continue as a guest."})}).catch(e=>setMemberLookup({loading:false,found:false,message:e instanceof Error?e.message:"Unable to check membership."}))},450)}
 
   async function applyGiftCard() {
     const code = giftCardInput.trim();
@@ -118,7 +121,7 @@ export default function CheckoutPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!cart.length || submitting) return;
+    if (submitting) return;
 
     const form = event.currentTarget;
     const data = new FormData(form);
@@ -171,8 +174,13 @@ export default function CheckoutPage() {
     setSubmitting(true);
 
     try {
+      if(type==="Event"){
+        const response=await fetch("/api/event-bookings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({eventName:data.get("eventName"),eventType:data.get("eventType"),eventDate:data.get("eventDate"),startTime:data.get("startTime"),endTime:data.get("endTime"),guestCount:data.get("guestCount"),customerName:`${firstName} ${lastName}`.trim(),customerPhone:phone,customerEmail:email,notes:data.get("eventNotes")})});
+        const result=await response.json();if(!response.ok)throw new Error(result.error||"Unable to submit event request.");window.alert(`Event request ${result.referenceCode} received. Our team will contact you soon.`);router.push("/event-booking");return;
+      }
+      if(!cart.length)throw new Error("Add at least one item before placing an order.");
       const orderDetails = {
-        firstName, lastName, phone, email, type,
+        firstName, lastName, phone, email, type: type as FulfillmentType,
         pickupTime: type === "Pickup" ? String(data.get("pickupTime") || "ASAP") : undefined,
         address: type === "Delivery" ? address : undefined,
         city: type === "Delivery" ? city : undefined,
@@ -266,8 +274,10 @@ export default function CheckoutPage() {
               </label>
               <label>
                 <span className="fieldLabel">Phone number <span className="requiredMark">*</span></span>
-                <input name="phone" defaultValue={profile?.phone || ""} type="tel" inputMode="tel" autoComplete="tel" placeholder="(215) 555-0123" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "phone-error" : undefined} onChange={() => clearError("phone")} />
+                <input name="phone" defaultValue={profile?.phone || ""} type="tel" inputMode="tel" autoComplete="tel" placeholder="(215) 555-0123" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "phone-error" : undefined} onChange={(event) => lookupMember(event.target.value)} />
+                <small className="memberLookupNote">Enter your phone number to view your member information.</small>
                 {errors.phone && <span className="fieldError" id="phone-error">{errors.phone}</span>}
+                {memberLookup.message&&<span className={memberLookup.found?"memberLookupSuccess":"memberLookupStatus"}>{memberLookup.message}</span>}
               </label>
               <label>
                 <span className="fieldLabel">Email <small className="optionalLabel">Optional</small></span>
@@ -275,18 +285,19 @@ export default function CheckoutPage() {
                 {errors.email && <span className="fieldError" id="email-error">{errors.email}</span>}
               </label>
             </div>
+            {memberLookup.member&&<div className="checkoutMemberPreview"><div><span>LEVIEN member</span><strong>{memberLookup.member.firstName} {memberLookup.member.lastInitial}</strong><small>{memberLookup.member.membershipNumber} · {memberLookup.member.maskedEmail}</small></div><b>{memberLookup.member.rewards.length} reward{memberLookup.member.rewards.length===1?"":"s"} available</b></div>}
           </section>
 
           <section className="checkoutCard">
             <div className="checkoutCardHead"><span>02</span><div><h2>Order type</h2><p>Choose pickup or local delivery.</p></div></div>
             <div className="fulfillmentOptions">
-              {(["Pickup", "Delivery"] as FulfillmentType[]).map((option) => <label className={type === option ? "selected" : ""} key={option}>
+              {(["Pickup", "Delivery", "Event"] as const).map((option) => <label className={type === option ? "selected" : ""} key={option}>
                 <input type="radio" name="type" value={option} checked={type === option} onChange={() => { setType(option); if (option === "Pickup") setErrors((current) => ({ firstName: current.firstName, lastName: current.lastName, phone: current.phone, email: current.email })); }} />
                 <span className="fulfillmentIcon" aria-hidden="true">{option === "Pickup" ? <svg viewBox="0 0 24 24"><path d="M4 10h16v10H4z"/><path d="M3 10 5 4h14l2 6"/><path d="M9 20v-6h6v6"/></svg> : <svg viewBox="0 0 24 24"><path d="M3 6h11v11H3z"/><path d="M14 9h4l3 4v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>}</span>
-                <span><strong>{option}</strong><small>{option === "Pickup" ? "Collect at LEVIEN CAFE" : "Delivered to your address"}</small></span>
+                <span><strong>{option === "Event"?"Book an Event":option}</strong><small>{option === "Pickup" ? "Collect at LEVIEN CAFE" : option === "Delivery" ? "Delivered to your address" : "Request a celebration or private gathering"}</small></span>
               </label>)}
             </div>
-            {type === "Pickup" ? <div className="checkoutFields"><label>Pickup time<select name="pickupTime" defaultValue="ASAP"><option>ASAP</option><option>In 15 minutes</option><option>In 30 minutes</option><option>In 45 minutes</option></select></label></div> : <div className="checkoutFields twoColumns deliveryFields">
+            {type === "Event" ? <div className="checkoutFields twoColumns eventCheckoutFields"><label><span className="fieldLabel">Event name <span className="requiredMark">*</span></span><input name="eventName" required placeholder="Birthday celebration"/></label><label>Event type<input name="eventType" placeholder="Birthday, meeting, private party…"/></label><label><span className="fieldLabel">Event date <span className="requiredMark">*</span></span><input name="eventDate" type="date" required/></label><label><span className="fieldLabel">Start time <span className="requiredMark">*</span></span><input name="startTime" type="time" required/></label><label>End time<input name="endTime" type="time"/></label><label>Expected guests<input name="guestCount" type="number" min="1" max="1000"/></label><label className="wide">Event details<textarea name="eventNotes" rows={4} placeholder="Tell us what you would like to arrange…"/></label><p className="wide eventCheckoutNotice">This sends an event request to our team. It does not place or charge your current food order.</p></div> : type === "Pickup" ? <div className="checkoutFields"><label>Pickup time<select name="pickupTime" defaultValue="ASAP"><option>ASAP</option><option>In 15 minutes</option><option>In 30 minutes</option><option>In 45 minutes</option></select></label></div> : <div className="checkoutFields twoColumns deliveryFields">
               <label className="wide">
                 <span className="fieldLabel">Street address <span className="requiredMark">*</span></span>
                 <input name="address" autoComplete="street-address" aria-invalid={Boolean(errors.address)} aria-describedby={errors.address ? "address-error" : undefined} onChange={() => clearError("address")} />
@@ -340,7 +351,7 @@ export default function CheckoutPage() {
             {loyaltyDiscount > 0 && <div className="checkoutGiftCardDiscount"><span>Member reward · {selectedReward?.name}</span><b>−{money(loyaltyDiscount)}</b></div>}
             <div className="checkoutGrandTotal"><span>{giftCardAmount > 0 ? "Amount due" : "Total"}</span><strong>{money(amountDue)}</strong></div>
           </div>
-          <button className="button primary full checkoutSubmit" type="submit" disabled={submitting}>{submitting ? "Placing order…" : "Place Order"}</button>
+          <button className="button primary full checkoutSubmit" type="submit" disabled={submitting}>{submitting ? (type==="Event"?"Sending request…":"Placing order…") : (type==="Event"?"Submit Event Request":"Place Order")}</button>
           <p className="checkoutFinePrint">Your order is saved securely and appears immediately in the LEVIEN order queue.</p>
         </aside>
       </form>}

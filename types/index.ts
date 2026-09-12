@@ -40,6 +40,9 @@ export type Promotion = {
   description: string;
   priceText: string;
   image: string;
+  mobileImage?: string;
+  displayMode?: "designed" | "full_image";
+  linkUrl?: string;
   startDate?: string;
   endDate?: string | null;
 };

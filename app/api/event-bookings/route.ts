@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
+import { sendEventBookingEmail } from "@/lib/event-booking-email";
 
 const text=(v:unknown,n:number)=>typeof v === "string" ? v.trim().slice(0,n) : "";
 export async function POST(request:Request){
@@ -16,8 +17,12 @@ export async function POST(request:Request){
     if(!customerName && !customerPhone) return NextResponse.json({error:"Enter your name or phone number."},{status:400});
     if(customerEmail && !/^\S+@\S+\.\S+$/.test(customerEmail)) return NextResponse.json({error:"Enter a valid email address."},{status:400});
     const guestCount=body.guestCount ? Number(body.guestCount) : null;
-    const {data,error}=await (createAdminClient().from("event_booking_requests" as any) as any).insert({event_name:eventName,event_type:eventType,event_date:eventDate,start_time:startTime,end_time:endTime||null,customer_name:customerName,customer_phone:customerPhone,customer_email:customerEmail||null,guest_count:Number.isInteger(guestCount)?guestCount:null,notes,status:"new"}).select("reference_code").single();
+    const db=createAdminClient();
+    const {data,error}=await (db.from("event_booking_requests" as any) as any).insert({event_name:eventName,event_type:eventType,event_date:eventDate,start_time:startTime,end_time:endTime||null,customer_name:customerName,customer_phone:customerPhone,customer_email:customerEmail||null,guest_count:Number.isInteger(guestCount)?guestCount:null,notes,status:"new"}).select("id,reference_code").single();
     if(error) throw error;
+    await (db.from("admin_notifications" as any) as any).insert({kind:"event_booking",title:"New event booking",message:`${eventName} · ${eventDate} ${startTime}`,target_view:"eventbookings",target_id:data.id}).then(()=>undefined).catch(()=>undefined);
+    const {data:content}=await db.from("site_content").select("email").eq("singleton_key","main").maybeSingle();
+    await sendEventBookingEmail({id:data.id,referenceCode:data.reference_code,eventName,eventDate,startTime,customerName,customerPhone,customerEmail,guestCount:Number.isInteger(guestCount)?guestCount:null,notes,to:content?.email||process.env.EVENT_BOOKING_TO_EMAIL?.trim()||""}).catch((mailError)=>console.error("Unable to email event booking:",mailError));
     return NextResponse.json({received:true,referenceCode:data.reference_code},{status:201});
   }catch(error){ console.error("Unable to save event booking request:",error); return NextResponse.json({error:"Unable to submit your event request."},{status:500}); }
 }

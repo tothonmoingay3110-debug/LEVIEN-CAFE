@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const subjects = new Set(["General question", "Order support", "Catering", "Feedback", "Other"]);
+const subjects = new Set(["General question", "Order support", "Catering", "Franchise inquiry", "Feedback", "Other"]);
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function text(value: unknown, maximumLength: number) {

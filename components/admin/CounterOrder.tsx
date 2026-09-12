@@ -47,10 +47,14 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
   const productMap = useMemo(() => new Map(products.map((item) => [item.id, item])), [products]);
   const toppingMap = useMemo(() => new Map(toppings.map((item) => [item.id, item])), [toppings]);
   const selectedCustomer = customers.find((customer) => customer.id === customerId);
-  const customerRewards = rewards.filter((reward) => reward.customer_profile_id === customerId);
+  const customerRewards = rewards.filter((reward) => reward.customer_profile_id === customerId && (!reward.expires_at || new Date(reward.expires_at).getTime() > Date.now()));
   const normalizedLookup = normalizePhone(memberPhone);
   const lookupAttempted = normalizedLookup.length >= 7;
   const total = lines.reduce((sum, line) => sum + (Number(productMap.get(line.productId)?.price || 0) + line.toppingIds.reduce((amount, id) => amount + Number(toppingMap.get(id)?.price || 0), 0)) * line.quantity, 0);
+  const selectedReward = customerRewards.find((reward) => reward.id === rewardId);
+  const rewardLine = selectedReward ? lines.filter((line) => selectedReward.productIds.includes(line.productId)).sort((left,right)=>Number(productMap.get(right.productId)?.price||0)-Number(productMap.get(left.productId)?.price||0))[0] : undefined;
+  const rewardDiscount = rewardLine ? Number(productMap.get(rewardLine.productId)?.price || 0) : 0;
+  const amountDue = Math.max(0,total*1.08-rewardDiscount);
   const filtered = products.filter((product) => !product.sold_out && (categoryId === "all" || product.category_id === categoryId) && `${product.name} ${product.sku}`.toLowerCase().includes(query.trim().toLowerCase()));
   const availableToppings = customizing ? toppings.filter((topping) => customizing.toppingIds.includes(topping.id)) : [];
 
@@ -129,6 +133,7 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
           </div>
           <label>Customer / member<select value={customerId} onChange={(event) => chooseCustomer(event.target.value)}><option value="">Guest customer</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.first_name} {customer.last_name} · {customer.membership_number}</option>)}</select></label>
           {customerId && <label>Available voucher<select value={rewardId} onChange={(event) => setRewardId(event.target.value)}><option value="">No voucher</option>{customerRewards.map((reward) => <option key={reward.id} value={reward.id}>{reward.reward_name} · {reward.reward_code} · {reward.productIds.map((id) => productMap.get(id)?.name).filter(Boolean).join(", ")}</option>)}</select><small>Free product applies to an eligible item. Toppings remain chargeable.</small></label>}
+          {selectedReward&&!rewardLine&&<div className="counterRewardWarning">Add an eligible product before using this reward.</div>}
           {!customerId && <div className="counterGuestFields"><label>First name<input name="firstName" required /></label><label>Last name<input name="lastName" required /></label><label>Phone<input name="phone" type="tel" required /></label></div>}
           <div className="counterCart">{lines.map((line, index) => { const product = productMap.get(line.productId); if (!product) return null; const chosen = line.toppingIds.map((id) => toppingMap.get(id)).filter(Boolean) as Topping[]; return <article key={`${line.productId}-${line.toppingIds.join("-")}`}>
             <div><strong>{product.name}</strong><span><button type="button" onClick={() => setLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item))}>−</button>{line.quantity}<button type="button" onClick={() => setLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: item.quantity + 1 } : item))}>+</button></span></div>
@@ -137,7 +142,7 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
           </article>; })}</div>
           <label>Payment<select name="payment"><option>Cash</option><option>Card terminal</option></select></label>
           <label>Order note<textarea name="note" rows={2} /></label>
-          <div className="counterTotal"><span>Estimated total with tax</span><strong>${(total * 1.08).toFixed(2)}</strong></div>
+          <div className="counterTotal">{rewardDiscount>0&&<><span>Before reward</span><b>${(total*1.08).toFixed(2)}</b><span>Member reward</span><b>−${rewardDiscount.toFixed(2)}</b></>}<span>Estimated amount due</span><strong>${amountDue.toFixed(2)}</strong></div>
           {error && <div className="adminLoginError">{error}</div>}
           <button className="adminPrimary" disabled={saving || !lines.length}>{saving ? "Creating…" : "Place Counter Order"}</button>
         </aside>
