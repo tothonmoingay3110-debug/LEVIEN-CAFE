@@ -21,18 +21,21 @@ export async function GET() {
   try {
     const auth = await authorize(); if (auth.response) return auth.response;
     const db = createAdminClient();
-    const [products, toppings, links, customers] = await Promise.all([
+    const [products, toppings, links, customers, rewards, rewardLinks] = await Promise.all([
       db.from("products").select("id,sku,name,price,image_url,emoji,allow_toppings,sold_out").eq("active", true).order("name"),
       db.from("toppings").select("id,name,price,image_url").eq("active", true).order("name"),
       db.from("product_toppings").select("product_id,topping_id"),
       db.from("customer_profiles").select("id,first_name,last_name,email,phone,membership_number").order("first_name"),
+      db.from("loyalty_rewards").select("id,customer_profile_id,reward_code,reward_name,reward_type,reward_product_id,expires_at,status").eq("status", "issued").eq("reward_type", "free_product").order("issued_at"),
+      db.from("loyalty_reward_products").select("reward_id,product_id,position").order("position"),
     ]);
-    const error = [products, toppings, links, customers].map((result) => result.error).find(Boolean);
+    const error = [products, toppings, links, customers, rewards, rewardLinks].map((result) => result.error).find(Boolean);
     if (error) throw error;
     return NextResponse.json({
       products: (products.data || []).map((product) => ({ ...product, price: Number(product.price), toppingIds: (links.data || []).filter((link) => link.product_id === product.id).map((link) => link.topping_id) })),
       toppings: (toppings.data || []).map((topping) => ({ ...topping, price: Number(topping.price) })),
       customers: customers.data || [],
+      rewards: (rewards.data || []).map((reward) => ({ ...reward, productIds: (rewardLinks.data || []).filter((link) => link.reward_id === reward.id).map((link) => link.product_id).concat(reward.reward_product_id ? [reward.reward_product_id] : []) })),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Unable to load counter order catalog:", error);
@@ -48,6 +51,7 @@ export async function POST(request: Request) {
     const body = await request.json() as Record<string, unknown>;
     const rawItems = Array.isArray(body.items) ? body.items.slice(0, 100) : [];
     const customerProfileId = uuid.test(clean(body.customerProfileId)) ? clean(body.customerProfileId) : null;
+    const loyaltyRewardId = uuid.test(clean(body.loyaltyRewardId)) ? clean(body.loyaltyRewardId) : null;
     const payment = ["Cash", "Card terminal"].includes(clean(body.payment)) ? clean(body.payment) : "Cash";
     const db = createAdminClient();
     const productIds = [...new Set(rawItems.map((item) => typeof item === "object" && item ? clean((item as Record<string, unknown>).productId) : "").filter((id) => uuid.test(id)))];
@@ -80,7 +84,7 @@ export async function POST(request: Request) {
       p_email: customer?.email || null, p_fulfillment_type: "Pickup", p_pickup_time: "ASAP", p_address: null, p_city: null, p_zip: null, p_apartment: null,
       p_payment_method: payment === "Card terminal" ? "Card at Pickup" : "Pay at Store", p_subtotal: subtotal, p_tax: tax, p_delivery_fee: 0, p_total: total,
       p_note: clean(body.note, 1000), p_items: JSON.parse(JSON.stringify(priced)) as Json, p_gift_card_hash: null,
-      p_customer_profile_id: customerProfileId, p_payment_channel: "offline", p_loyalty_reward_id: null,
+      p_customer_profile_id: customerProfileId, p_payment_channel: "offline", p_loyalty_reward_id: loyaltyRewardId,
     });
     if (error) throw error;
     const created = data?.[0]; if (!created?.order_number) throw new Error("Order number was not returned.");
@@ -89,6 +93,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ orderNumber: created.order_number, total, subtotal, tax }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message.includes("COUNTER_ITEM_INVALID")) return NextResponse.json({ error: "A selected product is unavailable." }, { status: 409 });
+    if (error instanceof Error && error.message.includes("LOYALTY_REWARD_INVALID")) return NextResponse.json({ error: "This voucher is no longer available or has expired." }, { status: 409 });
+    if (error instanceof Error && error.message.includes("LOYALTY_PRODUCT_REQUIRED")) return NextResponse.json({ error: "Add one of the voucher's eligible products before applying it." }, { status: 409 });
     console.error("Unable to create counter order:", error);
     return NextResponse.json({ error: "Unable to create counter order." }, { status: 500 });
   }
