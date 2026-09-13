@@ -22,7 +22,7 @@ export async function GET() {
     const auth = await authorize(); if (auth.response) return auth.response;
     const db = createAdminClient();
     const [products, toppings, links, categories, customers, rewards, rewardLinks] = await Promise.all([
-      db.from("products").select("id,sku,name,price,image_url,emoji,allow_toppings,sold_out,category_id").eq("active", true).order("name"),
+      db.from("products").select("id,sku,name,price,image_url,emoji,allow_ice,allow_sugar,allow_toppings,sold_out,category_id").eq("active", true).order("name"),
       db.from("toppings").select("id,name,price,image_url").eq("active", true).order("name"),
       db.from("product_toppings").select("product_id,topping_id"),
       db.from("categories").select("id,name").eq("active", true).order("sort_order").order("name"),
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       const item = raw as Record<string, unknown>; const product = products.get(clean(item.productId));
       const quantity = Number(item.quantity); const toppingIds = Array.isArray(item.toppingIds) ? item.toppingIds.map((id) => clean(id)).filter((id) => toppings.has(id)) : [];
       if (!product || !product.active || product.sold_out || !Number.isInteger(quantity) || quantity < 1 || quantity > 99) throw new Error("COUNTER_ITEM_INVALID");
-      return { lineId: `counter-${index}-${product.id}`, itemType: "product", productId: product.id, name: product.name, emoji: product.emoji, basePrice: Number(product.price), unitPrice: Number(product.price) + toppingIds.reduce((sum, id) => sum + Number(toppings.get(id)?.price || 0), 0), quantity, toppings: toppingIds.map((id) => ({ id, name: toppings.get(id)!.name, price: Number(toppings.get(id)!.price) })) };
+      return { lineId: `counter-${index}-${product.id}`, itemType: "product", productId: product.id, name: product.name, emoji: product.emoji, basePrice: Number(product.price), unitPrice: Number(product.price) + toppingIds.reduce((sum, id) => sum + Number(toppings.get(id)?.price || 0), 0), quantity, ice: clean(item.ice, 20) || undefined, sugar: clean(item.sugar, 20) || undefined, toppings: toppingIds.map((id) => ({ id, name: toppings.get(id)!.name, price: Number(toppings.get(id)!.price) })) };
     });
     const priced = await validateAndPriceOrderItems(db, items);
     const subtotal = currency(priced.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0));
