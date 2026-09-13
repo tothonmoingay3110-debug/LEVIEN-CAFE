@@ -2,15 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Product = { id: string; sku: string; name: string; price: number; image_url: string; emoji: string; allow_toppings: boolean; sold_out: boolean; category_id: string | null; toppingIds: string[] };
+type Product = { id: string; sku: string; name: string; price: number; image_url: string; emoji: string; allow_ice: boolean; allow_sugar: boolean; allow_toppings: boolean; sold_out: boolean; category_id: string | null; toppingIds: string[] };
 type Topping = { id: string; name: string; price: number; image_url: string };
 type Category = { id: string; name: string };
 type Customer = { id: string; first_name: string; last_name: string; email: string | null; phone: string; membership_number: string };
-type Line = { productId: string; quantity: number; toppingIds: string[] };
+type Line = { productId: string; quantity: number; toppingIds: string[]; ice?: string; sugar?: string };
 type Reward = { id: string; customer_profile_id: string; reward_code: string; reward_name: string; expires_at: string | null; productIds: string[] };
 
 const normalizePhone = (value: string) => value.replace(/\D/g, "");
 const sameToppings = (left: string[], right: string[]) => [...left].sort().join("|") === [...right].sort().join("|");
+const iceLevels = ["100%", "70%", "50%", "30%", "No Ice"];
+const sugarLevels = ["100%", "70%", "50%", "30%", "No Sugar"];
 
 export default function CounterOrder({ close, saved }: { close: () => void; saved: (orderNumber: string) => Promise<void> }) {
   const [products, setProducts] = useState<Product[]>([]);
@@ -26,6 +28,8 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
   const [rewardId, setRewardId] = useState("");
   const [customizing, setCustomizing] = useState<Product | null>(null);
   const [customToppingIds, setCustomToppingIds] = useState<string[]>([]);
+  const [customIce, setCustomIce] = useState("100%");
+  const [customSugar, setCustomSugar] = useState("100%");
   const [customQuantity, setCustomQuantity] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -75,6 +79,8 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
   function openCustomizer(product: Product) {
     setCustomizing(product);
     setCustomToppingIds([]);
+    setCustomIce("100%");
+    setCustomSugar("100%");
     setCustomQuantity(1);
   }
 
@@ -82,8 +88,10 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
     if (!customizing) return;
     const selected = [...customToppingIds].sort();
     setLines((current) => {
-      const index = current.findIndex((line) => line.productId === customizing.id && sameToppings(line.toppingIds, selected));
-      if (index < 0) return [...current, { productId: customizing.id, quantity: customQuantity, toppingIds: selected }];
+      const ice = customizing.allow_ice ? customIce : undefined;
+      const sugar = customizing.allow_sugar ? customSugar : undefined;
+      const index = current.findIndex((line) => line.productId === customizing.id && line.ice === ice && line.sugar === sugar && sameToppings(line.toppingIds, selected));
+      if (index < 0) return [...current, { productId: customizing.id, quantity: customQuantity, toppingIds: selected, ice, sugar }];
       return current.map((line, lineIndex) => lineIndex === index ? { ...line, quantity: line.quantity + customQuantity } : line);
     });
     setCustomizing(null);
@@ -135,9 +143,10 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
           {customerId && <label>Available voucher<select value={rewardId} onChange={(event) => setRewardId(event.target.value)}><option value="">No voucher</option>{customerRewards.map((reward) => <option key={reward.id} value={reward.id}>{reward.reward_name} · {reward.reward_code} · {reward.productIds.map((id) => productMap.get(id)?.name).filter(Boolean).join(", ")}</option>)}</select><small>Free product applies to an eligible item. Toppings remain chargeable.</small></label>}
           {selectedReward&&!rewardLine&&<div className="counterRewardWarning">Add an eligible product before using this reward.</div>}
           {!customerId && <div className="counterGuestFields"><label>First name<input name="firstName" required /></label><label>Last name<input name="lastName" required /></label><label>Phone<input name="phone" type="tel" required /></label></div>}
-          <div className="counterCart">{lines.map((line, index) => { const product = productMap.get(line.productId); if (!product) return null; const chosen = line.toppingIds.map((id) => toppingMap.get(id)).filter(Boolean) as Topping[]; return <article key={`${line.productId}-${line.toppingIds.join("-")}`}>
+          <div className="counterCart">{lines.map((line, index) => { const product = productMap.get(line.productId); if (!product) return null; const chosen = line.toppingIds.map((id) => toppingMap.get(id)).filter(Boolean) as Topping[]; return <article key={`${line.productId}-${line.ice || ""}-${line.sugar || ""}-${line.toppingIds.join("-")}`}>
             <div><strong>{product.name}</strong><span><button type="button" onClick={() => setLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item))}>−</button>{line.quantity}<button type="button" onClick={() => setLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: item.quantity + 1 } : item))}>+</button></span></div>
             {chosen.length > 0 && <p className="counterLineToppingSummary">+ {chosen.map((item) => item.name).join(", ")}</p>}
+            {(line.ice || line.sugar) && <p className="counterLineOptions">{[line.ice && `Ice ${line.ice}`, line.sugar && `Sugar ${line.sugar}`].filter(Boolean).join(" · ")}</p>}
             <div className="counterLineActions"><span>${((product.price + chosen.reduce((sum, item) => sum + item.price, 0)) * line.quantity).toFixed(2)}</span><button className="counterRemove" type="button" onClick={() => setLines((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</button></div>
           </article>; })}</div>
           <label>Payment<select name="payment"><option>Cash</option><option>Card terminal</option></select></label>
@@ -151,10 +160,18 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
         <section className="counterCustomizer" role="dialog" aria-modal="true" aria-label={`Customize ${customizing.name}`}>
           <div className="counterCustomizerHeader"><div><span className="adminEyebrow">Customize item</span><h3>{customizing.name}</h3></div><button type="button" onClick={() => setCustomizing(null)} aria-label="Close customization">×</button></div>
           <div className="counterCustomizerProduct">{customizing.image_url ? <img src={customizing.image_url} alt="" /> : <span>{customizing.emoji || "LV"}</span>}<div><strong>${customizing.price.toFixed(2)}</strong><small>{customizing.sku}</small></div></div>
+          {(customizing.allow_ice || customizing.allow_sugar) && <div className="counterCustomizerChoices">
+            {customizing.allow_ice && <CounterOptionGroup title="Ice Level" name="counter-ice" values={iceLevels} value={customIce} onChange={setCustomIce} />}
+            {customizing.allow_sugar && <CounterOptionGroup title="Sugar Level" name="counter-sugar" values={sugarLevels} value={customSugar} onChange={setCustomSugar} />}
+          </div>}
           <div className="counterCustomizerToppings"><h4>Toppings</h4>{customizing.allow_toppings && availableToppings.length ? availableToppings.map((topping) => <label key={topping.id}><input type="checkbox" checked={customToppingIds.includes(topping.id)} onChange={() => setCustomToppingIds((current) => current.includes(topping.id) ? current.filter((id) => id !== topping.id) : [...current, topping.id])} /><span>{topping.name}</span><strong>+${topping.price.toFixed(2)}</strong></label>) : <p>No toppings available for this item.</p>}</div>
           <div className="counterCustomizerActions"><div><button type="button" onClick={() => setCustomQuantity((value) => Math.max(1, value - 1))}>−</button><strong>{customQuantity}</strong><button type="button" onClick={() => setCustomQuantity((value) => value + 1)}>+</button></div><button type="button" className="adminPrimary" onClick={addCustomizedItem}>Add to Order · ${((customizing.price + customToppingIds.reduce((sum, id) => sum + Number(toppingMap.get(id)?.price || 0), 0)) * customQuantity).toFixed(2)}</button></div>
         </section>
       </div>}
     </div>
   </div>;
+}
+
+function CounterOptionGroup({ title, name, values, value, onChange }: { title: string; name: string; values: string[]; value: string; onChange: (value: string) => void }) {
+  return <fieldset className="counterCustomizerChoice"><legend>{title}</legend><div>{values.map((option) => <label className={value === option ? "selected" : ""} key={option}><input type="radio" name={name} checked={value === option} onChange={() => onChange(option)} /><span>{option}</span></label>)}</div></fieldset>;
 }
