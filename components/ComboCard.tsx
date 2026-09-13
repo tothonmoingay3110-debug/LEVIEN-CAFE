@@ -6,9 +6,10 @@ import { useSiteData } from "@/components/SiteDataProvider";
 
 function AutoDesignedProductImage({ src }: { src: string }) {
   const [shape, setShape] = useState<"portrait" | "landscape" | "square">("square");
+  const isCutout = /\.(png|webp)(?:\?|$)/i.test(src);
 
   return <img
-    className={`comboAutoImage ${shape}`}
+    className={`comboAutoImage ${shape}${isCutout ? " cutout" : ""}`}
     src={src}
     alt=""
     onLoad={(event) => {
