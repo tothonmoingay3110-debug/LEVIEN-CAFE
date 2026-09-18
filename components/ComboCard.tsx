@@ -1,20 +1,53 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { ComboCustomizer } from "@/components/ComboCustomizer";
 import { useSiteData } from "@/components/SiteDataProvider";
 
 function AutoDesignedProductImage({ src }: { src: string }) {
   const [shape, setShape] = useState<"portrait" | "landscape" | "square">("square");
-  const isCutout = /\.(png|webp)(?:\?|$)/i.test(src);
+  const [scale, setScale] = useState(1);
 
   return <img
-    className={`comboAutoImage ${shape}${isCutout ? " cutout" : ""}`}
+    className={`comboAutoImage ${shape}`}
     src={src}
     alt=""
+    crossOrigin="anonymous"
+    style={{ "--combo-image-scale": scale } as CSSProperties}
     onLoad={(event) => {
       const image = event.currentTarget;
-      const ratio = image.naturalWidth / Math.max(1, image.naturalHeight);
+      let visibleWidth = image.naturalWidth;
+      let visibleHeight = image.naturalHeight;
+      try {
+        const size = 128;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (context) {
+          const fit = Math.min(size / image.naturalWidth, size / image.naturalHeight);
+          const width = image.naturalWidth * fit;
+          const height = image.naturalHeight * fit;
+          const offsetX = (size - width) / 2;
+          const offsetY = (size - height) / 2;
+          context.drawImage(image, offsetX, offsetY, width, height);
+          const pixels = context.getImageData(0, 0, size, size).data;
+          let minX = size, minY = size, maxX = -1, maxY = -1;
+          for (let y = 0; y < size; y += 2) for (let x = 0; x < size; x += 2) {
+            if (pixels[(y * size + x) * 4 + 3] > 20) {
+              minX = Math.min(minX, x); minY = Math.min(minY, y);
+              maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+            }
+          }
+          if (maxX >= minX && maxY >= minY) {
+            visibleWidth = maxX - minX + 2;
+            visibleHeight = maxY - minY + 2;
+            const occupancy = Math.max(visibleWidth, visibleHeight) / size;
+            setScale(Math.min(1.65, Math.max(1, 0.98 / Math.max(0.01, occupancy))));
+          }
+        }
+      } catch { setScale(1); }
+      const ratio = visibleWidth / Math.max(1, visibleHeight);
       setShape(ratio > 1.18 ? "landscape" : ratio < 0.82 ? "portrait" : "square");
     }}
   />;

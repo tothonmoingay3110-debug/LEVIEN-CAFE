@@ -64,7 +64,7 @@ export default function CheckoutPage() {
     .filter((item) => item.itemType === "product" && selectedRewardProductIds.includes(item.productId))
     .sort((left, right) => right.basePrice - left.basePrice)[0];
   const loyaltyDiscount = selectedReward && rewardItem ? Math.min(rewardItem.basePrice, total) : 0;
-  const giftCardAmount = giftCard ? Math.min(giftCard.balance, Math.max(0, total - loyaltyDiscount)) : 0;
+  const giftCardAmount = 0;
   const amountDue = Math.max(0, total - loyaltyDiscount - giftCardAmount);
 
   useEffect(() => {
@@ -135,11 +135,7 @@ export default function CheckoutPage() {
     const nextErrors: CheckoutErrors = {};
 
     if (!firstName) nextErrors.firstName = "First name is required.";
-    if (!lastName) nextErrors.lastName = "Last name is required.";
-
-    if (!phone) {
-      nextErrors.phone = "Phone number is required.";
-    } else {
+    if (phone) {
       const phoneDigits = phone.replace(/\D/g, "");
       if (phoneDigits.length < 10 || phoneDigits.length > 15) {
         nextErrors.phone = "Please enter a valid phone number.";
@@ -151,6 +147,10 @@ export default function CheckoutPage() {
     }
 
     if (type === "Delivery") {
+      if (!phone && !email) {
+        nextErrors.phone = "Enter a phone number or email so we can contact you.";
+        nextErrors.email = "Enter a phone number or email so we can contact you.";
+      }
       if (!address) nextErrors.address = "Street address is required.";
       if (!city) nextErrors.city = "City is required.";
       if (!zip) {
@@ -158,6 +158,11 @@ export default function CheckoutPage() {
       } else if (!/^\d{5}(?:-\d{4})?$/.test(zip)) {
         nextErrors.zip = "Please enter a valid ZIP code.";
       }
+    }
+
+    if (type === "Event" && (!String(data.get("eventName") || "").trim() || !String(data.get("eventDate") || "").trim() || !String(data.get("startTime") || "").trim())) {
+      window.alert("Event name, date, and start time are required.");
+      return;
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -193,7 +198,7 @@ export default function CheckoutPage() {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...orderDetails, giftCardCode: giftCard?.code, loyaltyRewardId: rewardId || undefined, promotionId: currentPromotionAttribution(), items: cart }),
+        body: JSON.stringify({ ...orderDetails, loyaltyRewardId: rewardId || undefined, promotionId: currentPromotionAttribution(), items: cart }),
       });
       const result = (await response.json()) as {
         orderNumber?: string;
@@ -260,7 +265,8 @@ export default function CheckoutPage() {
       </section> : <form className="checkoutLayout" onSubmit={submit} noValidate>
         <div className="checkoutFormColumn">
           <section className="checkoutCard">
-            <div className="checkoutCardHead"><span>01</span><div><h2>Customer information</h2><p>We will use your phone number for order updates.</p></div></div>
+            <div className="checkoutCardHead"><span>01</span><div><h2>Customer information</h2><p>Only your first name is required for pickup. Add a phone number to view member details and rewards.</p></div></div>
+            {!profile && <div className="checkoutAccountPrompt"><div><strong>Already a LEVIEN member?</strong><span>Sign in for autofill, rewards, and order history. Your cart will stay here.</span></div><div><Link href="/account/sign-in?next=/checkout">Sign in</Link><Link href="/account/sign-up?next=/checkout">Create account</Link></div></div>}
             <div className="checkoutFields twoColumns">
               <label>
                 <span className="fieldLabel">First name <span className="requiredMark">*</span></span>
@@ -268,19 +274,19 @@ export default function CheckoutPage() {
                 {errors.firstName && <span className="fieldError" id="firstName-error">{errors.firstName}</span>}
               </label>
               <label>
-                <span className="fieldLabel">Last name <span className="requiredMark">*</span></span>
+                <span className="fieldLabel">Last name <small className="optionalLabel">Optional</small></span>
                 <input name="lastName" defaultValue={profile?.lastName || ""} autoComplete="family-name" aria-invalid={Boolean(errors.lastName)} aria-describedby={errors.lastName ? "lastName-error" : undefined} onChange={() => clearError("lastName")} />
                 {errors.lastName && <span className="fieldError" id="lastName-error">{errors.lastName}</span>}
               </label>
               <label>
-                <span className="fieldLabel">Phone number <span className="requiredMark">*</span></span>
+                <span className="fieldLabel">Phone number <small className="optionalLabel">{type === "Delivery" ? "Phone or email required" : "Optional"}</small></span>
                 <input name="phone" defaultValue={profile?.phone || ""} type="tel" inputMode="tel" autoComplete="tel" placeholder="(215) 555-0123" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "phone-error" : undefined} onChange={(event) => lookupMember(event.target.value)} />
                 <small className="memberLookupNote">Enter your phone number to view your member information.</small>
                 {errors.phone && <span className="fieldError" id="phone-error">{errors.phone}</span>}
                 {memberLookup.message&&<span className={memberLookup.found?"memberLookupSuccess":"memberLookupStatus"}>{memberLookup.message}</span>}
               </label>
               <label>
-                <span className="fieldLabel">Email <small className="optionalLabel">Optional</small></span>
+                <span className="fieldLabel">Email <small className="optionalLabel">{type === "Delivery" ? "Phone or email required" : "Optional"}</small></span>
                 <input name="email" defaultValue={profile?.email || ""} type="email" autoComplete="email" aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "email-error" : undefined} onChange={() => clearError("email")} />
                 {errors.email && <span className="fieldError" id="email-error">{errors.email}</span>}
               </label>
@@ -318,19 +324,12 @@ export default function CheckoutPage() {
           </section>
 
           <section className="checkoutCard">
-            <div className="checkoutCardHead"><span>03</span><div><h2>Payment & notes</h2><p>Online card payments are processed securely by Stripe.</p></div></div>
-            {paymentCancelled && <div className="customerAuthError">Payment was cancelled. Your cart is still here; choose a method and try again.</div>}
+            <div className="checkoutCardHead"><span>03</span><div><h2>Payment & notes</h2><p>{type === "Event" ? "No payment is collected with an event request." : "Payment is completed when your order is received."}</p></div></div>
             <div className="checkoutFields twoColumns">
-              <label>Payment method<select name="payment" defaultValue="Online Card"><option>Online Card</option><option>Pay at Store</option><option>Cash on Delivery</option><option>Card at Pickup</option></select></label>
+              {type !== "Event" && <label>Payment method<select key={type} name="payment" defaultValue={type === "Delivery" ? "Cash on Delivery" : "Pay at Store"}>{type === "Delivery" ? <option>Cash on Delivery</option> : <><option>Pay at Store</option><option>Card at Pickup</option></>}</select></label>}
               <label className="wide"><span className="fieldLabel">Order note <small className="optionalLabel">Optional</small></span><textarea name="note" rows={4} placeholder="Allergies, delivery instructions, or anything we should know" /></label>
             </div>
             {profile ? <div className="giftCardRedeem"><div className="giftCardRedeemHeading"><div><span>Member Reward</span><strong>{rewards.length ? "Use an available reward" : "No free-product rewards available"}</strong></div></div>{rewards.length > 0 && <select value={rewardId} onChange={(event) => setRewardId(event.target.value)}><option value="">Do not use a reward</option>{rewards.map((reward) => { const eligibleIds = reward.productIds.length ? reward.productIds : reward.productId ? [reward.productId] : []; const inCart = cart.some((item) => item.itemType === "product" && eligibleIds.includes(item.productId)); return <option key={reward.id} value={reward.id} disabled={!inCart}>{reward.name}{reward.productNames.length ? ` (${reward.productNames.join(" / ")})` : ""}{inCart ? "" : " — add an eligible product first"}</option>; })}</select>}{selectedReward && !rewardItem && <div className="giftCardError">Add one of the eligible reward products to your cart before using it.</div>}</div> : <div className="giftCardRedeem"><span>Member Reward</span><p><Link href="/account/sign-in">Sign in</Link> to use earned rewards.</p></div>}
-            <div className={`giftCardRedeem ${giftCard ? "applied" : ""}`}>
-              <div className="giftCardRedeemHeading"><div><span>Gift Card</span><strong>{giftCard ? `Card ending ${giftCard.lastFour}` : "Have a LEVIEN Gift Card?"}</strong></div>{giftCard && <button type="button" onClick={() => { setGiftCard(null); setGiftCardInput(""); setGiftCardError(""); }}>Remove</button>}</div>
-              {giftCard ? <div className="giftCardApplied"><span>✓</span><div><strong>{money(giftCard.balance)} available</strong><small>{money(giftCardAmount)} will be applied to this order.</small></div></div> : <div className="giftCardCodeRow"><input value={giftCardInput} maxLength={24} autoComplete="off" placeholder="LVGC-XXXX-XXXX-XXXX" aria-label="Gift Card code" onChange={(event) => { setGiftCardInput(event.target.value.toUpperCase()); setGiftCardError(""); }} /><button className="adminSecondary" type="button" disabled={!giftCardInput.trim() || checkingGiftCard} onClick={() => void applyGiftCard()}>{checkingGiftCard ? "Checking…" : "Apply"}</button></div>}
-              {giftCardError && <div className="giftCardError" role="alert">{giftCardError}</div>}
-              <Link href="/gift-card">Check balance</Link>
-            </div>
           </section>
         </div>
 
@@ -351,9 +350,11 @@ export default function CheckoutPage() {
             {loyaltyDiscount > 0 && <div className="checkoutGiftCardDiscount"><span>Member reward · {selectedReward?.name}</span><b>−{money(loyaltyDiscount)}</b></div>}
             <div className="checkoutGrandTotal"><span>{giftCardAmount > 0 ? "Amount due" : "Total"}</span><strong>{money(amountDue)}</strong></div>
           </div>
-          <button className="button primary full checkoutSubmit" type="submit" disabled={submitting}>{submitting ? (type==="Event"?"Sending request…":"Placing order…") : (type==="Event"?"Submit Event Request":"Place Order")}</button>
-          <p className="checkoutFinePrint">Your order is saved securely and appears immediately in the LEVIEN order queue.</p>
         </aside>
+        <div className="checkoutFinalAction">
+          <button className="button primary full checkoutSubmit" type="submit" disabled={submitting}>{submitting ? (type==="Event"?"Sending request…":"Placing order…") : (type==="Event"?"Submit Event Request":"Place Order")}</button>
+          <p className="checkoutFinePrint">{type === "Event" ? "Your request will be saved for the LEVIEN team, shown in Admin notifications, and emailed to the store." : "Your order is saved securely and appears immediately in the LEVIEN order queue."}</p>
+        </div>
       </form>}
     </main>
     <Footer />

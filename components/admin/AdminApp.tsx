@@ -413,18 +413,23 @@ const buildCustomers = (orders: Order[]): Customer[] => {
   const customers = new Map<string, Customer>();
 
   [...orders]
-    .filter((order) => Boolean(normalizePhone(order.phone)))
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .forEach((order) => {
-      const phoneKey = normalizePhone(order.phone);
-      const current = customers.get(phoneKey);
+      const normalizedPhone = normalizePhone(order.phone);
+      const normalizedEmail = String(order.email || "").trim().toLowerCase();
+      const identityKey = normalizedPhone
+        ? `phone:${normalizedPhone}`
+        : normalizedEmail
+          ? `email:${normalizedEmail}`
+          : `order:${order.id}`;
+      const current = customers.get(identityKey);
       const firstName = order.firstName || order.customer.split(" ")[0] || "Guest";
       const lastName = order.lastName || order.customer.split(" ").slice(1).join(" ");
       const totalOrders = (current?.totalOrders || 0) + 1;
       const totalSpent = (current?.totalSpent || 0) + (order.status === "Cancelled" ? 0 : Number(order.total || 0));
 
-      customers.set(phoneKey, {
-        id: phoneKey,
+      customers.set(identityKey, {
+        id: identityKey,
         phone: order.phone,
         firstName,
         lastName,
@@ -463,7 +468,7 @@ const itemPurchaseSummary = (item: CustomerOrder["items"][number]) => {
 const customerPurchasedProducts = (customer: Customer, orders: Order[]) => {
   const counts = new Map<string, number>();
   orders
-    .filter((order) => normalizePhone(order.phone) === customer.id)
+    .filter((order) => customer.orderIds.includes(order.id))
     .forEach((order) => {
       order.items.forEach((item) => {
         if (item.itemType === "combo" && item.comboItems?.length) {
@@ -486,7 +491,7 @@ function exportCustomerPurchaseCsv(customers: Customer[], orders: Order[]) {
   const rows: unknown[][] = [];
 
   customers.forEach((customer) => {
-    const customerOrders = orders.filter((order) => normalizePhone(order.phone) === customer.id);
+    const customerOrders = orders.filter((order) => customer.orderIds.includes(order.id));
     customerOrders.forEach((order) => {
       order.items.forEach((item) => {
         if (item.itemType === "combo" && item.comboItems?.length) {
@@ -1345,7 +1350,7 @@ function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: 
   if (modal.type === "customer") {
     const customer = entity as Customer;
     const customerOrders = db.orders
-      .filter((order) => normalizePhone(order.phone) === customer.id)
+      .filter((order) => customer.orderIds.includes(order.id))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     const purchasedProducts = customerPurchasedProducts(customer, db.orders);
     return <ModalShell title={`${customer.firstName} ${customer.lastName}`.trim()} subtitle="Customer purchase history" close={close}>
