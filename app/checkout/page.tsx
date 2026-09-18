@@ -180,7 +180,7 @@ export default function CheckoutPage() {
 
     try {
       if(type==="Event"){
-        const response=await fetch("/api/event-bookings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({eventName:data.get("eventName"),eventType:data.get("eventType"),eventDate:data.get("eventDate"),startTime:data.get("startTime"),endTime:data.get("endTime"),guestCount:data.get("guestCount"),customerName:`${firstName} ${lastName}`.trim(),customerPhone:phone,customerEmail:email,notes:data.get("eventNotes")})});
+        const response=await fetch("/api/event-bookings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({eventName:data.get("eventName"),eventType:data.get("eventType"),eventDate:data.get("eventDate"),startTime:data.get("startTime"),endTime:data.get("endTime"),guestCount:data.get("guestCount"),customerName:`${firstName} ${lastName}`.trim(),customerPhone:phone,customerEmail:email,notes:data.get("eventNotes"),items:cart})});
         const result=await response.json();if(!response.ok)throw new Error(result.error||"Unable to submit event request.");window.alert(`Event request ${result.referenceCode} received. Our team will contact you soon.`);router.push("/event-booking");return;
       }
       if(!cart.length)throw new Error("Add at least one item before placing an order.");
@@ -334,7 +334,7 @@ export default function CheckoutPage() {
         </div>
 
         <aside className="checkoutSummary">
-          <div className="checkoutSummaryHead"><div><span className="sectionLabel">Your selection</span><h2>Order summary</h2></div><Link href="/menu">Add more</Link></div>
+          <div className="checkoutSummaryHead"><div><span className="sectionLabel">Your selection</span><h2>{type === "Event" ? "Proposed event menu" : "Order summary"}</h2></div><Link href="/menu">Add more</Link></div>
           <div className="checkoutSummaryItems">{cart.map((item) => <article className={item.itemType === "combo" ? "checkoutComboItem" : ""} key={item.lineId}>
             <div className="checkoutItemIcon">{item.itemType === "combo" ? "🎁" : item.emoji}</div>
             <div><strong>{item.quantity} × {item.name}</strong><small>{money(item.unitPrice)} each</small>
@@ -348,7 +348,8 @@ export default function CheckoutPage() {
             {deliveryFee > 0 && <div><span>Delivery fee</span><b>{money(deliveryFee)}</b></div>}
             {giftCardAmount > 0 && <div className="checkoutGiftCardDiscount"><span>Gift Card ···· {giftCard?.lastFour}</span><b>−{money(giftCardAmount)}</b></div>}
             {loyaltyDiscount > 0 && <div className="checkoutGiftCardDiscount"><span>Member reward · {selectedReward?.name}</span><b>−{money(loyaltyDiscount)}</b></div>}
-            <div className="checkoutGrandTotal"><span>{giftCardAmount > 0 ? "Amount due" : "Total"}</span><strong>{money(amountDue)}</strong></div>
+            <div className="checkoutGrandTotal"><span>{type === "Event" ? "Estimated total" : giftCardAmount > 0 ? "Amount due" : "Total"}</span><strong>{money(amountDue)}</strong></div>
+            {type === "Event" && <p className="eventMenuEstimateNote">Estimate only — no order or payment is created until the LEVIEN team confirms your event.</p>}
           </div>
         </aside>
         <div className="checkoutFinalAction">
