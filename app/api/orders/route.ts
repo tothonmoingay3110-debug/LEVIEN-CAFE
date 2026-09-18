@@ -3,7 +3,6 @@ import { hashGiftCardCode, normalizeGiftCardCode } from "@/lib/gift-cards";
 import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCustomerSession } from "@/lib/customer-auth";
-import { getSiteOrigin, getStripe } from "@/lib/stripe";
 import { InvalidCheckoutCatalogError, validateAndPriceOrderItems } from "@/lib/supabase/checkout-pricing";
 import type { CartItem, FulfillmentType, ProductTopping } from "@/types";
 import type { Json } from "@/types/database.types";
@@ -137,7 +136,9 @@ export async function POST(request: Request) {
   const giftCardRaw = text(body.giftCardCode);
   const giftCardCode = giftCardRaw ? normalizeGiftCardCode(giftCardRaw) : null;
 
-  if (!firstName || !lastName || phoneNormalized.length < 10 || phoneNormalized.length > 15 ||
+  const validPhone = !phoneNormalized || (phoneNormalized.length >= 10 && phoneNormalized.length <= 15);
+  const validContact = fulfillmentType !== "Delivery" || Boolean(phoneNormalized || email);
+  if (!firstName || !validPhone || !validContact ||
       firstName.length > 100 || lastName.length > 100 || phone.length > 30 || email.length > 254 ||
       (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ||
       !["Pickup", "Delivery"].includes(fulfillmentType) || subtotal === null || tax === null ||
@@ -156,7 +157,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Delivery address is required." }, { status: 400 });
   }
   const payment = text(body.payment) || "Pay at Store";
-  if (!["Pay at Store", "Cash on Delivery", "Card at Pickup", "Online Card"].includes(payment)) {
+  if (!["Pay at Store", "Cash on Delivery", "Card at Pickup"].includes(payment) ||
+      (fulfillmentType === "Delivery" && payment !== "Cash on Delivery") ||
+      (fulfillmentType === "Pickup" && !["Pay at Store", "Card at Pickup"].includes(payment))) {
     return NextResponse.json({ error: "Invalid payment method." }, { status: 400 });
   }
 
@@ -190,10 +193,13 @@ export async function POST(request: Request) {
       if (promotionError) console.error("Unable to validate promotion attribution:", promotionError);
       promotionId = promotion?.id || null;
     }
-    const paymentChannel = payment === "Online Card" ? "stripe" : "offline";
+    const paymentChannel = "offline";
+    // The legacy customer table is keyed by phone. Phone-less guest orders receive
+    // a unique internal key while the customer-facing phone value remains empty.
+    const orderPhoneKey = phoneNormalized || `${Date.now()}${Math.floor(Math.random() * 100)}`.padEnd(15, "0").slice(0, 15);
     const { data, error } = await supabase.rpc("create_checkout_order_v3", {
       p_first_name: firstName, p_last_name: lastName, p_phone: phone,
-      p_phone_normalized: phoneNormalized, p_email: email || null,
+      p_phone_normalized: orderPhoneKey, p_email: email || null,
       p_fulfillment_type: fulfillmentType,
       p_pickup_time: fulfillmentType === "Pickup" ? text(body.pickupTime) || "ASAP" : null,
       p_address: fulfillmentType === "Delivery" ? address : null,
@@ -223,38 +229,10 @@ export async function POST(request: Request) {
       if (attributionError) console.error("Unable to save promotion attribution:", attributionError);
     }
     const amountDue = Number(created.amount_due || 0);
-    let checkoutUrl: string | null = null;
-    if (paymentChannel === "stripe" && amountDue > 0) {
-      try {
-        const stripe = getStripe();
-        const origin = getSiteOrigin(request);
-        const checkout = await stripe.checkout.sessions.create({
-          mode: "payment",
-          customer_email: customer?.profile.email || email || undefined,
-          line_items: [{ quantity: 1, price_data: { currency: "usd", unit_amount: Math.round(amountDue * 100), product_data: { name: `LEVIEN CAFE Order ${orderNumber}`, description: `${pricedItems.length} order line${pricedItems.length === 1 ? "" : "s"}` } } }],
-          success_url: `${origin}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${origin}/checkout?payment=cancelled&order=${encodeURIComponent(orderNumber)}`,
-          metadata: { kind: "order", order_id: orderId, order_number: orderNumber },
-          payment_intent_data: { metadata: { kind: "order", order_id: orderId, order_number: orderNumber } },
-          expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
-        }, { idempotencyKey: `order-checkout-${orderId}` });
-        if (!checkout.url) throw new Error("Stripe did not return a checkout URL.");
-        checkoutUrl = checkout.url;
-        const [orderUpdate, paymentUpdate] = await Promise.all([
-          supabase.from("orders").update({ stripe_checkout_session_id: checkout.id }).eq("id", orderId),
-          supabase.from("payments").update({ provider_session_id: checkout.id }).eq("order_id", orderId).eq("provider", "stripe"),
-        ]);
-        if (orderUpdate.error) throw orderUpdate.error;
-        if (paymentUpdate.error) throw paymentUpdate.error;
-      } catch (stripeError) {
-        await supabase.rpc("update_order_status_v3", { p_order_number: orderNumber, p_status: "Cancelled", p_actor_id: null, p_stripe_refunded: false });
-        throw stripeError;
-      }
-    }
     return NextResponse.json({
       orderNumber,
       trackingToken: orderId,
-      checkoutUrl,
+      checkoutUrl: null,
       paymentMethod: created.final_payment_method,
       paymentStatus: created.payment_status,
       giftCardAmount: Number(created.gift_card_amount || 0),

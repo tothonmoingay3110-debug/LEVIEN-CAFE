@@ -40,6 +40,8 @@ export default function AccountAuthForm({ mode }: { mode: AuthMode }) {
     const phone = String(form.get("phone") || "").trim();
     setError("");
     setMessage("");
+    const requestedNext = new URLSearchParams(window.location.search).get("next") || "";
+    const nextPath = requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/account";
 
     if (mode === "sign-up" || mode === "reset") {
       if (!strongPassword(password)) return setError("Use at least 8 characters with uppercase, lowercase, a number and a symbol.");
@@ -55,14 +57,14 @@ export default function AccountAuthForm({ mode }: { mode: AuthMode }) {
         const result = await supabase.auth.signInWithPassword({ email, password });
         if (result.error) throw result.error;
         await refresh();
-        router.replace("/account");
+        router.replace(nextPath);
         router.refresh();
       } else if (mode === "sign-up") {
         const result = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${origin}/auth/callback?next=/account`,
+            emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
             data: {
               account_type: "customer",
               first_name: firstName,
@@ -75,7 +77,7 @@ export default function AccountAuthForm({ mode }: { mode: AuthMode }) {
         if (result.error) throw result.error;
         if (result.data.session) {
           await refresh();
-          router.replace("/account");
+          router.replace(nextPath);
           router.refresh();
         } else {
           setMessage("Account created. Check your email and open the verification link to activate membership.");
