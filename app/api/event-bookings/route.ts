@@ -4,9 +4,23 @@ import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security"
 import { sendEventBookingEmail } from "@/lib/event-booking-email";
 
 const text=(v:unknown,n:number)=>typeof v === "string" ? v.trim().slice(0,n) : "";
+const money=(v:unknown)=>typeof v === "number"&&Number.isFinite(v)&&v>=0&&v<=100000?Math.round(v*100)/100:0;
+const record=(v:unknown):v is Record<string,unknown>=>typeof v==="object"&&v!==null&&!Array.isArray(v);
+function proposedOrder(value:unknown){
+  if(!Array.isArray(value))return {items:[],subtotal:0,tax:0,total:0};
+  const items=value.slice(0,100).filter(record).map(item=>({
+    name:text(item.name,200),quantity:Number.isInteger(item.quantity)&&Number(item.quantity)>0?Math.min(Number(item.quantity),99):1,
+    unitPrice:money(item.unitPrice),ice:text(item.ice,50),sugar:text(item.sugar,50),note:text(item.note,500),
+    toppings:Array.isArray(item.toppings)?item.toppings.slice(0,20).filter(record).map(t=>({name:text(t.name,120),price:money(t.price)})):[],
+    comboItems:Array.isArray(item.comboItems)?item.comboItems.slice(0,20).filter(record).map(child=>({name:text(child.name,200),ice:text(child.ice,50),sugar:text(child.sugar,50),note:text(child.note,500),toppings:Array.isArray(child.toppings)?child.toppings.slice(0,20).filter(record).map(t=>({name:text(t.name,120),price:money(t.price)})):[]})):[]
+  })).filter(item=>item.name);
+  const subtotal=Math.round(items.reduce((sum,item)=>sum+item.unitPrice*item.quantity,0)*100)/100;
+  const tax=Math.round(subtotal*.08*100)/100;
+  return {items,subtotal,tax,total:Math.round((subtotal+tax)*100)/100};
+}
 export async function POST(request:Request){
   if(!isSameOriginRequest(request)) return NextResponse.json({error:"Forbidden."},{status:403});
-  if(requestBodyExceeds(request,16*1024)) return NextResponse.json({error:"Request is too large."},{status:413});
+  if(requestBodyExceeds(request,128*1024)) return NextResponse.json({error:"Request is too large."},{status:413});
   try{
     const body=await request.json() as Record<string,unknown>;
     const eventName=text(body.eventName,160), eventType=text(body.eventType,80), eventDate=text(body.eventDate,10), startTime=text(body.startTime,5), endTime=text(body.endTime,5);
@@ -17,12 +31,13 @@ export async function POST(request:Request){
     if(!customerName && !customerPhone) return NextResponse.json({error:"Enter your name or phone number."},{status:400});
     if(customerEmail && !/^\S+@\S+\.\S+$/.test(customerEmail)) return NextResponse.json({error:"Enter a valid email address."},{status:400});
     const guestCount=body.guestCount ? Number(body.guestCount) : null;
+    const order=proposedOrder(body.items);
     const db=createAdminClient();
-    const {data,error}=await (db.from("event_booking_requests" as any) as any).insert({event_name:eventName,event_type:eventType,event_date:eventDate,start_time:startTime,end_time:endTime||null,customer_name:customerName,customer_phone:customerPhone,customer_email:customerEmail||null,guest_count:Number.isInteger(guestCount)?guestCount:null,notes,status:"new"}).select("id,reference_code").single();
+    const {data,error}=await (db.from("event_booking_requests" as any) as any).insert({event_name:eventName,event_type:eventType,event_date:eventDate,start_time:startTime,end_time:endTime||null,customer_name:customerName,customer_phone:customerPhone,customer_email:customerEmail||null,guest_count:Number.isInteger(guestCount)?guestCount:null,notes,status:"new",proposed_order:order}).select("id,reference_code").single();
     if(error) throw error;
     await (db.from("admin_notifications" as any) as any).insert({kind:"event_booking",title:"New event booking",message:`${eventName} · ${eventDate} ${startTime}`,target_view:"eventbookings",target_id:data.id}).then(()=>undefined).catch(()=>undefined);
     const {data:content}=await db.from("site_content").select("email").eq("singleton_key","main").maybeSingle();
-    await sendEventBookingEmail({id:data.id,referenceCode:data.reference_code,eventName,eventDate,startTime,customerName,customerPhone,customerEmail,guestCount:Number.isInteger(guestCount)?guestCount:null,notes,to:content?.email||process.env.EVENT_BOOKING_TO_EMAIL?.trim()||""}).catch((mailError)=>console.error("Unable to email event booking:",mailError));
+    await sendEventBookingEmail({id:data.id,referenceCode:data.reference_code,eventName,eventDate,startTime,customerName,customerPhone,customerEmail,guestCount:Number.isInteger(guestCount)?guestCount:null,notes,proposedOrder:order,to:content?.email||process.env.EVENT_BOOKING_TO_EMAIL?.trim()||""}).catch((mailError)=>console.error("Unable to email event booking:",mailError));
     return NextResponse.json({received:true,referenceCode:data.reference_code},{status:201});
   }catch(error){ console.error("Unable to save event booking request:",error); return NextResponse.json({error:"Unable to submit your event request."},{status:500}); }
 }
