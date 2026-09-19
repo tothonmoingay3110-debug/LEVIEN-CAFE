@@ -399,6 +399,13 @@ async function uploadAdminImage(file: File, scope: ImageKind) {
   return result.url;
 }
 const money = (value: number) => `$${Number(value || 0).toFixed(2)}`;
+const generatedProductSku = (products: Product[], categories: Category[], categoryId: string) => {
+  const category = categories.find((item) => item.id === categoryId)?.name || "Menu";
+  const code = category.replace(/[^a-z]/gi, "").slice(0, 3).toUpperCase().padEnd(3, "X");
+  const prefix = `LV-${code}-`;
+  const used = products.map((product) => product.sku.toUpperCase()).filter((sku) => sku.startsWith(prefix)).map((sku) => Number(sku.slice(prefix.length))).filter(Number.isFinite);
+  return `${prefix}${String((used.length ? Math.max(...used) : 0) + 1).padStart(3, "0")}`;
+};
 const promotionIsLive = (promotion: Promotion) => {
   const date = new Date().toISOString().slice(0, 10);
   return promotion.active && promotion.startDate <= date && (!promotion.endDate || promotion.endDate >= date);
@@ -1478,7 +1485,7 @@ function AdminModal({ modal, db, close, update }: { modal: { type: string; id?: 
 function ModalShell({title,subtitle,close,children}:{title:string;subtitle:string;close:()=>void;children:React.ReactNode}){useEffect(()=>{const key=(event:KeyboardEvent)=>{if(event.key==="Escape")close()};window.addEventListener("keydown",key);return()=>window.removeEventListener("keydown",key)},[close]);return <div className="adminModalBackdrop" onMouseDown={e=>{if(e.currentTarget===e.target)close()}}><div className="adminModal" role="dialog" aria-modal="true" aria-label={title}><header><div><span className="adminEyebrow">{subtitle}</span><h2>{title}</h2></div><button type="button" onClick={close} aria-label="Close dialog">×</button></header>{children}</div></div>}
 function CategoryIconPicker({value}:{value:string}){const [selected,setSelected]=useState(value);return <fieldset className="categoryIconPicker wide"><legend>Category icon</legend><input type="hidden" name="icon" value={selected}/><div>{categoryIconOptions.map(icon=><button type="button" key={icon} className={selected===icon?"selected":""} aria-label={`Choose ${icon}`} aria-pressed={selected===icon} onClick={()=>setSelected(icon)}>{icon}</button>)}</div><small>Choose an icon for this category.</small></fieldset>}
 function SimpleEntityForm({title,submit,close,children}:{title:string;submit:(e:React.FormEvent<HTMLFormElement>)=>void;close:()=>void;children:React.ReactNode}){return <ModalShell title={title} subtitle="Quick setup" close={close}><form onSubmit={submit} className="adminForm compact">{children}<FormActions close={close}/></form></ModalShell>}
-function FormInput({label,name,defaultValue,type="text",step,wide=false}:{label:string;name:string;defaultValue:string;type?:string;step?:string;wide?:boolean}){return <label className={wide?"wide":""}>{label}<input required name={name} type={type} step={step} defaultValue={defaultValue}/></label>}
+function FormInput({label,name,defaultValue,type="text",step,wide=false}:{label:string;name:string;defaultValue:string;type?:string;step?:string;wide?:boolean}){return <label className={wide?"wide":""}>{label}<input required name={name} type={type} step={step} defaultValue={defaultValue|| (name==="sku" ? "LV-MNU-001" : "")}/></label>}
 function FormTextarea({label,name,defaultValue}:{label:string;name:string;defaultValue:string}){return <label className="wide">{label}<textarea name={name} rows={4} defaultValue={defaultValue}/></label>}
 function Check({name,label,checked=false,value}:{name:string;label:string;checked?:boolean;value?:string}){return <label className="adminCheck"><input type="checkbox" name={name} value={value} defaultChecked={checked}/><span>{label}</span></label>}
 function ImageUpload({image,setImage,label="Image",kind="product"}:{image:string;setImage:(v:string)=>void;label?:string;kind?:ImageKind}) {
