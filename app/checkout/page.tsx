@@ -257,11 +257,11 @@ export default function CheckoutPage() {
         <p>Confirm your details and how you would like to receive your order.</p>
       </div>
 
-      {!cart.length ? <section className="checkoutEmpty">
+      {!cart.length && type !== "Event" ? <section className="checkoutEmpty">
         <div className="checkoutEmptyIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12l2 4v14H4V7l2-4Z"/><path d="M4 7h16"/><path d="M9 11a3 3 0 0 0 6 0"/></svg></div>
         <h2>Your order is empty</h2>
-        <p>Add your favorite drinks or food before continuing to checkout.</p>
-        <Link className="button primary" href="/menu">Browse Menu</Link>
+        <p>Add menu items for pickup or delivery, or send an event request without a menu.</p>
+        <div className="checkoutEmptyActions"><Link className="button primary" href="/menu">Browse Menu</Link><button className="button secondary" type="button" onClick={() => setType("Event")}>Book an Event</button></div>
       </section> : <form className="checkoutLayout" onSubmit={submit} noValidate>
         <div className="checkoutFormColumn">
           <section className="checkoutCard">
