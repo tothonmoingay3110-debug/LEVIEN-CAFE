@@ -145,6 +145,9 @@ export async function readSupabaseCatalog(): Promise<SupabaseCatalog | null> {
     description: stringValue(row.description),
     priceText: stringValue(row.price_text),
     image: stringValue(row.image_url),
+    mobileImage: stringValue(row.mobile_image_url),
+    displayMode: row.display_mode === "full_image" ? "full_image" : "designed",
+    linkUrl: stringValue(row.link_url, "/menu"),
     startDate: stringValue(row.starts_on),
     endDate: row.ends_on ? stringValue(row.ends_on) : null,
   }));
