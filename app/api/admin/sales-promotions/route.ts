@@ -21,7 +21,9 @@ function payload(body: Record<string, unknown>) {
     description: clean(body.description, 1000), promotion_type: promotionType, scope_type: scopeType,
     target_ids: Array.isArray(body.targetIds) ? body.targetIds.filter((id): id is string => typeof id === "string" && uuid.test(id)) : [],
     discount_value: Number(body.discountValue || 0), buy_quantity: Number(body.buyQuantity || 1), get_quantity: Number(body.getQuantity || 1),
-    reward_product_id: clean(body.rewardProductId, 40) || null, reward_topping_id: clean(body.rewardToppingId, 40) || null,
+    reward_product_id: null,
+    reward_product_ids: Array.isArray(body.rewardProductIds) ? body.rewardProductIds.filter((id):id is string=>typeof id==="string"&&uuid.test(id)) : [],
+    reward_topping_id: clean(body.rewardToppingId, 40) || null,
     minimum_subtotal: Number(body.minimumSubtotal || 0), usage_limit: body.usageLimit ? Number(body.usageLimit) : null,
     starts_on: clean(body.startsOn, 10), ends_on: clean(body.endsOn, 10), active: body.active !== false,
   };
@@ -32,8 +34,8 @@ function invalid(values:ReturnType<typeof payload>){
   if(values.scope_type!=="all"&&!values.target_ids.length) return "Select at least one eligible item.";
   if(values.promotion_type==="percent_off"&&(values.discount_value<=0||values.discount_value>100)) return "Percentage must be between 0 and 100.";
   if(values.promotion_type==="fixed_off"&&values.discount_value<=0) return "Fixed discount must be greater than zero.";
-  if(values.promotion_type==="buy_x_get_y"&&!values.reward_product_id&&!values.reward_topping_id) return "Select a free product or topping.";
-  if(values.reward_product_id&&values.reward_topping_id) return "Choose either a free product or a free topping, not both.";
+  if(values.promotion_type==="buy_x_get_y"&&!values.reward_product_ids.length&&!values.reward_topping_id) return "Select at least one free product or a topping.";
+  if(values.reward_product_ids.length&&values.reward_topping_id) return "Choose reward products or a free topping, not both.";
   return null;
 }
 export async function GET() {

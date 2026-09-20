@@ -30,7 +30,7 @@ export async function GET() {
       db.from("customer_profiles").select("id,first_name,last_name,email,phone,membership_number").order("first_name"),
       db.from("loyalty_rewards").select("id,customer_profile_id,reward_code,reward_name,reward_type,reward_product_id,expires_at,status").eq("status", "issued").eq("reward_type", "free_product").or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).order("issued_at"),
       db.from("loyalty_reward_products").select("reward_id,product_id,position").order("position"),
-      db.from("sales_promotions").select("id,name,badge_text,promotion_type,scope_type,target_ids,discount_value,buy_quantity,get_quantity,reward_product_id,reward_topping_id,minimum_subtotal,starts_on,ends_on").eq("active", true).lte("starts_on", new Date().toISOString().slice(0,10)).gte("ends_on", new Date().toISOString().slice(0,10)),
+      db.from("sales_promotions").select("id,name,badge_text,promotion_type,scope_type,target_ids,discount_value,buy_quantity,get_quantity,reward_product_id,reward_product_ids,reward_topping_id,minimum_subtotal,starts_on,ends_on").eq("active", true).lte("starts_on", new Date().toISOString().slice(0,10)).gte("ends_on", new Date().toISOString().slice(0,10)),
     ]);
     const error = [products, toppings, links, categories, customers, rewards, rewardLinks, promotions].map((result) => result.error).find(Boolean);
     if (error) throw error;

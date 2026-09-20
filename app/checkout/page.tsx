@@ -38,7 +38,7 @@ type AppliedGiftCard = {
   expiresOn: string | null;
 };
 
-type SalesPromotionQuote = { promotionId:string|null; name:string|null; badgeText:string|null; discount:number; discountedSubtotal:number; message:string|null };
+type SalesPromotionQuote = { promotionId:string|null; name:string|null; badgeText:string|null; discount:number; discountedSubtotal:number; message:string|null; rewardChoices:Array<{id:string;name:string}> };
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -57,6 +57,7 @@ export default function CheckoutPage() {
   const [paymentCancelled, setPaymentCancelled] = useState(false);
   const [promotionQuote, setPromotionQuote] = useState<SalesPromotionQuote | null>(null);
   const [promotionLoading, setPromotionLoading] = useState(false);
+  const [promotionRewardProductId, setPromotionRewardProductId] = useState("");
   const discountedSubtotal = Math.max(0, subtotal - Number(promotionQuote?.discount || 0));
   const tax = useMemo(() => discountedSubtotal * 0.08, [discountedSubtotal]);
   const deliveryFee = type === "Delivery" ? 3.99 : 0;
@@ -86,11 +87,11 @@ export default function CheckoutPage() {
     if (!cart.length) { setPromotionQuote(null); setPromotionLoading(false); return; }
     setPromotionLoading(true);
     const controller = new AbortController();
-    void fetch("/api/sales-promotions/quote", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({items:cart}), signal:controller.signal })
-      .then(async response => { const result = await response.json(); if (response.ok) setPromotionQuote(result.quote || null); })
+    void fetch("/api/sales-promotions/quote", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({items:cart,rewardProductId:promotionRewardProductId||undefined}), signal:controller.signal })
+      .then(async response => { const result = await response.json(); if (response.ok) { setPromotionQuote(result.quote || null); const choices=result.quote?.rewardChoices||[]; if(choices.length&&!choices.some((choice:{id:string})=>choice.id===promotionRewardProductId))setPromotionRewardProductId(choices[0].id); if(!choices.length)setPromotionRewardProductId(""); } })
       .catch(() => undefined).finally(()=>setPromotionLoading(false));
     return () => controller.abort();
-  }, [cart]);
+  }, [cart,promotionRewardProductId]);
 
   function lookupMember(phone:string){clearError("phone");const normalized=phone.replace(/\D/g,"");if(normalized.length<10){setMemberLookup({loading:false,found:false,message:""});return}setMemberLookup({loading:true,found:false,message:"Checking membership…"});window.clearTimeout((lookupMember as typeof lookupMember & {timer?:number}).timer);(lookupMember as typeof lookupMember & {timer?:number}).timer=window.setTimeout(()=>{void fetch("/api/member-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})}).then(async r=>{const x=await r.json();if(!r.ok)throw new Error(x.error);setMemberLookup(x.found?{loading:false,found:true,message:"Member found",member:x.member}:{loading:false,found:false,message:"No member account found. You can continue as a guest."})}).catch(e=>setMemberLookup({loading:false,found:false,message:e instanceof Error?e.message:"Unable to check membership."}))},450)}
 
@@ -213,7 +214,7 @@ export default function CheckoutPage() {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...orderDetails, loyaltyRewardId: rewardId || undefined, promotionId: currentPromotionAttribution(), items: cart }),
+        body: JSON.stringify({ ...orderDetails, loyaltyRewardId: rewardId || undefined, promotionId: currentPromotionAttribution(), salesPromotionRewardProductId:promotionRewardProductId||undefined, items: cart }),
       });
       const result = (await response.json()) as {
         orderNumber?: string;
@@ -361,6 +362,7 @@ export default function CheckoutPage() {
             <div><span>Subtotal</span><b>{money(subtotal)}</b></div>
             {promotionQuote && promotionQuote.discount > 0 && <div className="checkoutPromotionRow"><span>{promotionQuote.badgeText || promotionQuote.name || "Promotion"}</span><b>−{money(promotionQuote.discount)}</b></div>}
             {promotionQuote?.message && promotionQuote.discount === 0 && <div className="checkoutPromotionRow"><span>{promotionQuote.badgeText || promotionQuote.name || "Promotion"}</span><b>{promotionQuote.message}</b></div>}
+            {promotionQuote&&promotionQuote.rewardChoices.length>1&&<label className="checkoutPromotionChoice">Choose your free item<select value={promotionRewardProductId} onChange={event=>setPromotionRewardProductId(event.target.value)}>{promotionQuote.rewardChoices.map(choice=><option key={choice.id} value={choice.id}>{choice.name}</option>)}</select></label>}
             <div><span>Tax (8%)</span><b>{money(tax)}</b></div>
             {deliveryFee > 0 && <div><span>Delivery fee</span><b>{money(deliveryFee)}</b></div>}
             {giftCardAmount > 0 && <div className="checkoutGiftCardDiscount"><span>Gift Card ···· {giftCard?.lastFour}</span><b>−{money(giftCardAmount)}</b></div>}
