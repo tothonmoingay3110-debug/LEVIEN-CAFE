@@ -16,6 +16,7 @@ type CheckoutOrderRequest = {
   giftCardCode?: string;
   loyaltyRewardId?: string;
   promotionId?: string;
+  salesPromotionRewardProductId?: string;
   items: unknown;
 };
 
@@ -168,7 +169,7 @@ export async function POST(request: Request) {
     const supabase = createAdminClient();
     const pricedItems = await validateAndPriceOrderItems(supabase, items);
     const orderSubtotal = currency(pricedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0));
-    const salesPromotion = await quoteBestSalesPromotion(supabase, pricedItems);
+    const salesPromotion = await quoteBestSalesPromotion(supabase, pricedItems, text(body.salesPromotionRewardProductId));
     const orderTax = currency(salesPromotion.discountedSubtotal * 0.08);
     const orderDeliveryFee = currency(expectedDeliveryFee);
     const orderTotal = currency(salesPromotion.discountedSubtotal + orderTax + orderDeliveryFee);

@@ -12,13 +12,14 @@ export type PromotionQuote = {
   message: string | null;
   snapshot: Record<string, unknown> | null;
   rewardItems: CartItem[];
+  rewardChoices: Array<{id:string;name:string}>;
 };
 
 const money = (value: number) => Math.round(value * 100) / 100;
 
-export async function quoteBestSalesPromotion(db: AdminClient, items: CartItem[]): Promise<PromotionQuote> {
+export async function quoteBestSalesPromotion(db: AdminClient, items: CartItem[], preferredRewardProductId?:string): Promise<PromotionQuote> {
   const subtotal = money(items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0));
-  const empty: PromotionQuote = { promotionId: null, name: null, badgeText: null, discount: 0, discountedSubtotal: subtotal, message: null, snapshot: null, rewardItems: [] };
+  const empty: PromotionQuote = { promotionId: null, name: null, badgeText: null, discount: 0, discountedSubtotal: subtotal, message: null, snapshot: null, rewardItems: [], rewardChoices: [] };
   if (!items.length) return empty;
 
   const today = new Date().toISOString().slice(0, 10);
@@ -50,6 +51,7 @@ export async function quoteBestSalesPromotion(db: AdminClient, items: CartItem[]
     let discount = 0;
     let message = promotion.description || promotion.badge_text;
     let rewardItems: CartItem[] = [];
+    let rewardChoices: Array<{id:string;name:string}> = [];
     let benefit = 0;
     if (promotion.promotion_type === "percent_off") discount = eligibleAmount * Number(promotion.discount_value) / 100;
     if (promotion.promotion_type === "fixed_off") discount = Math.min(eligibleAmount, Number(promotion.discount_value));
@@ -58,8 +60,11 @@ export async function quoteBestSalesPromotion(db: AdminClient, items: CartItem[]
       const sets = Math.floor(qualifyingQuantity / Number(promotion.buy_quantity || 1));
       if (!sets) continue;
       const freeQuantity = sets * Number(promotion.get_quantity || 1);
-      if (promotion.reward_product_id) {
-        const { data: reward } = await db.from("products").select("id,name,price").eq("id", promotion.reward_product_id).maybeSingle();
+      const rewardProductIds = promotion.reward_product_ids?.length ? promotion.reward_product_ids : promotion.reward_product_id ? [promotion.reward_product_id] : [];
+      if (rewardProductIds.length) {
+        const { data: rewards } = await db.from("products").select("id,name,price").in("id", rewardProductIds);
+        rewardChoices = rewardProductIds.map((id)=>rewards?.find((item)=>item.id===id)).filter((item):item is NonNullable<typeof item>=>Boolean(item)).map((item)=>({id:item.id,name:item.name}));
+        const reward = rewards?.find((item)=>item.id===preferredRewardProductId&&rewardProductIds.includes(item.id)) || rewardProductIds.map((id)=>rewards?.find((item)=>item.id===id)).find(Boolean);
         if (!reward) continue;
         benefit = Number(reward.price) * freeQuantity;
         message = `Free ${freeQuantity} × ${reward.name}`;
@@ -80,6 +85,7 @@ export async function quoteBestSalesPromotion(db: AdminClient, items: CartItem[]
       discount, discountedSubtotal: money(subtotal - discount), message,
       snapshot: { id: promotion.id, name: promotion.name, badgeText: promotion.badge_text, type: promotion.promotion_type, scope: promotion.scope_type, discount, message, startsOn: promotion.starts_on, endsOn: promotion.ends_on },
       rewardItems,
+      rewardChoices,
     };
   }
   return best;
