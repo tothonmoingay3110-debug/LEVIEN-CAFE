@@ -38,6 +38,8 @@ type AppliedGiftCard = {
   expiresOn: string | null;
 };
 
+type SalesPromotionQuote = { promotionId:string|null; name:string|null; badgeText:string|null; discount:number; discountedSubtotal:number; message:string|null };
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { profile } = useCustomerSession();
@@ -53,7 +55,10 @@ export default function CheckoutPage() {
   const [rewards, setRewards] = useState<LoyaltyRewardView[]>([]);
   const [rewardId, setRewardId] = useState("");
   const [paymentCancelled, setPaymentCancelled] = useState(false);
-  const tax = useMemo(() => subtotal * 0.08, [subtotal]);
+  const [promotionQuote, setPromotionQuote] = useState<SalesPromotionQuote | null>(null);
+  const [promotionLoading, setPromotionLoading] = useState(false);
+  const discountedSubtotal = Math.max(0, subtotal - Number(promotionQuote?.discount || 0));
+  const tax = useMemo(() => discountedSubtotal * 0.08, [discountedSubtotal]);
   const deliveryFee = type === "Delivery" ? 3.99 : 0;
   const total = subtotal + tax + deliveryFee;
   const selectedReward = rewards.find((reward) => reward.id === rewardId);
@@ -76,6 +81,16 @@ export default function CheckoutPage() {
       setRewards(account.rewards.filter((reward) => reward.status === "issued" && reward.type === "free_product"));
     });
   }, [profile]);
+
+  useEffect(() => {
+    if (!cart.length) { setPromotionQuote(null); setPromotionLoading(false); return; }
+    setPromotionLoading(true);
+    const controller = new AbortController();
+    void fetch("/api/sales-promotions/quote", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({items:cart}), signal:controller.signal })
+      .then(async response => { const result = await response.json(); if (response.ok) setPromotionQuote(result.quote || null); })
+      .catch(() => undefined).finally(()=>setPromotionLoading(false));
+    return () => controller.abort();
+  }, [cart]);
 
   function lookupMember(phone:string){clearError("phone");const normalized=phone.replace(/\D/g,"");if(normalized.length<10){setMemberLookup({loading:false,found:false,message:""});return}setMemberLookup({loading:true,found:false,message:"Checking membership…"});window.clearTimeout((lookupMember as typeof lookupMember & {timer?:number}).timer);(lookupMember as typeof lookupMember & {timer?:number}).timer=window.setTimeout(()=>{void fetch("/api/member-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})}).then(async r=>{const x=await r.json();if(!r.ok)throw new Error(x.error);setMemberLookup(x.found?{loading:false,found:true,message:"Member found",member:x.member}:{loading:false,found:false,message:"No member account found. You can continue as a guest."})}).catch(e=>setMemberLookup({loading:false,found:false,message:e instanceof Error?e.message:"Unable to check membership."}))},450)}
 
@@ -344,6 +359,8 @@ export default function CheckoutPage() {
           </article>)}</div>
           <div className="checkoutTotals">
             <div><span>Subtotal</span><b>{money(subtotal)}</b></div>
+            {promotionQuote && promotionQuote.discount > 0 && <div className="checkoutPromotionRow"><span>{promotionQuote.badgeText || promotionQuote.name || "Promotion"}</span><b>−{money(promotionQuote.discount)}</b></div>}
+            {promotionQuote?.message && promotionQuote.discount === 0 && <div className="checkoutPromotionRow"><span>{promotionQuote.badgeText || promotionQuote.name || "Promotion"}</span><b>{promotionQuote.message}</b></div>}
             <div><span>Tax (8%)</span><b>{money(tax)}</b></div>
             {deliveryFee > 0 && <div><span>Delivery fee</span><b>{money(deliveryFee)}</b></div>}
             {giftCardAmount > 0 && <div className="checkoutGiftCardDiscount"><span>Gift Card ···· {giftCard?.lastFour}</span><b>−{money(giftCardAmount)}</b></div>}
@@ -353,7 +370,7 @@ export default function CheckoutPage() {
           </div>
         </aside>
         <div className="checkoutFinalAction">
-          <button className="button primary full checkoutSubmit" type="submit" disabled={submitting}>{submitting ? (type==="Event"?"Sending request…":"Placing order…") : (type==="Event"?"Submit Event Request":"Place Order")}</button>
+          <button className="button primary full checkoutSubmit" type="submit" disabled={submitting||(type!=="Event"&&promotionLoading)}>{submitting ? (type==="Event"?"Sending request…":"Placing order…") : promotionLoading&&type!=="Event" ? "Checking promotion…" : (type==="Event"?"Submit Event Request":"Place Order")}</button>
           <p className="checkoutFinePrint">{type === "Event" ? "Your request will be saved for the LEVIEN team, shown in Admin notifications, and emailed to the store." : "Your order is saved securely and appears immediately in the LEVIEN order queue."}</p>
         </div>
       </form>}

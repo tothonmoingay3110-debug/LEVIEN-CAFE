@@ -1,0 +1,8 @@
+"use client";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+
+export type SalesPromotion={id:string;name:string;badge_text:string;description:string;promotion_type:"percent_off"|"fixed_off"|"buy_x_get_y";scope_type:"all"|"products"|"categories"|"combos";target_ids:string[];discount_value:number;buy_quantity:number;get_quantity:number;reward_product_id:string|null;reward_topping_id:string|null;minimum_subtotal:number;starts_on:string;ends_on:string};
+type Value={promotions:SalesPromotion[];forProduct:(productId:string,categoryId?:string)=>SalesPromotion[];forCombo:(comboId:string)=>SalesPromotion[]};
+const Context=createContext<Value>({promotions:[],forProduct:()=>[],forCombo:()=>[]});
+export function SalesPromotionProvider({children}:{children:React.ReactNode}){const [promotions,setPromotions]=useState<SalesPromotion[]>([]);useEffect(()=>{void fetch("/api/sales-promotions",{cache:"no-store"}).then(async r=>{const x=await r.json();if(r.ok)setPromotions(x.promotions||[])}).catch(()=>undefined)},[]);const value=useMemo<Value>(()=>({promotions,forProduct:(productId,categoryId)=>promotions.filter(p=>p.scope_type==="all"||(p.scope_type==="products"&&p.target_ids.includes(productId))||(p.scope_type==="categories"&&Boolean(categoryId)&&p.target_ids.includes(categoryId!))),forCombo:(comboId)=>promotions.filter(p=>p.scope_type==="all"||(p.scope_type==="combos"&&p.target_ids.includes(comboId)))}),[promotions]);return <Context.Provider value={value}>{children}</Context.Provider>}
+export const useSalesPromotions=()=>useContext(Context);

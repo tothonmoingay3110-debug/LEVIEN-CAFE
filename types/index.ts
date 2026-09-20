@@ -9,6 +9,7 @@ export type ProductTopping = {
 
 export type Product = {
   id: string;
+  categoryId?: string;
   name: string;
   description: string;
   price: number;
@@ -107,6 +108,9 @@ export type CustomerOrder = {
   amountDue?: number;
   loyaltyDiscount?: number;
   loyaltyRewardId?: string;
+  salesPromotionId?: string;
+  salesPromotionName?: string;
+  promotionDiscount?: number;
   subtotal: number;
   tax: number;
   deliveryFee: number;
