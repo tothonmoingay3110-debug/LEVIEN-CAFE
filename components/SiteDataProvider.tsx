@@ -85,6 +85,7 @@ function localCatalog(db: AdminDB | null): SupabaseCatalog | null {
   const toppingMap = new Map(activeToppings.map((item) => [item.id, item]));
   const products = db.products?.length ? db.products.filter((item) => item.active !== false).map<Product>((item) => ({
     id: item.id,
+    categoryId: item.categoryId,
     name: item.name,
     description: item.description,
     price: Number(item.price),

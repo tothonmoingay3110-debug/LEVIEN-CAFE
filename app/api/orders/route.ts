@@ -6,6 +6,7 @@ import { getCustomerSession } from "@/lib/customer-auth";
 import { InvalidCheckoutCatalogError, validateAndPriceOrderItems } from "@/lib/supabase/checkout-pricing";
 import type { CartItem, FulfillmentType, ProductTopping } from "@/types";
 import type { Json } from "@/types/database.types";
+import { quoteBestSalesPromotion } from "@/lib/sales-promotions";
 
 type CheckoutOrderRequest = {
   firstName: string; lastName: string; phone: string; email?: string;
@@ -167,9 +168,10 @@ export async function POST(request: Request) {
     const supabase = createAdminClient();
     const pricedItems = await validateAndPriceOrderItems(supabase, items);
     const orderSubtotal = currency(pricedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0));
-    const orderTax = currency(orderSubtotal * 0.08);
+    const salesPromotion = await quoteBestSalesPromotion(supabase, pricedItems);
+    const orderTax = currency(salesPromotion.discountedSubtotal * 0.08);
     const orderDeliveryFee = currency(expectedDeliveryFee);
-    const orderTotal = currency(orderSubtotal + orderTax + orderDeliveryFee);
+    const orderTotal = currency(salesPromotion.discountedSubtotal + orderTax + orderDeliveryFee);
     if (Math.abs(subtotal - orderSubtotal) > 0.01 || Math.abs(tax - orderTax) > 0.01 ||
         Math.abs(deliveryFee - orderDeliveryFee) > 0.01 || Math.abs(total - orderTotal) > 0.01) {
       return NextResponse.json({ error: "Menu prices changed. Refresh your cart and try again." }, { status: 409 });
@@ -209,7 +211,7 @@ export async function POST(request: Request) {
       p_payment_method: payment,
       p_subtotal: orderSubtotal, p_tax: orderTax, p_delivery_fee: orderDeliveryFee,
       p_total: orderTotal, p_note: note,
-      p_items: JSON.parse(JSON.stringify(pricedItems)) as Json,
+      p_items: JSON.parse(JSON.stringify([...pricedItems, ...salesPromotion.rewardItems])) as Json,
       p_gift_card_hash: giftCardCode ? hashGiftCardCode(giftCardCode) : null,
       p_customer_profile_id: customer?.profile.id || null,
       p_payment_channel: paymentChannel,
@@ -228,6 +230,16 @@ export async function POST(request: Request) {
         .eq("id", orderId);
       if (attributionError) console.error("Unable to save promotion attribution:", attributionError);
     }
+    if (salesPromotion.promotionId) {
+      const { error: salesPromotionError } = await supabase.from("orders").update({
+        sales_promotion_id: salesPromotion.promotionId,
+        promotion_discount: salesPromotion.discount,
+        promotion_snapshot: salesPromotion.snapshot as Json,
+      }).eq("id", orderId);
+      if (salesPromotionError) throw salesPromotionError;
+      const { error: usageError } = await supabase.rpc("increment_sales_promotion_usage", { promotion_id: salesPromotion.promotionId });
+      if (usageError) console.error("Unable to update promotion usage:", usageError);
+    }
     const amountDue = Number(created.amount_due || 0);
     return NextResponse.json({
       orderNumber,
@@ -238,6 +250,8 @@ export async function POST(request: Request) {
       giftCardAmount: Number(created.gift_card_amount || 0),
       giftCardBalance: created.gift_card_balance === null ? null : Number(created.gift_card_balance),
       loyaltyDiscount: Number(created.loyalty_discount || 0),
+      promotionDiscount: salesPromotion.discount,
+      salesPromotion: salesPromotion.name,
       amountDue,
     }, { status: 201 });
   } catch (error) {

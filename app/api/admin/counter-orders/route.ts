@@ -5,6 +5,7 @@ import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security"
 import { validateAndPriceOrderItems } from "@/lib/supabase/checkout-pricing";
 import type { CartItem } from "@/types";
 import type { Json } from "@/types/database.types";
+import { quoteBestSalesPromotion } from "@/lib/sales-promotions";
 
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const clean = (value: unknown, length = 120) => typeof value === "string" ? value.trim().slice(0, length) : "";
@@ -21,7 +22,7 @@ export async function GET() {
   try {
     const auth = await authorize(); if (auth.response) return auth.response;
     const db = createAdminClient();
-    const [products, toppings, links, categories, customers, rewards, rewardLinks] = await Promise.all([
+    const [products, toppings, links, categories, customers, rewards, rewardLinks, promotions] = await Promise.all([
       db.from("products").select("id,sku,name,price,image_url,emoji,allow_ice,allow_sugar,allow_toppings,sold_out,category_id").eq("active", true).order("name"),
       db.from("toppings").select("id,name,price,image_url").eq("active", true).order("name"),
       db.from("product_toppings").select("product_id,topping_id"),
@@ -29,8 +30,9 @@ export async function GET() {
       db.from("customer_profiles").select("id,first_name,last_name,email,phone,membership_number").order("first_name"),
       db.from("loyalty_rewards").select("id,customer_profile_id,reward_code,reward_name,reward_type,reward_product_id,expires_at,status").eq("status", "issued").eq("reward_type", "free_product").or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).order("issued_at"),
       db.from("loyalty_reward_products").select("reward_id,product_id,position").order("position"),
+      db.from("sales_promotions").select("id,name,badge_text,promotion_type,scope_type,target_ids,discount_value,buy_quantity,get_quantity,reward_product_id,reward_topping_id,minimum_subtotal,starts_on,ends_on").eq("active", true).lte("starts_on", new Date().toISOString().slice(0,10)).gte("ends_on", new Date().toISOString().slice(0,10)),
     ]);
-    const error = [products, toppings, links, categories, customers, rewards, rewardLinks].map((result) => result.error).find(Boolean);
+    const error = [products, toppings, links, categories, customers, rewards, rewardLinks, promotions].map((result) => result.error).find(Boolean);
     if (error) throw error;
     return NextResponse.json({
       products: (products.data || []).map((product) => ({ ...product, price: Number(product.price), toppingIds: (links.data || []).filter((link) => link.product_id === product.id).map((link) => link.topping_id) })),
@@ -38,6 +40,7 @@ export async function GET() {
       categories: categories.data || [],
       customers: customers.data || [],
       rewards: (rewards.data || []).map((reward) => ({ ...reward, productIds: (rewardLinks.data || []).filter((link) => link.reward_id === reward.id).map((link) => link.product_id).concat(reward.reward_product_id ? [reward.reward_product_id] : []) })),
+      promotions: promotions.data || [],
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Unable to load counter order catalog:", error);
@@ -74,7 +77,8 @@ export async function POST(request: Request) {
     });
     const priced = await validateAndPriceOrderItems(db, items);
     const subtotal = currency(priced.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0));
-    const tax = currency(subtotal * 0.08); const total = currency(subtotal + tax);
+    const promotion = await quoteBestSalesPromotion(db, priced);
+    const tax = currency(promotion.discountedSubtotal * 0.08); const total = currency(promotion.discountedSubtotal + tax);
     const customer = customerResult.data;
     const firstName = customer?.first_name || clean(body.firstName, 100) || "Counter";
     const lastName = customer?.last_name || clean(body.lastName, 100) || "Guest";
@@ -85,14 +89,15 @@ export async function POST(request: Request) {
       p_first_name: firstName, p_last_name: lastName, p_phone: phone, p_phone_normalized: normalizedPhone,
       p_email: customer?.email || null, p_fulfillment_type: "Pickup", p_pickup_time: "ASAP", p_address: null, p_city: null, p_zip: null, p_apartment: null,
       p_payment_method: payment === "Card terminal" ? "Card at Pickup" : "Pay at Store", p_subtotal: subtotal, p_tax: tax, p_delivery_fee: 0, p_total: total,
-      p_note: clean(body.note, 1000), p_items: JSON.parse(JSON.stringify(priced)) as Json, p_gift_card_hash: null,
+      p_note: clean(body.note, 1000), p_items: JSON.parse(JSON.stringify([...priced, ...promotion.rewardItems])) as Json, p_gift_card_hash: null,
       p_customer_profile_id: customerProfileId, p_payment_channel: "offline", p_loyalty_reward_id: loyaltyRewardId,
     });
     if (error) throw error;
     const created = data?.[0]; if (!created?.order_number) throw new Error("Order number was not returned.");
-    const paid = await db.from("orders").update({ payment_status: "paid", amount_due: 0 }).eq("order_number", created.order_number);
+    const paid = await db.from("orders").update({ payment_status: "paid", amount_due: 0, sales_promotion_id: promotion.promotionId, promotion_discount: promotion.discount, promotion_snapshot: promotion.snapshot as Json }).eq("order_number", created.order_number);
     if (paid.error) throw paid.error;
-    return NextResponse.json({ orderNumber: created.order_number, total, subtotal, tax }, { status: 201 });
+    if (promotion.promotionId) await db.rpc("increment_sales_promotion_usage", { promotion_id: promotion.promotionId });
+    return NextResponse.json({ orderNumber: created.order_number, total, subtotal, tax, promotionDiscount: promotion.discount, promotion: promotion.name }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message.includes("COUNTER_ITEM_INVALID")) return NextResponse.json({ error: "A selected product is unavailable." }, { status: 409 });
     if (error instanceof Error && error.message.includes("LOYALTY_REWARD_INVALID")) return NextResponse.json({ error: "This voucher is no longer available or has expired." }, { status: 409 });

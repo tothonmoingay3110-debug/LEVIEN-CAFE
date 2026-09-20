@@ -8,6 +8,8 @@ type Category = { id: string; name: string };
 type Customer = { id: string; first_name: string; last_name: string; email: string | null; phone: string; membership_number: string };
 type Line = { productId: string; quantity: number; toppingIds: string[]; ice?: string; sugar?: string };
 type Reward = { id: string; customer_profile_id: string; reward_code: string; reward_name: string; expires_at: string | null; productIds: string[] };
+type Promotion = { id:string; name:string; badge_text:string; scope_type:"all"|"products"|"categories"|"combos"; target_ids:string[] };
+type PromotionQuote = { name:string|null; badgeText:string|null; discount:number; discountedSubtotal:number; message:string|null };
 
 const normalizePhone = (value: string) => value.replace(/\D/g, "");
 const sameToppings = (left: string[], right: string[]) => [...left].sort().join("|") === [...right].sort().join("|");
@@ -20,6 +22,9 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
   const [categories, setCategories] = useState<Category[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [promotionQuote, setPromotionQuote] = useState<PromotionQuote | null>(null);
+  const [promotionLoading, setPromotionLoading] = useState(false);
   const [lines, setLines] = useState<Line[]>([]);
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState("all");
@@ -44,6 +49,7 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
         setCategories(data.categories || []);
         setCustomers(data.customers || []);
         setRewards(data.rewards || []);
+        setPromotions(data.promotions || []);
       })
       .catch((cause) => setError(cause.message || "Unable to load catalog"));
   }, []);
@@ -58,9 +64,19 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
   const selectedReward = customerRewards.find((reward) => reward.id === rewardId);
   const rewardLine = selectedReward ? lines.filter((line) => selectedReward.productIds.includes(line.productId)).sort((left,right)=>Number(productMap.get(right.productId)?.price||0)-Number(productMap.get(left.productId)?.price||0))[0] : undefined;
   const rewardDiscount = rewardLine ? Number(productMap.get(rewardLine.productId)?.price || 0) : 0;
-  const amountDue = Math.max(0,total*1.08-rewardDiscount);
+  const promotionDiscount = Number(promotionQuote?.discount || 0);
+  const amountDue = Math.max(0,(total-promotionDiscount)*1.08-rewardDiscount);
   const filtered = products.filter((product) => !product.sold_out && (categoryId === "all" || product.category_id === categoryId) && `${product.name} ${product.sku}`.toLowerCase().includes(query.trim().toLowerCase()));
   const availableToppings = customizing ? toppings.filter((topping) => customizing.toppingIds.includes(topping.id)) : [];
+
+  useEffect(() => {
+    if (!lines.length || !products.length) { setPromotionQuote(null); setPromotionLoading(false); return; }
+    setPromotionLoading(true);
+    const items = lines.map((line,index) => { const product=productMap.get(line.productId)!; const selected=line.toppingIds.map(id=>toppingMap.get(id)).filter(Boolean) as Topping[]; return {lineId:`counter-quote-${index}`,itemType:"product",productId:line.productId,name:product.name,emoji:product.emoji||"",basePrice:product.price,unitPrice:product.price+selected.reduce((sum,item)=>sum+item.price,0),quantity:line.quantity,ice:line.ice,sugar:line.sugar,toppings:selected.map(item=>({id:item.id,name:item.name,price:item.price})),note:""}; });
+    const controller=new AbortController();
+    void fetch("/api/sales-promotions/quote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items}),signal:controller.signal}).then(async response=>{const result=await response.json();if(response.ok)setPromotionQuote(result.quote||null)}).catch(()=>undefined).finally(()=>setPromotionLoading(false));
+    return()=>controller.abort();
+  },[lines,products,productMap,toppingMap]);
 
   function findMember(value: string) {
     setMemberPhone(value);
@@ -130,7 +146,7 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
             {categories.map((category) => <button type="button" className={categoryId === category.id ? "active" : ""} key={category.id} onClick={() => setCategoryId(category.id)}>{category.name}</button>)}
           </div>
           <div className="counterProductGrid">{filtered.map((product) => <button type="button" key={product.id} onClick={() => openCustomizer(product)}>
-            {product.image_url ? <img src={product.image_url} alt="" /> : <span>{product.emoji || "LV"}</span>}<strong>{product.name}</strong><small>${product.price.toFixed(2)}</small>
+            {promotions.some(p=>p.scope_type==="all"||(p.scope_type==="products"&&p.target_ids.includes(product.id))||(p.scope_type==="categories"&&!!product.category_id&&p.target_ids.includes(product.category_id)))&&<em className="counterPromoBadge">Promo</em>}{product.image_url ? <img src={product.image_url} alt="" /> : <span>{product.emoji || "LV"}</span>}<strong>{product.name}</strong><small>${product.price.toFixed(2)}</small>
           </button>)}</div>
         </section>
         <aside>
@@ -151,9 +167,10 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
           </article>; })}</div>
           <label>Payment<select name="payment"><option>Cash</option><option>Card terminal</option></select></label>
           <label>Order note<textarea name="note" rows={2} /></label>
-          <div className="counterTotal">{rewardDiscount>0&&<><span>Before reward</span><b>${(total*1.08).toFixed(2)}</b><span>Member reward</span><b>−${rewardDiscount.toFixed(2)}</b></>}<span>Estimated amount due</span><strong>${amountDue.toFixed(2)}</strong></div>
+          <div className="counterTotal">{promotionDiscount>0&&<><span>{promotionQuote?.badgeText||promotionQuote?.name||"Promotion"}</span><b>−${promotionDiscount.toFixed(2)}</b></>}{rewardDiscount>0&&<><span>Member reward</span><b>−${rewardDiscount.toFixed(2)}</b></>}<span>Estimated amount due</span><strong>${amountDue.toFixed(2)}</strong></div>
+          {promotionQuote?.message&&<small className="counterPromotionMessage">{promotionQuote.message}</small>}
           {error && <div className="adminLoginError">{error}</div>}
-          <button className="adminPrimary" disabled={saving || !lines.length}>{saving ? "Creating…" : "Place Counter Order"}</button>
+          <button className="adminPrimary" disabled={saving || !lines.length || promotionLoading}>{saving ? "Creating…" : promotionLoading ? "Checking promotion…" : "Place Counter Order"}</button>
         </aside>
       </form>
       {customizing && <div className="counterCustomizerBackdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setCustomizing(null); }}>
