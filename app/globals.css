@@ -3112,6 +3112,7 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .productGrid .productCard:nth-child(4n+3) .productImage,.menuProductGrid .productCard:nth-child(4n+3) .productImage{background:linear-gradient(145deg,#f0e8f4,#dfd1e8)}
 .productGrid .productCard:nth-child(4n+4) .productImage,.menuProductGrid .productCard:nth-child(4n+4) .productImage{background:linear-gradient(145deg,#faf4d8,#f1e4ad)}
 .productGrid .drinkProductStage,.menuProductGrid .drinkProductStage{background:inherit}
+.homePromotionProductGrid{grid-template-columns:repeat(4,minmax(0,1fr))}.homePromotionProductGrid .productCard{height:100%}.homePromotionProductGrid .productBody{display:flex;min-height:285px;flex-direction:column}.homePromotionProductGrid .productAddButton{margin-top:auto}.homePromotionProductGrid .productImage{height:270px}
 
 /* Bright storefront surfaces: customer requested light, modern pastel instead of dark green panels. */
 .announcement{background:#dce9e3;color:#24332e}.announcementDot{color:#b86d4f}
@@ -3149,6 +3150,19 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .adminWelcome{background:linear-gradient(125deg,#dce9e3,#f4dfd0);color:#18211e;border:1px solid #dce5e0;box-shadow:0 16px 38px rgba(36,51,46,.07)}.adminWelcome span{color:#a9583f}.adminWelcome .adminPrimary{background:#24332e;color:#fff}.adminPrimary{background:#24332e;color:#fff;box-shadow:0 8px 20px rgba(36,51,46,.14)}
 .adminMetric,.adminCard{border-color:#e1e7e4;box-shadow:0 10px 30px rgba(36,51,46,.035)}.adminMetric:nth-child(4n+1){background:#f4f8f6}.adminMetric:nth-child(4n+2){background:#fdf5f0}.adminMetric:nth-child(4n+3){background:#f8f4fa}.adminMetric:nth-child(4n+4){background:#fdf9e9}.adminMetric strong{color:#24332e}.adminEyebrow,.adminTextButton,.adminIconAction{color:#50675e}.adminQuickAction>span,.adminEntityIcon,.adminProductThumb{background:#edf3f0}.adminQuickAction:hover{border-color:#cbd9d2}
 .adminLoginPage{background:#f7f9f8}.adminLoginVisual{background:radial-gradient(circle at 75% 20%,rgba(220,233,227,.9),transparent 32%),linear-gradient(135deg,#f4dfd0,#e7dcf0);color:#18211e}.adminLoginVisual>span{color:#a9583f}.adminLoginVisual p{color:#58645f}.adminLoginLogo{background:#dce9e3;color:#24332e}.adminModal>header button{color:#24332e}
+
+/* Higher-contrast, color-coded admin navigation icons. */
+.adminNavGroup.open{background:#fff;border-color:#dbe5e0;box-shadow:0 8px 24px rgba(36,51,46,.055)}
+.adminSidebarV3 nav .adminNavSub button.active{background:#f4f7f5;border:1px solid #e0e7e3;color:#18211e}
+.adminNavGroup:nth-of-type(1) .adminNavIcon{color:#c7644b}.adminNavGroup:nth-of-type(1)>.adminNavGroupButton::before{background:#c7644b}
+.adminNavGroup:nth-of-type(2) .adminNavIcon{color:#4f7f92}.adminNavGroup:nth-of-type(2)>.adminNavGroupButton::before{background:#4f7f92}
+.adminNavGroup:nth-of-type(3) .adminNavIcon{color:#78669a}.adminNavGroup:nth-of-type(3)>.adminNavGroupButton::before{background:#78669a}
+.adminNavGroup:nth-of-type(4) .adminNavIcon{color:#3f7c72}.adminNavGroup:nth-of-type(4)>.adminNavGroupButton::before{background:#3f7c72}
+.adminSidebarV3 nav .adminNavAccount .adminNavIcon{color:#a9587f}.adminSidebarV3 nav .adminNavAccount.active{background:#f3eaf0;color:#18211e}
+.adminSidebarBottom a svg{color:#4f7f92}.adminSidebarBottom button svg{color:#c7644b}.adminSidebarBottom a,.adminSidebarBottom button{color:#3e514a}
+.adminNavGroupButton .adminNavChevron{color:#7b8f87}.adminNavGroup.open>.adminNavGroupButton .adminNavChevron{color:currentColor}
+@media(max-width:1020px){.homePromotionProductGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.homePromotionProductGrid{grid-template-columns:1fr}.homePromotionProductGrid .productImage{height:315px}}
 .categoryIconPicker{border:1px solid #dce5df;border-radius:14px;padding:14px}.categoryIconPicker legend{padding:0 5px;color:#40564d;font-size:11px;font-weight:850}.categoryIconPicker>div{display:flex;flex-wrap:wrap;gap:8px}.categoryIconPicker button{width:42px;height:42px;border:1px solid #dce5df;border-radius:11px;background:#f7faf8;font-size:22px;cursor:pointer;transition:.15s}.categoryIconPicker button:hover{transform:translateY(-2px);border-color:#287457}.categoryIconPicker button.selected{background:#dff2e6;border:2px solid #16734d;box-shadow:0 0 0 3px rgba(22,115,77,.12)}.categoryIconPicker small{display:block;margin-top:9px;color:#7a8b83;font-size:10px}
 
 /* Counter order: filtered catalog, compact cart, and item customizer. */
