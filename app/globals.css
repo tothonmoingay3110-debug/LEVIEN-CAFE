@@ -3112,6 +3112,43 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .productGrid .productCard:nth-child(4n+3) .productImage,.menuProductGrid .productCard:nth-child(4n+3) .productImage{background:linear-gradient(145deg,#f0e8f4,#dfd1e8)}
 .productGrid .productCard:nth-child(4n+4) .productImage,.menuProductGrid .productCard:nth-child(4n+4) .productImage{background:linear-gradient(145deg,#faf4d8,#f1e4ad)}
 .productGrid .drinkProductStage,.menuProductGrid .drinkProductStage{background:inherit}
+
+/* Bright storefront surfaces: customer requested light, modern pastel instead of dark green panels. */
+.announcement{background:#dce9e3;color:#24332e}.announcementDot{color:#b86d4f}
+.heroSlider:not(.fullAdvertisement){background:radial-gradient(circle at 15% 12%,rgba(244,223,208,.82),transparent 31%),radial-gradient(circle at 84% 25%,rgba(220,233,227,.94),transparent 38%),#fafbfa;color:#18211e;border:1px solid #e4eae6;box-shadow:0 22px 60px rgba(36,51,46,.09)}
+.heroSlider:not(.fullAdvertisement) .heroPattern{opacity:.065;background-image:radial-gradient(#24332e 1px,transparent 1px)}
+.heroSlider:not(.fullAdvertisement) .eyebrow{color:#a9583f}
+.heroSlider:not(.fullAdvertisement) .heroCopy h1{color:#18211e}
+.heroSlider:not(.fullAdvertisement) .heroCopy h1 em{color:#d56f4e}
+.heroSlider:not(.fullAdvertisement) .heroCopy p{color:#58645f}
+.heroSlider:not(.fullAdvertisement) .heroTrust{color:#4e6059}
+.heroSlider:not(.fullAdvertisement) .button.gold{background:#f3ca67;color:#18211e;box-shadow:0 12px 25px rgba(188,143,43,.18)}
+.heroSlider:not(.fullAdvertisement) .button.ghost{border-color:#bccbc4;background:rgba(255,255,255,.66);color:#24332e}
+.heroSlider:not(.fullAdvertisement) .visualHalo{background:radial-gradient(circle at 38% 30%,#f8dfcf,#efc4aa);box-shadow:0 0 0 18px rgba(184,213,143,.2),0 28px 65px rgba(84,64,50,.13)}
+.heroSlider:not(.fullAdvertisement) .heroUploadedImage{filter:drop-shadow(0 24px 22px rgba(45,55,51,.18))}
+.heroSlider:not(.fullAdvertisement) .promoInfoCard{border-color:#e2e8e4;box-shadow:0 18px 44px rgba(36,51,46,.11)}
+.heroSlider:not(.fullAdvertisement) .promoInfoCard span{color:#a9583f}
+.heroSlider:not(.fullAdvertisement) .sliderArrow{color:#24332e;text-shadow:none}
+.heroSlider:not(.fullAdvertisement) .sliderArrow:hover,.heroSlider:not(.fullAdvertisement) .sliderArrow:focus-visible{color:#d56f4e;text-shadow:none}
+.heroSlider:not(.fullAdvertisement) .sliderDots button{background:#bdc8c2}.heroSlider:not(.fullAdvertisement) .sliderDots button.active{background:#d56f4e;box-shadow:0 0 0 4px rgba(213,111,78,.13)}
+.menuHero{background:linear-gradient(135deg,#e4eee9,#f5e4d9);color:#18211e}.menuHero p{color:#58645f}.menuHeroArt span{border-color:rgba(255,255,255,.72);box-shadow:0 18px 35px rgba(36,51,46,.1)}
+.comboCard{background:linear-gradient(125deg,#e7dcf0,#f4dfd0);color:#18211e}.comboCard:after{background:rgba(255,255,255,.28)}.comboCopy p{color:#58645f}.comboNavigation button{border-color:#aebdb6;background:rgba(255,255,255,.45);color:#24332e}.comboNavigation span{color:#58645f}
+.locationSection{background:#eef3f0;color:#18211e}.locationDetails span{color:#60736b}.locationDetails p{color:#4f5e58}.mapFrame{border-color:rgba(36,51,46,.07)}
+.siteFooter{background:#dce9e3;color:#18211e}.siteFooter h3{color:#91533f}.siteFooter p,.siteFooter a{color:#4d5e57}.footerBottom{border-color:rgba(36,51,46,.12);color:#66756f}
+
+/* Admin uses the same bright pastel system as the storefront. */
+.adminShellV3{background:#f7f9f8;color:#18211e}
+.adminSidebarV3{background:#edf3f0;color:#24332e;border-right:1px solid #dce5e0;box-shadow:none}
+.adminBrandV3 strong{color:#18211e}.adminBrandV3 small{color:#687b73}.adminLogoV3{background:#fff;color:#24332e;box-shadow:0 8px 22px rgba(36,51,46,.1)}
+.adminSidebarV3 nav button,.adminSidebarV3 nav .adminNavGroupButton,.adminSidebarV3 nav .adminNavSub button,.adminSidebarBottom a,.adminSidebarBottom button{color:#4d6058}
+.adminSidebarV3 nav button:hover,.adminSidebarV3 nav .adminNavGroupButton:hover,.adminSidebarV3 nav .adminNavSub button:hover,.adminSidebarBottom a:hover,.adminSidebarBottom button:hover{background:#fff;color:#18211e}
+.adminSidebarV3 nav button.active,.adminSidebarV3 nav .adminNavSub button.active{background:#dce9e3;border-color:#cfddd6;color:#18211e;box-shadow:none}
+.adminNavGroup.containsActive>.adminNavGroupButton{color:#18211e}.adminSidebarV3 nav button::before{background:#d56f4e}.adminSidebarV3 nav button:hover .adminNavIcon,.adminSidebarV3 nav button.active .adminNavIcon{color:#a9583f}.adminNavGroup.open>.adminNavGroupButton .adminNavChevron{color:#a9583f}
+.adminSidebarBottom{border-color:#d6e1dc}.adminSidebarV3 nav::-webkit-scrollbar-thumb{background:#c4d2cb}
+.adminTopbar{border-color:#e1e7e4}.adminAvatar{background:#dce9e3;color:#24332e;border:2px solid #fff;box-shadow:0 6px 18px rgba(36,51,46,.1)}.adminLiveBadge{background:#e4f0e9;color:#315d4c}
+.adminWelcome{background:linear-gradient(125deg,#dce9e3,#f4dfd0);color:#18211e;border:1px solid #dce5e0;box-shadow:0 16px 38px rgba(36,51,46,.07)}.adminWelcome span{color:#a9583f}.adminWelcome .adminPrimary{background:#24332e;color:#fff}.adminPrimary{background:#24332e;color:#fff;box-shadow:0 8px 20px rgba(36,51,46,.14)}
+.adminMetric,.adminCard{border-color:#e1e7e4;box-shadow:0 10px 30px rgba(36,51,46,.035)}.adminMetric:nth-child(4n+1){background:#f4f8f6}.adminMetric:nth-child(4n+2){background:#fdf5f0}.adminMetric:nth-child(4n+3){background:#f8f4fa}.adminMetric:nth-child(4n+4){background:#fdf9e9}.adminMetric strong{color:#24332e}.adminEyebrow,.adminTextButton,.adminIconAction{color:#50675e}.adminQuickAction>span,.adminEntityIcon,.adminProductThumb{background:#edf3f0}.adminQuickAction:hover{border-color:#cbd9d2}
+.adminLoginPage{background:#f7f9f8}.adminLoginVisual{background:radial-gradient(circle at 75% 20%,rgba(220,233,227,.9),transparent 32%),linear-gradient(135deg,#f4dfd0,#e7dcf0);color:#18211e}.adminLoginVisual>span{color:#a9583f}.adminLoginVisual p{color:#58645f}.adminLoginLogo{background:#dce9e3;color:#24332e}.adminModal>header button{color:#24332e}
 .categoryIconPicker{border:1px solid #dce5df;border-radius:14px;padding:14px}.categoryIconPicker legend{padding:0 5px;color:#40564d;font-size:11px;font-weight:850}.categoryIconPicker>div{display:flex;flex-wrap:wrap;gap:8px}.categoryIconPicker button{width:42px;height:42px;border:1px solid #dce5df;border-radius:11px;background:#f7faf8;font-size:22px;cursor:pointer;transition:.15s}.categoryIconPicker button:hover{transform:translateY(-2px);border-color:#287457}.categoryIconPicker button.selected{background:#dff2e6;border:2px solid #16734d;box-shadow:0 0 0 3px rgba(22,115,77,.12)}.categoryIconPicker small{display:block;margin-top:9px;color:#7a8b83;font-size:10px}
 
 /* Counter order: filtered catalog, compact cart, and item customizer. */
