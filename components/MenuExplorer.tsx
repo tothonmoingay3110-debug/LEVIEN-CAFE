@@ -28,7 +28,7 @@ export function MenuExplorer() {
   }, []);
 
   const filtered = useMemo(() => products
-    .filter((product) => (category === "All" || product.category === category) && `${product.name} ${product.description}`.toLowerCase().includes(query.toLowerCase()))
+    .filter((product) => (category === "All" || product.category === category) && `${product.name} ${product.vietnameseName || ""} ${product.description}`.toLowerCase().includes(query.toLowerCase()))
     .sort((left, right) => {
       const priority = (badges: typeof left.badges) => badges.includes("new") ? 0 : badges.includes("best-seller") ? 1 : badges.includes("must-try") ? 2 : 3;
       return priority(left.badges) - priority(right.badges);

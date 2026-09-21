@@ -42,6 +42,7 @@ export type Database = {
       products: GenericCatalogRow<{
         category_id: string | null;
         sku: string;
+        vietnamese_name: string;
         description: string | null;
         price: number;
         image_url: string | null;
@@ -382,10 +383,13 @@ export type Database = {
         Row: {
           id: string;
           name: string;
-          email: string;
+          email: string | null;
           phone: string;
           subject: string;
-          message: string;
+          message: string | null;
+          location: string;
+          franchise_model: string;
+          franchise_products: string[];
           status: "new" | "in_progress" | "resolved" | "archived";
           admin_note: string;
           handled_by: string | null;
@@ -393,8 +397,13 @@ export type Database = {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["contact_messages"]["Row"], "id" | "created_at" | "updated_at"> & {
+        Insert: Omit<Database["public"]["Tables"]["contact_messages"]["Row"], "id" | "email" | "message" | "location" | "franchise_model" | "franchise_products" | "created_at" | "updated_at"> & {
           id?: string;
+          email?: string | null;
+          message?: string | null;
+          location?: string;
+          franchise_model?: string;
+          franchise_products?: string[];
           created_at?: string;
           updated_at?: string;
         };

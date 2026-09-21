@@ -29,7 +29,7 @@ type AdminDB = {
   categories?: SiteCategory[];
   toppings?: SiteTopping[];
   products?: Array<{
-    id: string; name: string; categoryId: string; price: number; description: string; image: string; emoji: string;
+    id: string; name: string; vietnameseName?: string; categoryId: string; price: number; description: string; image: string; emoji: string;
     toppingIds: string[]; allowIce?: boolean; allowSugar?: boolean; allowToppings?: boolean;
     bestSeller: boolean; mustTry: boolean; featured: boolean; isNew: boolean; soldOut: boolean; active: boolean;
   }>;
@@ -87,6 +87,7 @@ function localCatalog(db: AdminDB | null): SupabaseCatalog | null {
     id: item.id,
     categoryId: item.categoryId,
     name: item.name,
+    vietnameseName: item.vietnameseName || "",
     description: item.description,
     price: Number(item.price),
     category: categoryMap.get(item.categoryId) || "Other",

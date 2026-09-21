@@ -73,6 +73,8 @@ export async function readSupabaseCatalog(): Promise<SupabaseCatalog | null> {
   const categories = ((categoryResult.data || []) as Row[]).map((row) => ({
     id: stringValue(row.id),
     name: stringValue(row.name),
+    vietnameseName: stringValue(row.vietnamese_name),
+    categoryId: stringValue(row.category_id),
     icon: stringValue(row.icon, "☕"),
     active: row.active !== false,
   }));
