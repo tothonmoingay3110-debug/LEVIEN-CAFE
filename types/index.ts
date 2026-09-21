@@ -11,6 +11,7 @@ export type Product = {
   id: string;
   categoryId?: string;
   name: string;
+  vietnameseName?: string;
   description: string;
   price: number;
   category: string;

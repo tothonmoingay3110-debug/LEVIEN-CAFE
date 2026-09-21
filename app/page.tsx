@@ -2,7 +2,7 @@
 
 import { CategoryCard } from "@/components/CategoryCard";
 import { ComboCard } from "@/components/ComboCard";
-import { ContactSection } from "@/components/ContactSection";
+import { HomePromotions } from "@/components/HomePromotions";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { MapSection } from "@/components/MapSection";
@@ -19,6 +19,7 @@ export default function HomePage() {
       <Header />
       <main id="home">
         <div className="heroWrap"><PromotionSlider /></div>
+        <HomePromotions />
 
         <section className="section categorySection">
           <div className="sectionHeading compactHeading"><div><span className="sectionLabel">Find your favorite</span><h2>Browse by Category</h2></div><a className="textLink" href="/menu">View full menu →</a></div>
@@ -44,7 +45,6 @@ export default function HomePage() {
           <div className="storyCopy"><span className="sectionLabel">Our Story</span><h2>{content.aboutTitle}</h2><p>{content.aboutText}</p><a className="textLink" href="/#location">Come visit us →</a></div>
         </section>
 
-        <ContactSection />
         <MapSection />
       </main>
       <Footer />

@@ -38,7 +38,7 @@ export async function GET() {
       categories: (categoryResult.data || []).map((row) => ({ id: row.id, name: row.name, icon: row.icon, active: row.active })),
       toppings: (toppingResult.data || []).map((row) => ({ id: row.id, name: row.name, price: Number(row.price), image: row.image_url || "", active: row.active })),
       products: (productResult.data || []).map((row) => ({
-        id: row.id, sku: row.sku || "", name: row.name, categoryId: row.category_id || "", price: Number(row.price),
+        id: row.id, sku: row.sku || "", name: row.name, vietnameseName: (row as typeof row & {vietnamese_name?:string}).vietnamese_name || "", categoryId: row.category_id || "", price: Number(row.price),
         description: row.description || "", image: row.image_url || "", emoji: row.emoji,
         toppingIds: productToppings.filter((link) => link.product_id === row.id).map((link) => link.topping_id),
         allowIce: row.allow_ice, allowSugar: row.allow_sugar, allowToppings: row.allow_toppings,
@@ -91,6 +91,8 @@ export async function PUT(request: Request) {
     if (error) throw error;
     const promotions=(body.catalog as {promotions?:Array<Record<string,unknown>>}).promotions||[];
     for(const promotion of promotions){if(typeof promotion.id!=="string")continue;const result=await (db.from("promotions") as any).update({display_mode:promotion.displayMode==="full_image"?"full_image":"designed",mobile_image_url:typeof promotion.mobileImage==="string"?promotion.mobileImage:"",link_url:typeof promotion.linkUrl==="string"?promotion.linkUrl:"/menu"}).eq("id",promotion.id);if(result.error)throw result.error;}
+    const products=(body.catalog as {products?:Array<Record<string,unknown>>}).products||[];
+    for(const product of products){if(typeof product.id!=="string")continue;const result=await (db.from("products") as any).update({vietnamese_name:typeof product.vietnameseName==="string"?product.vietnameseName.trim().slice(0,160):""}).eq("id",product.id);if(result.error)throw result.error;}
     return NextResponse.json({ saved: true });
   } catch (error) {
     console.error("Unable to save admin catalog:", error);

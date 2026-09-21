@@ -22,7 +22,7 @@ export async function GET() {
 
     const { data, error } = await createAdminClient()
       .from("contact_messages")
-      .select("id,name,email,phone,subject,message,status,admin_note,handled_by,handled_at,created_at,updated_at")
+      .select("id,name,email,phone,subject,message,location,franchise_model,franchise_products,status,admin_note,handled_by,handled_at,created_at,updated_at")
       .order("created_at", { ascending: false })
       .limit(300);
     if (error) throw error;
@@ -31,10 +31,13 @@ export async function GET() {
       messages: (data || []).map((item) => ({
         id: item.id,
         name: item.name,
-        email: item.email,
+        email: item.email || "",
         phone: item.phone,
         subject: item.subject,
-        message: item.message,
+        message: item.message || "",
+        location: item.location,
+        franchiseModel: item.franchise_model,
+        products: item.franchise_products,
         status: item.status,
         adminNote: item.admin_note,
         handledBy: item.handled_by,
@@ -91,7 +94,7 @@ export async function PATCH(request: Request) {
         action: "contact_message_updated",
         entityType: "contact_message",
         entityId: data.id,
-        summary: `Contact message marked ${status.replace("_", " ")}.`,
+        summary: `Franchise message marked ${status.replace("_", " ")}.`,
         metadata: { status },
       },
     });

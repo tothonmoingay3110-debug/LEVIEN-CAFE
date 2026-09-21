@@ -21,7 +21,7 @@ export function Header() {
     ...(combos.some((combo) => combo.active) ? [{ label: "Combos", href: "/#combos" }] : []),
     { label: "Our Story", href: "/#story" },
     { label: "Book an Event", href: "/event-booking" },
-    { label: "Contact", href: "/#contact" },
+    { label: "Franchise", href: "/franchise" },
   ];
 
   const shortAddress = content.address.split(",").slice(0, 2).join(",");

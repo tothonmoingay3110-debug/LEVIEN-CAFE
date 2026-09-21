@@ -10,6 +10,9 @@ type ContactMessage = {
   phone: string;
   subject: string;
   message: string;
+  location: string;
+  franchiseModel: string;
+  products: string[];
   status: ContactStatus;
   adminNote: string;
   handledBy: string | null;
@@ -39,7 +42,7 @@ export default function ContactMessages({ notify }: { notify: (message: string) 
     try {
       const response = await fetch("/api/admin/contact-messages", { cache: "no-store" });
       const result = (await response.json()) as { messages?: ContactMessage[]; error?: string };
-      if (!response.ok) throw new Error(result.error || "Unable to load contact messages.");
+      if (!response.ok) throw new Error(result.error || "Unable to load franchise messages.");
       setMessages(result.messages || []);
       setError("");
     } catch (loadError) {
@@ -102,7 +105,7 @@ export default function ContactMessages({ notify }: { notify: (message: string) 
   const resolvedCount = messages.filter((item) => item.status === "resolved").length;
 
   return <div className="adminStack contactInbox">
-    <section className="adminWelcome contactInboxWelcome"><div><span>Customer care</span><h2>Keep every conversation moving.</h2><p>Messages are private and available only to Owner and Manager accounts.</p></div><button className="adminPrimary" type="button" onClick={() => void loadMessages()} disabled={loading}>{loading ? "Loading…" : "Refresh inbox"}</button></section>
+    <section className="adminWelcome contactInboxWelcome"><div><span>Franchise inquiries</span><h2>Follow every prospective partner.</h2><p>Franchise messages are private and available only to Owner and Manager accounts.</p></div><button className="adminPrimary" type="button" onClick={() => void loadMessages()} disabled={loading}>{loading ? "Loading…" : "Refresh inbox"}</button></section>
     <section className="adminMetrics contactInboxMetrics"><div className="adminMetric"><span>New</span><strong>{newCount}</strong><small>Waiting for review</small></div><div className="adminMetric"><span>In progress</span><strong>{progressCount}</strong><small>Being handled</small></div><div className="adminMetric"><span>Resolved</span><strong>{resolvedCount}</strong><small>Completed conversations</small></div><div className="adminMetric"><span>Total</span><strong>{messages.length}</strong><small>Latest 300 messages</small></div></section>
     <section className="adminToolbar contactInboxToolbar">
       <div className="adminSearch"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, email, subject, or message…" /></div>
@@ -112,7 +115,7 @@ export default function ContactMessages({ notify }: { notify: (message: string) 
     <section className="contactMessageList">
       {filteredMessages.map((item) => <article className={`contactMessageCard status-${item.status}`} key={item.id}>
         <header><div className="contactMessageAvatar">{item.name.trim().charAt(0).toUpperCase() || "?"}</div><div><span>{item.subject}</span><h3>{item.name}</h3><small>{new Date(item.createdAt).toLocaleString()}</small></div><b>{statusLabels[item.status]}</b></header>
-        <div className="contactMessageDetails"><a href={`mailto:${item.email}`}>{item.email}</a>{item.phone && <a href={`tel:${item.phone.replace(/[^+\d]/g, "")}`}>{item.phone}</a>}</div>
+        <div className="contactMessageDetails">{item.email && <a href={`mailto:${item.email}`}>{item.email}</a>}<a href={`tel:${item.phone.replace(/[^+\d]/g, "")}`}>{item.phone}</a><span>{item.location}</span><span>{item.franchiseModel}</span><span>{item.products?.join(" + ")}</span></div>
         <p>{item.message}</p>
         <div className="contactMessageManage">
           <label>Status<select value={item.status} onChange={(event) => editMessage(item.id, { status: event.target.value as ContactStatus })}>{statuses.map((status) => <option value={status} key={status}>{statusLabels[status]}</option>)}</select></label>
@@ -120,7 +123,7 @@ export default function ContactMessages({ notify }: { notify: (message: string) 
           <button className="adminPrimary" type="button" disabled={savingId === item.id} onClick={() => void saveMessage(item)}>{savingId === item.id ? "Saving…" : "Save"}</button>
         </div>
       </article>)}
-      {!loading && !filteredMessages.length && <div className="contactInboxEmpty"><span>✉</span><strong>No messages found</strong><p>New customer messages will appear here automatically.</p></div>}
+      {!loading && !filteredMessages.length && <div className="contactInboxEmpty"><span>✉</span><strong>No franchise inquiries found</strong><p>New franchise messages will appear here automatically.</p></div>}
     </section>
   </div>;
 }
