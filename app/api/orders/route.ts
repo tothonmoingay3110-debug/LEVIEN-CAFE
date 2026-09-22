@@ -7,6 +7,7 @@ import { InvalidCheckoutCatalogError, validateAndPriceOrderItems } from "@/lib/s
 import type { CartItem, FulfillmentType, ProductTopping } from "@/types";
 import type { Json } from "@/types/database.types";
 import { quoteBestSalesPromotion } from "@/lib/sales-promotions";
+import { getSiteOrigin, getStripe } from "@/lib/stripe";
 
 type CheckoutOrderRequest = {
   firstName: string; lastName: string; phone: string; email?: string;
@@ -159,9 +160,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Delivery address is required." }, { status: 400 });
   }
   const payment = text(body.payment) || "Pay at Store";
-  if (!["Pay at Store", "Cash on Delivery", "Card at Pickup"].includes(payment) ||
-      (fulfillmentType === "Delivery" && payment !== "Cash on Delivery") ||
-      (fulfillmentType === "Pickup" && !["Pay at Store", "Card at Pickup"].includes(payment))) {
+  if (payment === "Pay Online" && process.env.NEXT_PUBLIC_ENABLE_ONLINE_ORDER_PAYMENT !== "true") {
+    return NextResponse.json({ error: "Online payment is not available yet." }, { status: 503 });
+  }
+  if (!["Pay Online", "Pay at Store", "Cash on Delivery", "Card at Pickup"].includes(payment) ||
+      (fulfillmentType === "Delivery" && !["Pay Online", "Cash on Delivery"].includes(payment)) ||
+      (fulfillmentType === "Pickup" && !["Pay Online", "Pay at Store", "Card at Pickup"].includes(payment))) {
     return NextResponse.json({ error: "Invalid payment method." }, { status: 400 });
   }
 
@@ -196,7 +200,7 @@ export async function POST(request: Request) {
       if (promotionError) console.error("Unable to validate promotion attribution:", promotionError);
       promotionId = promotion?.id || null;
     }
-    const paymentChannel = "offline";
+    const paymentChannel = payment === "Pay Online" ? "stripe" : "offline";
     // The legacy customer table is keyed by phone. Phone-less guest orders receive
     // a unique internal key while the customer-facing phone value remains empty.
     const orderPhoneKey = phoneNormalized || `${Date.now()}${Math.floor(Math.random() * 100)}`.padEnd(15, "0").slice(0, 15);
@@ -242,10 +246,43 @@ export async function POST(request: Request) {
       if (usageError) console.error("Unable to update promotion usage:", usageError);
     }
     const amountDue = Number(created.amount_due || 0);
+    let checkoutUrl: string | null = null;
+    if (paymentChannel === "stripe" && amountDue > 0) {
+      const stripe = getStripe();
+      const origin = getSiteOrigin(request);
+      const metadata = { kind: "order", order_id: orderId, order_number: orderNumber };
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        customer_email: email || customer?.profile.email || undefined,
+        line_items: [{
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: Math.round(amountDue * 100),
+            product_data: {
+              name: `LEVIEN CAFE Order ${orderNumber}`,
+              description: `${fulfillmentType} order · ${pricedItems.reduce((sum, item) => sum + item.quantity, 0)} item(s)`,
+            },
+          },
+        }],
+        success_url: `${origin}/order/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/checkout?payment=cancelled`,
+        metadata,
+        payment_intent_data: { metadata },
+        expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+      }, { idempotencyKey: `order-checkout-${orderId}` });
+      if (!session.url) throw new Error("Stripe did not return a checkout URL.");
+      const { error: sessionError } = await supabase.from("orders").update({ stripe_checkout_session_id: session.id }).eq("id", orderId);
+      if (sessionError) {
+        await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
+        throw sessionError;
+      }
+      checkoutUrl = session.url;
+    }
     return NextResponse.json({
       orderNumber,
       trackingToken: orderId,
-      checkoutUrl: null,
+      checkoutUrl,
       paymentMethod: created.final_payment_method,
       paymentStatus: created.payment_status,
       giftCardAmount: Number(created.gift_card_amount || 0),
