@@ -13,6 +13,7 @@ import type { CustomerOrder, FulfillmentType } from "@/types";
 
 const money = (value: number) => `$${value.toFixed(2)}`;
 const promotionAttributionKey = "levien-promotion-attribution";
+const onlinePaymentsEnabled = process.env.NEXT_PUBLIC_ENABLE_ONLINE_ORDER_PAYMENT === "true";
 
 function currentPromotionAttribution() {
   try {
@@ -55,13 +56,14 @@ export default function CheckoutPage() {
   const [rewards, setRewards] = useState<LoyaltyRewardView[]>([]);
   const [rewardId, setRewardId] = useState("");
   const [paymentCancelled, setPaymentCancelled] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("Pay at Store");
   const [promotionQuote, setPromotionQuote] = useState<SalesPromotionQuote | null>(null);
   const [promotionLoading, setPromotionLoading] = useState(false);
   const [promotionRewardProductId, setPromotionRewardProductId] = useState("");
   const discountedSubtotal = Math.max(0, subtotal - Number(promotionQuote?.discount || 0));
   const tax = useMemo(() => discountedSubtotal * 0.08, [discountedSubtotal]);
   const deliveryFee = type === "Delivery" ? 3.99 : 0;
-  const total = subtotal + tax + deliveryFee;
+  const total = discountedSubtotal + tax + deliveryFee;
   const selectedReward = rewards.find((reward) => reward.id === rewardId);
   const selectedRewardProductIds = selectedReward
     ? (selectedReward.productIds.length ? selectedReward.productIds : selectedReward.productId ? [selectedReward.productId] : [])
@@ -207,14 +209,14 @@ export default function CheckoutPage() {
         city: type === "Delivery" ? city : undefined,
         zip: type === "Delivery" ? zip : undefined,
         apartment: type === "Delivery" ? String(data.get("apartment") || "").trim() : undefined,
-        payment: String(data.get("payment") || "Pay at Store"),
+        payment: String(data.get("payment") || paymentMethod),
         subtotal, tax, deliveryFee, total,
         note: String(data.get("note") || "").trim(),
       };
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...orderDetails, loyaltyRewardId: rewardId || undefined, promotionId: currentPromotionAttribution(), salesPromotionRewardProductId:promotionRewardProductId||undefined, items: cart }),
+        body: JSON.stringify({ ...orderDetails, giftCardCode:giftCard?.code, loyaltyRewardId: rewardId || undefined, promotionId: currentPromotionAttribution(), salesPromotionRewardProductId:promotionRewardProductId||undefined, items: cart }),
       });
       const result = (await response.json()) as {
         orderNumber?: string;
@@ -314,7 +316,7 @@ export default function CheckoutPage() {
             <div className="checkoutCardHead"><span>02</span><div><h2>Order type</h2><p>Choose pickup, local delivery, or request an event.</p></div></div>
             <div className="fulfillmentOptions">
               {(["Pickup", "Delivery", "Event"] as const).map((option) => <label className={type === option ? "selected" : ""} key={option}>
-                <input type="radio" name="type" value={option} checked={type === option} onChange={() => { setType(option); if (option === "Pickup") setErrors((current) => ({ firstName: current.firstName, lastName: current.lastName, phone: current.phone, email: current.email })); }} />
+                <input type="radio" name="type" value={option} checked={type === option} onChange={() => { setType(option); setPaymentMethod(option === "Delivery" ? "Cash on Delivery" : "Pay at Store"); if (option === "Pickup") setErrors((current) => ({ firstName: current.firstName, lastName: current.lastName, phone: current.phone, email: current.email })); }} />
                 <span className="fulfillmentIcon" aria-hidden="true">{option === "Pickup" ? <svg viewBox="0 0 24 24"><path d="M4 10h16v10H4z"/><path d="M3 10 5 4h14l2 6"/><path d="M9 20v-6h6v6"/></svg> : option === "Delivery" ? <svg viewBox="0 0 24 24"><path d="M3 6h11v11H3z"/><path d="M14 9h4l3 4v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg> : <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>}</span>
                 <span><strong>{option === "Event"?"Book an Event":option}</strong><small>{option === "Pickup" ? "Collect at LEVIEN CAFE" : option === "Delivery" ? "Delivered to your address" : "Request a celebration or private gathering"}</small></span>
               </label>)}
@@ -342,9 +344,10 @@ export default function CheckoutPage() {
           <section className="checkoutCard">
             <div className="checkoutCardHead"><span>03</span><div><h2>Payment & notes</h2><p>{type === "Event" ? "No payment is collected with an event request." : "Payment is completed when your order is received."}</p></div></div>
             <div className="checkoutFields twoColumns">
-              {type !== "Event" && <label>Payment method<select key={type} name="payment" defaultValue={type === "Delivery" ? "Cash on Delivery" : "Pay at Store"}>{type === "Delivery" ? <option>Cash on Delivery</option> : <><option>Pay at Store</option><option>Card at Pickup</option></>}</select></label>}
+              {type !== "Event" && <label>Payment method<select key={type} name="payment" value={paymentMethod} onChange={(event)=>setPaymentMethod(event.target.value)}>{onlinePaymentsEnabled&&<option value="Pay Online">Pay Online — Card / Apple Pay</option>}{type === "Delivery" ? <option value="Cash on Delivery">Cash on Delivery</option> : <><option value="Pay at Store">Pay at Store</option><option value="Card at Pickup">Card at Pickup</option></>}</select></label>}
               <label className="wide"><span className="fieldLabel">Order note <small className="optionalLabel">Optional</small></span><textarea name="note" rows={4} placeholder="Allergies, delivery instructions, or anything we should know" /></label>
             </div>
+            {type!=="Event"&&paymentMethod==="Pay Online"&&<div className="securePaymentNotice"><span aria-hidden="true">⌁</span><div><strong>Secure payment by Stripe</strong><p>Visa, Mastercard, and Apple Pay are processed on Stripe’s encrypted checkout. LEVIEN never receives or stores your card number.</p></div></div>}
             {profile ? <div className="giftCardRedeem"><div className="giftCardRedeemHeading"><div><span>Member Reward</span><strong>{rewards.length ? "Use an available reward" : "No free-product rewards available"}</strong></div></div>{rewards.length > 0 && <select value={rewardId} onChange={(event) => setRewardId(event.target.value)}><option value="">Do not use a reward</option>{rewards.map((reward) => { const eligibleIds = reward.productIds.length ? reward.productIds : reward.productId ? [reward.productId] : []; const inCart = cart.some((item) => item.itemType === "product" && eligibleIds.includes(item.productId)); return <option key={reward.id} value={reward.id} disabled={!inCart}>{reward.name}{reward.productNames.length ? ` (${reward.productNames.join(" / ")})` : ""}{inCart ? "" : " — add an eligible product first"}</option>; })}</select>}{selectedReward && !rewardItem && <div className="giftCardError">Add one of the eligible reward products to your cart before using it.</div>}</div> : <div className="giftCardRedeem"><span>Member Reward</span><p><Link href="/account/sign-in">Sign in</Link> to use earned rewards.</p></div>}
           </section>
         </div>
@@ -372,7 +375,7 @@ export default function CheckoutPage() {
           </div>
         </aside>
         <div className="checkoutFinalAction">
-          <button className="button primary full checkoutSubmit" type="submit" disabled={submitting||(type!=="Event"&&promotionLoading)}>{submitting ? (type==="Event"?"Sending request…":"Placing order…") : promotionLoading&&type!=="Event" ? "Checking promotion…" : (type==="Event"?"Submit Event Request":"Place Order")}</button>
+          <button className="button primary full checkoutSubmit" type="submit" disabled={submitting||(type!=="Event"&&promotionLoading)}>{submitting ? (type==="Event"?"Sending request…":paymentMethod==="Pay Online"?"Opening secure payment…":"Placing order…") : promotionLoading&&type!=="Event" ? "Checking promotion…" : (type==="Event"?"Submit Event Request":paymentMethod==="Pay Online"?"Continue to Secure Payment":"Place Order")}</button>
           <p className="checkoutFinePrint">{type === "Event" ? "Your request will be saved for the LEVIEN team, shown in Admin notifications, and emailed to the store." : "Your order is saved securely and appears immediately in the LEVIEN order queue."}</p>
         </div>
       </form>}

@@ -57,6 +57,16 @@ Subscribe to:
 - `charge.refunded`
 
 Add `STRIPE_SECRET_KEY` and that endpoint's `STRIPE_WEBHOOK_SECRET` to Vercel.
+
+For online food orders, also set `NEXT_PUBLIC_ENABLE_ONLINE_ORDER_PAYMENT=true` only after:
+
+- the production site uses HTTPS and `NEXT_PUBLIC_SITE_URL` is its canonical origin;
+- `/api/payments/stripe/webhook` is configured for `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, and `charge.refunded`;
+- Visa and Mastercard are enabled in Stripe payment methods;
+- the production domain is registered and verified for Apple Pay in Stripe;
+- a real test order confirms that Admin receives the order only after payment changes it from `Pending Payment` to `New`.
+
+Card numbers and Apple Pay credentials remain on Stripe Checkout. LEVIEN stores only Stripe references and payment state, never raw card data.
 Use Stripe test mode first. Webhooks are authoritative; the success page performs
 an idempotent confirmation fallback but is not the only fulfillment path.
 
