@@ -10,6 +10,7 @@ import { saveOrder } from "@/lib/orders";
 import { useCustomerSession } from "@/components/CustomerSessionProvider";
 import type { CustomerAccountData, LoyaltyRewardView } from "@/types/account";
 import type { CustomerOrder, FulfillmentType } from "@/types";
+import { pickupDateTimeMinimum } from "@/lib/pickup-time";
 
 const money = (value: number) => `$${value.toFixed(2)}`;
 const promotionAttributionKey = "levien-promotion-attribution";
@@ -60,6 +61,9 @@ export default function CheckoutPage() {
   const [promotionQuote, setPromotionQuote] = useState<SalesPromotionQuote | null>(null);
   const [promotionLoading, setPromotionLoading] = useState(false);
   const [promotionRewardProductId, setPromotionRewardProductId] = useState("");
+  const [pickupTiming, setPickupTiming] = useState<"ASAP" | "Scheduled">("ASAP");
+  const [scheduledPickupTime, setScheduledPickupTime] = useState("");
+  const [pickupTimeMinimum, setPickupTimeMinimum] = useState(() => pickupDateTimeMinimum());
   const discountedSubtotal = Math.max(0, subtotal - Number(promotionQuote?.discount || 0));
   const tax = useMemo(() => discountedSubtotal * 0.08, [discountedSubtotal]);
   const deliveryFee = type === "Delivery" ? 3.99 : 0;
@@ -204,7 +208,7 @@ export default function CheckoutPage() {
       if(!cart.length)throw new Error("Add at least one item before placing an order.");
       const orderDetails = {
         firstName, lastName, phone, email, type: type as FulfillmentType,
-        pickupTime: type === "Pickup" ? String(data.get("pickupTime") || "ASAP") : undefined,
+        pickupTime: type === "Pickup" ? pickupTiming === "ASAP" ? "ASAP" : new Date(scheduledPickupTime).toISOString() : undefined,
         address: type === "Delivery" ? address : undefined,
         city: type === "Delivery" ? city : undefined,
         zip: type === "Delivery" ? zip : undefined,
@@ -316,12 +320,12 @@ export default function CheckoutPage() {
             <div className="checkoutCardHead"><span>02</span><div><h2>Order type</h2><p>Choose pickup, local delivery, or request an event.</p></div></div>
             <div className="fulfillmentOptions">
               {(["Pickup", "Delivery", "Event"] as const).map((option) => <label className={type === option ? "selected" : ""} key={option}>
-                <input type="radio" name="type" value={option} checked={type === option} onChange={() => { setType(option); setPaymentMethod(option === "Delivery" ? "Cash on Delivery" : "Pay at Store"); if (option === "Pickup") setErrors((current) => ({ firstName: current.firstName, lastName: current.lastName, phone: current.phone, email: current.email })); }} />
+                <input type="radio" name="type" value={option} checked={type === option} onChange={() => { setType(option); setPaymentMethod(option === "Delivery" ? "Cash on Delivery" : "Pay at Store"); if (option === "Pickup") { setPickupTiming("ASAP"); setScheduledPickupTime(""); setPickupTimeMinimum(pickupDateTimeMinimum()); setErrors((current) => ({ firstName: current.firstName, lastName: current.lastName, phone: current.phone, email: current.email })); } }} />
                 <span className="fulfillmentIcon" aria-hidden="true">{option === "Pickup" ? <svg viewBox="0 0 24 24"><path d="M4 10h16v10H4z"/><path d="M3 10 5 4h14l2 6"/><path d="M9 20v-6h6v6"/></svg> : option === "Delivery" ? <svg viewBox="0 0 24 24"><path d="M3 6h11v11H3z"/><path d="M14 9h4l3 4v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg> : <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>}</span>
                 <span><strong>{option === "Event"?"Book an Event":option}</strong><small>{option === "Pickup" ? "Collect at LEVIEN CAFE" : option === "Delivery" ? "Delivered to your address" : "Request a celebration or private gathering"}</small></span>
               </label>)}
             </div>
-            {type === "Event" ? <div className="checkoutFields twoColumns eventCheckoutFields"><label><span className="fieldLabel">Event name <span className="requiredMark">*</span></span><input name="eventName" required placeholder="Birthday celebration"/></label><label>Event type<input name="eventType" placeholder="Birthday, meeting, private party…"/></label><label><span className="fieldLabel">Event date <span className="requiredMark">*</span></span><input name="eventDate" type="date" required/></label><label><span className="fieldLabel">Start time <span className="requiredMark">*</span></span><input name="startTime" type="time" required/></label><label>End time<input name="endTime" type="time"/></label><label>Expected guests<input name="guestCount" type="number" min="1" max="1000"/></label><label className="wide">Event details<textarea name="eventNotes" rows={4} placeholder="Tell us what you would like to arrange…"/></label><p className="wide eventCheckoutNotice">This sends an event request to our team. It does not place or charge your current food order.</p></div> : type === "Pickup" ? <div className="checkoutFields"><label>Pickup time<select name="pickupTime" defaultValue="ASAP"><option>ASAP</option><option>In 15 minutes</option><option>In 30 minutes</option><option>In 45 minutes</option></select></label></div> : <div className="checkoutFields twoColumns deliveryFields">
+            {type === "Event" ? <div className="checkoutFields twoColumns eventCheckoutFields"><label><span className="fieldLabel">Event name <span className="requiredMark">*</span></span><input name="eventName" required placeholder="Birthday celebration"/></label><label>Event type<input name="eventType" placeholder="Birthday, meeting, private party…"/></label><label><span className="fieldLabel">Event date <span className="requiredMark">*</span></span><input name="eventDate" type="date" required/></label><label><span className="fieldLabel">Start time <span className="requiredMark">*</span></span><input name="startTime" type="time" required/></label><label>End time<input name="endTime" type="time"/></label><label>Expected guests<input name="guestCount" type="number" min="1" max="1000"/></label><label className="wide">Event details<textarea name="eventNotes" rows={4} placeholder="Tell us what you would like to arrange…"/></label><p className="wide eventCheckoutNotice">This sends an event request to our team. It does not place or charge your current food order.</p></div> : type === "Pickup" ? <div className="checkoutFields pickupTimeFields"><fieldset className="pickupTimingChoices"><legend>When would you like to pick up?</legend><label><input type="radio" name="pickupTiming" value="ASAP" checked={pickupTiming === "ASAP"} onChange={() => setPickupTiming("ASAP")}/><span><strong>ASAP</strong><small>Prepare my order as soon as possible</small></span></label><label><input type="radio" name="pickupTiming" value="Scheduled" checked={pickupTiming === "Scheduled"} onChange={() => { setPickupTiming("Scheduled"); setPickupTimeMinimum(pickupDateTimeMinimum()); }}/><span><strong>Choose a pickup time</strong><small>Select the date and time you will arrive</small></span></label></fieldset>{pickupTiming === "Scheduled" && <label className="scheduledPickupField"><span className="fieldLabel">Pickup date and time <span className="requiredMark">*</span></span><input type="datetime-local" name="scheduledPickupTime" min={pickupTimeMinimum} value={scheduledPickupTime} onChange={(event) => setScheduledPickupTime(event.target.value)} required/><small>This pickup time will be shown to our staff on the order and printed labels.</small></label>}</div> : <div className="checkoutFields twoColumns deliveryFields">
               <label className="wide">
                 <span className="fieldLabel">Street address <span className="requiredMark">*</span></span>
                 <input name="address" autoComplete="street-address" aria-invalid={Boolean(errors.address)} aria-describedby={errors.address ? "address-error" : undefined} onChange={() => clearError("address")} />
