@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import NormalizedProductImage from "@/components/NormalizedProductImage";
 import { useStore } from "@/components/StoreProvider";
 import type { Combo, ComboProductSelection, Product, ProductTopping } from "@/types";
 
@@ -82,9 +83,10 @@ export function ComboCustomizer({ combo, products, close }: { combo: Combo; prod
         {unavailable && <div className="comboUnavailable">This combo is currently unavailable because one of its items is sold out or missing.</div>}
         {comboProducts.map((product, index) => {
           const selection = selections[product.id];
+          const isDrink = /(coffee|tea|matcha|smoothie|shake|drink)/i.test(product.category);
           return <section className="comboProductBlock" key={product.id}>
             <div className="comboProductHeading">
-              <span>{product.image ? <img src={product.image} alt="" /> : product.emoji}</span>
+              <span>{product.image ? isDrink ? <NormalizedProductImage src={product.image} alt={product.name} normalize /> : <img src={product.image} alt="" /> : product.emoji}</span>
               <div><small>Item {index + 1}</small><h3>{product.name}</h3></div>
               {product.soldOut && <b>Sold out</b>}
             </div>

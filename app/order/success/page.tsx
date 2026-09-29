@@ -8,6 +8,7 @@ import { OrderTrackingQr } from "@/components/OrderTrackingQr";
 import { readOrders } from "@/lib/orders";
 import type { CustomerOrder } from "@/types";
 import { useStore } from "@/components/StoreProvider";
+import { formatPickupTime } from "@/lib/pickup-time";
 
 type ConfirmedPaymentOrder = { trackingToken: string; orderNumber: string; firstName: string; type: "Pickup" | "Delivery"; pickupTime: string | null; total: number; amountDue: number; giftCardAmount: number; loyaltyDiscount: number; paymentStatus: string; status: string };
 
@@ -48,7 +49,7 @@ export default function OrderSuccessPage() {
         <div className="orderResultNumber"><span>Order number</span><strong>{display?.id || (paymentError ? "Pending confirmation" : "Loading…")}</strong></div>
         <div className="orderResultDetails">
           <div><span>Order type</span><strong>{display?.type || "—"}</strong></div>
-          <div><span>Estimated ready</span><strong>{display?.type === "Delivery" ? "30–45 minutes" : display?.pickupTime === "ASAP" ? "15–20 minutes" : display?.pickupTime || "15–20 minutes"}</strong></div>
+          <div><span>{display?.type === "Pickup" ? "Pickup time" : "Estimated ready"}</span><strong>{display?.type === "Delivery" ? "30–45 minutes" : display?.pickupTime === "ASAP" ? "ASAP · about 15–20 minutes" : formatPickupTime(display?.pickupTime) || "15–20 minutes"}</strong></div>
           <div><span>{display?.giftCardAmount || display?.loyaltyDiscount ? "Amount paid / due" : "Total"}</span><strong>{display ? `$${(display.amountDue ?? display.total).toFixed(2)}` : "—"}</strong>{Boolean(display?.giftCardAmount) && <small>Gift Card applied: −${display?.giftCardAmount?.toFixed(2)}</small>}{Boolean(display?.loyaltyDiscount) && <small>Member reward: −${display?.loyaltyDiscount?.toFixed(2)}</small>}</div>
         </div>
         <div className="orderResultActions">

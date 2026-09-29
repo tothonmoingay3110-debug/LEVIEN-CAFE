@@ -8,6 +8,7 @@ import type { CartItem, FulfillmentType, ProductTopping } from "@/types";
 import type { Json } from "@/types/database.types";
 import { quoteBestSalesPromotion } from "@/lib/sales-promotions";
 import { getSiteOrigin, getStripe } from "@/lib/stripe";
+import { normalizePickupTime } from "@/lib/pickup-time";
 
 type CheckoutOrderRequest = {
   firstName: string; lastName: string; phone: string; email?: string;
@@ -138,6 +139,7 @@ export async function POST(request: Request) {
   const note = text(body.note);
   const giftCardRaw = text(body.giftCardCode);
   const giftCardCode = giftCardRaw ? normalizeGiftCardCode(giftCardRaw) : null;
+  const pickupTime = fulfillmentType === "Pickup" ? normalizePickupTime(body.pickupTime) : null;
 
   const validPhone = !phoneNormalized || (phoneNormalized.length >= 10 && phoneNormalized.length <= 15);
   const validContact = fulfillmentType !== "Delivery" || Boolean(phoneNormalized || email);
@@ -146,7 +148,7 @@ export async function POST(request: Request) {
       (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ||
       !["Pickup", "Delivery"].includes(fulfillmentType) || subtotal === null || tax === null ||
       deliveryFee === null || total === null || items === null || note.length > 1000 ||
-      (giftCardRaw && !giftCardCode)) {
+      (fulfillmentType === "Pickup" && !pickupTime) || (giftCardRaw && !giftCardCode)) {
     return NextResponse.json({ error: "Invalid order details." }, { status: 400 });
   }
 
@@ -208,7 +210,7 @@ export async function POST(request: Request) {
       p_first_name: firstName, p_last_name: lastName, p_phone: phone,
       p_phone_normalized: orderPhoneKey, p_email: email || null,
       p_fulfillment_type: fulfillmentType,
-      p_pickup_time: fulfillmentType === "Pickup" ? text(body.pickupTime) || "ASAP" : null,
+      p_pickup_time: fulfillmentType === "Pickup" ? pickupTime : null,
       p_address: fulfillmentType === "Delivery" ? address : null,
       p_city: fulfillmentType === "Delivery" ? city : null,
       p_zip: fulfillmentType === "Delivery" ? zip : null,
