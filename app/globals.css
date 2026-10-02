@@ -2458,9 +2458,13 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .contactMessageCard.status-new > header b { background: #fff3cd; color: #715615; }
 .contactMessageCard.status-in_progress > header b { background: #e9f4fd; color: #28658f; }
 .contactMessageCard.status-resolved > header b { background: #e8f7ee; color: #267249; }
-.contactMessageDetails { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 0 20px; }
-.contactMessageDetails a { color: #21684e; font-size: 10px; font-weight: 750; }
-.contactMessageCard > p { margin: 14px 20px 18px; color: #4f635a; font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.contactMessageDetails { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; padding: 0 20px; }
+.contactMessageDetails > div { display: grid; gap: 4px; min-width: 0; padding: 9px 10px; border: 1px solid #e3ebe6; border-radius: 10px; background: #fbfdfb; }
+.contactMessageDetails > div:last-child { grid-column: span 2; }
+.contactMessageDetails small,.contactMessageBody > small { color: #718078; font-size: 10px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+.contactMessageDetails a,.contactMessageDetails span { color: #173f31; font-size: 13px; font-weight: 750; line-height: 1.45; overflow-wrap: anywhere; }
+.contactMessageBody { margin: 14px 20px 18px; padding: 12px 14px; border-radius: 10px; background: #f6f9f7; }
+.contactMessageBody p { margin: 6px 0 0; color: #4f635a; font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 .contactMessageManage { display: grid; grid-template-columns: minmax(145px,.36fr) minmax(260px,1fr) auto; align-items: end; gap: 12px; padding: 15px 20px 19px; border-top: 1px solid #edf1ee; background: #fafcfb; }
 .contactMessageManage label { display: grid; gap: 6px; color: #687b72; font-size: 9px; font-weight: 850; text-transform: uppercase; letter-spacing: .06em; }
 .contactMessageManage select,.contactMessageManage textarea { width: 100%; border: 1px solid #dce5df; border-radius: 10px; outline: none; background: #fff; color: #263d34; padding: 9px 10px; font: inherit; font-size: 10px; text-transform: none; letter-spacing: 0; }
@@ -2490,8 +2494,8 @@ button,input,textarea,select{font-family:var(--font-ui)}
   .contactInfoGrid > * { grid-template-columns: 88px minmax(0,1fr); }
   .contactMessageCard > header { grid-template-columns: auto minmax(0,1fr); padding-left: 15px; padding-right: 15px; }
   .contactMessageCard > header b { grid-column: 1/-1; justify-self: start; }
-  .contactMessageDetails { padding: 0 15px; }
-  .contactMessageCard > p { margin-left: 15px; margin-right: 15px; }
+  .contactMessageDetails { grid-template-columns: repeat(2,minmax(0,1fr)); padding: 0 15px; }
+  .contactMessageBody { margin-left: 15px; margin-right: 15px; }
   .contactMessageManage { grid-template-columns: 1fr; padding-left: 15px; padding-right: 15px; }
   .contactMessageManage .adminPrimary { grid-column: auto; }
 }
@@ -3472,6 +3476,10 @@ button,input,textarea,select{font-family:var(--font-ui)}
     background:transparent;
   }
 }
+@media(max-width:600px){
+  .contactMessageDetails { grid-template-columns: 1fr; }
+  .contactMessageDetails > div:last-child { grid-column: auto; }
+}
 
 /* Keep designed and uploaded homepage slides the same size on phones. */
 @media(max-width:650px) {
@@ -3608,3 +3616,14 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .pickupTimeFields{gap:16px}.pickupTimingChoices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0;padding:0;border:0}.pickupTimingChoices legend{grid-column:1/-1;margin-bottom:2px;color:#31463d;font-size:13px;font-weight:800}.pickupTimingChoices label{display:flex;align-items:flex-start;gap:10px;padding:13px;border:1px solid #dbe3de;border-radius:13px;background:#fbfcfb;cursor:pointer}.pickupTimingChoices label:has(input:checked){border-color:#4f8b78;background:#edf6f1;box-shadow:0 0 0 2px rgba(79,139,120,.1)}.pickupTimingChoices input{width:17px;height:17px;margin:2px 0 0;accent-color:#4f8b78}.pickupTimingChoices span{display:grid;gap:3px}.pickupTimingChoices strong{font-size:13px}.pickupTimingChoices small,.scheduledPickupField small{margin:0!important;color:#65766e!important;font-weight:500!important;line-height:1.45}.scheduledPickupField{max-width:560px}.adminPickupBadge{display:inline-flex;width:max-content;margin-top:5px;padding:5px 8px;border-radius:999px;background:#fff0bd;color:#704d00;font-size:10px;line-height:1}.adminPickupNotice{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:14px 0;padding:14px 16px;border:1px solid #e5bb3b;border-radius:14px;background:#fff7d9;color:#523b00}.adminPickupNotice span{font-size:10px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}.adminPickupNotice strong{font-family:Georgia,serif;font-size:22px}
 
 @media(max-width:650px){.pickupTimingChoices{grid-template-columns:1fr}.adminPickupNotice{align-items:flex-start;flex-direction:column;gap:6px}}
+
+.franchiseSuccessBackdrop{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(17,37,30,.58);backdrop-filter:blur(7px)}
+.franchiseSuccessModal{width:min(480px,100%);padding:38px;text-align:center;border:1px solid #d8e6df;border-radius:26px;background:#fff;box-shadow:0 28px 80px rgba(14,46,35,.28);animation:franchiseSuccessIn .25s ease-out}
+.franchiseSuccessIcon{display:grid;place-items:center;width:66px;height:66px;margin:0 auto 18px;border-radius:50%;background:#e3f3eb;color:#247354;font-size:31px;font-weight:900}
+.franchiseSuccessModal>small{color:#9d7318;font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.franchiseSuccessModal h2{margin:10px 0 12px;color:#182d25;font:700 34px/1.08 Georgia,serif;letter-spacing:-.025em}
+.franchiseSuccessModal p{margin:0 auto 24px;color:#60736b;font-size:15px;line-height:1.65}
+.franchiseSuccessModal .button{width:100%;justify-content:center}
+.franchiseRedirectNote{display:block;margin-top:13px;color:#83918b;font-size:11px}
+@keyframes franchiseSuccessIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+@media(max-width:600px){.franchiseSuccessModal{padding:30px 22px;border-radius:22px}.franchiseSuccessModal h2{font-size:29px}}

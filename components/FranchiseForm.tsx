@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export function FranchiseForm() {
+  const router = useRouter();
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (state !== "sent") return;
+    const redirect = window.setTimeout(() => router.push("/"), 3500);
+    return () => window.clearTimeout(redirect);
+  }, [router, state]);
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setState("sending"); setError("");
     const form = event.currentTarget;
@@ -31,8 +39,17 @@ export function FranchiseForm() {
       <label className="contactHoneypot" aria-hidden="true">Company<input name="company" tabIndex={-1} autoComplete="off" /></label>
     </div>
     {error && <div className="contactFormError" role="alert">{error}</div>}
-    {state === "sent" && <div className="contactFormSuccess" role="status"><span>✓</span><div><strong>Inquiry received</strong><small>The LEVIEN team will contact you soon.</small></div></div>}
     <button className="button primary contactSubmit" disabled={state === "sending"}>{state === "sending" ? "Sending…" : "Send Franchise Inquiry"}</button>
     <small className="contactPrivacy">Your details are used only to evaluate and respond to this franchise inquiry.</small>
+    {state === "sent" && <div className="franchiseSuccessBackdrop" role="presentation">
+      <section className="franchiseSuccessModal" role="dialog" aria-modal="true" aria-labelledby="franchise-success-title" aria-describedby="franchise-success-description">
+        <span className="franchiseSuccessIcon" aria-hidden="true">✓</span>
+        <small>Franchise inquiry</small>
+        <h2 id="franchise-success-title">Thank you for reaching out!</h2>
+        <p id="franchise-success-description">Your inquiry was sent successfully. The LEVIEN team will review your information and contact you soon.</p>
+        <button className="button primary" type="button" onClick={() => router.push("/")}>Back to Home</button>
+        <span className="franchiseRedirectNote">Returning to the homepage automatically…</span>
+      </section>
+    </div>}
   </form>;
 }

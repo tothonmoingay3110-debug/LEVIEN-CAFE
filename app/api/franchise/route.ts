@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { escapeHtml, sendNotificationEmail } from "@/lib/notification-email";
 
 const models = new Set(["Café / dine-in shop", "Takeaway / express shop", "Food truck", "Mobile cart / trailer", "Kiosk", "Shop-in-shop / food court", "Drive-thru"]);
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -22,9 +23,14 @@ export async function POST(request: Request) {
     if (location.length < 2) return NextResponse.json({ error: "Please enter your proposed location." }, { status: 400 });
     if (!models.has(franchiseModel)) return NextResponse.json({ error: "Please choose a franchise model." }, { status: 400 });
     if (!products.length) return NextResponse.json({ error: "Please choose at least one product." }, { status: 400 });
-    const { error } = await createAdminClient().from("contact_messages").insert({ name, phone, email: email || null, subject: "Franchise inquiry", message, location, franchise_model: franchiseModel, franchise_products: products, status: "new", admin_note: "", handled_by: null, handled_at: null });
+    const db = createAdminClient();
+    const { data: saved, error } = await db.from("contact_messages").insert({ name, phone, email: email || null, subject: "Franchise inquiry", message, location, franchise_model: franchiseModel, franchise_products: products, status: "new", admin_note: "", handled_by: null, handled_at: null }).select("id").single();
     if (error) throw error;
-    return NextResponse.json({ received: true }, { status: 201, headers: { "Cache-Control": "no-store" } });
+    const { data: content } = await db.from("site_content").select("email").eq("singleton_key", "main").maybeSingle();
+    const to = content?.email || process.env.CONTACT_TO_EMAIL?.trim() || "";
+    let emailStatus = "not_configured";
+    try { emailStatus = (await sendNotificationEmail({ to, idempotencyKey: `franchise/${saved.id}`, subject: `New franchise inquiry · ${name}`, html: `<div style="font-family:Arial,sans-serif;color:#153b2e"><p><b>LEVIEN CAFE</b></p><h1>New franchise inquiry</h1><p><b>Name:</b> ${escapeHtml(name)}</p><p><b>Email:</b> ${escapeHtml(email || "Not provided")}</p><p><b>Phone:</b> ${escapeHtml(phone)}</p><p><b>Location:</b> ${escapeHtml(location)}</p><p><b>Model:</b> ${escapeHtml(franchiseModel)}</p><p><b>Products:</b> ${escapeHtml(products.join(", "))}</p><p><b>Message:</b><br>${escapeHtml(message || "No additional details")}</p></div>` })).status; } catch (mailError) { console.error("Unable to email franchise inquiry:", mailError); emailStatus = "failed"; }
+    return NextResponse.json({ received: true, emailSent: emailStatus === "sent" }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Unable to save franchise inquiry:", error);
     return NextResponse.json({ error: "We could not send your inquiry. Please try again." }, { status: 500 });

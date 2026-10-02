@@ -37,7 +37,9 @@ export async function POST(request:Request){
     if(error) throw error;
     await (db.from("admin_notifications" as any) as any).insert({kind:"event_booking",title:"New event booking",message:`${eventName} · ${eventDate} ${startTime}`,target_view:"eventbookings",target_id:data.id}).then(()=>undefined).catch(()=>undefined);
     const {data:content}=await db.from("site_content").select("email").eq("singleton_key","main").maybeSingle();
-    await sendEventBookingEmail({id:data.id,referenceCode:data.reference_code,eventName,eventDate,startTime,customerName,customerPhone,customerEmail,guestCount:Number.isInteger(guestCount)?guestCount:null,notes,proposedOrder:order,to:content?.email||process.env.EVENT_BOOKING_TO_EMAIL?.trim()||""}).catch((mailError)=>console.error("Unable to email event booking:",mailError));
-    return NextResponse.json({received:true,referenceCode:data.reference_code},{status:201});
+    const to=content?.email||process.env.EVENT_BOOKING_TO_EMAIL?.trim()||"";
+    let emailStatus="not_configured";
+    try { emailStatus=(await sendEventBookingEmail({id:data.id,referenceCode:data.reference_code,eventName,eventDate,startTime,customerName,customerPhone,customerEmail,guestCount:Number.isInteger(guestCount)?guestCount:null,notes,proposedOrder:order,to})).status; } catch (mailError) { console.error("Unable to email event booking:",mailError); emailStatus="failed"; }
+    return NextResponse.json({received:true,referenceCode:data.reference_code,emailSent:emailStatus === "sent"},{status:201});
   }catch(error){ console.error("Unable to save event booking request:",error); return NextResponse.json({error:"Unable to submit your event request."},{status:500}); }
 }

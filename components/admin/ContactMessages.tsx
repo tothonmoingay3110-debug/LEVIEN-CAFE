@@ -72,7 +72,7 @@ export default function ContactMessages({ notify }: { notify: (message: string) 
     const term = query.trim().toLowerCase();
     return messages.filter((item) => {
       const matchesFilter = filter === "all" || (filter === "active" ? item.status !== "archived" : item.status === filter);
-      const matchesQuery = !term || `${item.name} ${item.email} ${item.phone} ${item.subject} ${item.message}`.toLowerCase().includes(term);
+      const matchesQuery = !term || `${item.name} ${item.email} ${item.phone} ${item.subject} ${item.message} ${item.location} ${item.franchiseModel} ${item.products?.join(" ") || ""}`.toLowerCase().includes(term);
       return matchesFilter && matchesQuery;
     });
   }, [filter, messages, query]);
@@ -115,8 +115,14 @@ export default function ContactMessages({ notify }: { notify: (message: string) 
     <section className="contactMessageList">
       {filteredMessages.map((item) => <article className={`contactMessageCard status-${item.status}`} key={item.id}>
         <header><div className="contactMessageAvatar">{item.name.trim().charAt(0).toUpperCase() || "?"}</div><div><span>{item.subject}</span><h3>{item.name}</h3><small>{new Date(item.createdAt).toLocaleString()}</small></div><b>{statusLabels[item.status]}</b></header>
-        <div className="contactMessageDetails">{item.email && <a href={`mailto:${item.email}`}>{item.email}</a>}<a href={`tel:${item.phone.replace(/[^+\d]/g, "")}`}>{item.phone}</a><span>{item.location}</span><span>{item.franchiseModel}</span><span>{item.products?.join(" + ")}</span></div>
-        <p>{item.message}</p>
+        <div className="contactMessageDetails">
+          {item.email && <div><small>Email</small><a href={`mailto:${item.email}`}>{item.email}</a></div>}
+          <div><small>Phone</small><a href={`tel:${item.phone.replace(/[^+\d]/g, "")}`}>{item.phone || "Not provided"}</a></div>
+          <div><small>Preferred location</small><span>{item.location || "Not provided"}</span></div>
+          <div><small>Franchise model</small><span>{item.franchiseModel || "Not provided"}</span></div>
+          <div><small>Products</small><span>{item.products?.length ? item.products.join(" + ") : "Not provided"}</span></div>
+        </div>
+        <div className="contactMessageBody"><small>Customer message</small><p>{item.message || "No message provided."}</p></div>
         <div className="contactMessageManage">
           <label>Status<select value={item.status} onChange={(event) => editMessage(item.id, { status: event.target.value as ContactStatus })}>{statuses.map((status) => <option value={status} key={status}>{statusLabels[status]}</option>)}</select></label>
           <label>Internal note<textarea value={item.adminNote} maxLength={1000} rows={2} placeholder="Add a private follow-up note…" onChange={(event) => editMessage(item.id, { adminNote: event.target.value })} /></label>
