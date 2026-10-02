@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { escapeHtml, sendNotificationEmail } from "@/lib/notification-email";
 
 const subjects = new Set(["General question", "Order support", "Catering", "Franchise inquiry", "Feedback", "Other"]);
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -46,7 +47,8 @@ export async function POST(request: Request) {
     if (!subjects.has(subject)) return NextResponse.json({ error: "Please choose a valid subject." }, { status: 400 });
     if (message.length < 10) return NextResponse.json({ error: "Please enter at least 10 characters." }, { status: 400 });
 
-    const { error } = await createAdminClient().from("contact_messages").insert({
+    const db = createAdminClient();
+    const { data: saved, error } = await db.from("contact_messages").insert({
       name,
       email,
       phone,
@@ -56,11 +58,15 @@ export async function POST(request: Request) {
       admin_note: "",
       handled_by: null,
       handled_at: null,
-    });
+    }).select("id").single();
     if (error) throw error;
 
+    const { data: content } = await db.from("site_content").select("email").eq("singleton_key", "main").maybeSingle();
+    const to = content?.email || process.env.CONTACT_TO_EMAIL?.trim() || "";
+    let emailStatus = "not_configured";
+    try { emailStatus = (await sendNotificationEmail({ to, idempotencyKey: `contact/${saved.id}`, subject: `New contact message · ${subject}`, html: `<div style="font-family:Arial,sans-serif;color:#153b2e"><p><b>LEVIEN CAFE</b></p><h1>New contact message</h1><p><b>Name:</b> ${escapeHtml(name)}</p><p><b>Email:</b> ${escapeHtml(email)}</p><p><b>Phone:</b> ${escapeHtml(phone || "Not provided")}</p><p><b>Subject:</b> ${escapeHtml(subject)}</p><p><b>Message:</b><br>${escapeHtml(message)}</p></div>` })).status; } catch (mailError) { console.error("Unable to email contact message:", mailError); emailStatus = "failed"; }
     return NextResponse.json(
-      { received: true },
+      { received: true, emailSent: emailStatus === "sent" },
       { status: 201, headers: { "Cache-Control": "no-store, max-age=0" } },
     );
   } catch (error) {
