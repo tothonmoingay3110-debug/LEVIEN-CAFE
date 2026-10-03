@@ -4,6 +4,7 @@ export default defineConfig({
   worker: defineWorker({
     name: "levien-cafe",
     entrypoint: "vinext/server/fetch-handler",
+    domains: ["leviencafe.com"],
     compatibilityDate: "2026-10-03",
     compatibilityFlags: ["nodejs_compat"],
     assets: { notFoundHandling: "none" },
