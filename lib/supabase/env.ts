@@ -1,5 +1,12 @@
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+// Cloudflare Workers bindings are available at runtime, while the browser
+// bundle needs a public Supabase config during the build step. Keep the
+// public production values as a safe fallback; local/.env values still win.
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ??
+  "https://hvlsahxqfdinvgosegmo.supabase.co";
+const supabasePublishableKey =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  "sb_publishable_CW9aPggAnmGNEqAq-aOlog_tHKa5BOq";
 
 export function getSupabaseEnvironment() {
   if (!supabaseUrl || !supabasePublishableKey) {
