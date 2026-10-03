@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     if (!models.has(franchiseModel)) return NextResponse.json({ error: "Please choose a franchise model." }, { status: 400 });
     if (!products.length) return NextResponse.json({ error: "Please choose at least one product." }, { status: 400 });
     const db = createAdminClient();
-    const inquiry = { name, phone, email: email || null, subject: "Franchise inquiry", message: message || null, location, franchise_model: franchiseModel, franchise_products: products, status: "new", admin_note: "", handled_by: null, handled_at: null };
+    const inquiry = { name, phone, email: email || null, subject: "Franchise inquiry", message: message || null, location, franchise_model: franchiseModel, franchise_products: products, status: "new" as const, admin_note: "", handled_by: null, handled_at: null };
     let { data: saved, error } = await db.from("contact_messages").insert(inquiry).select("id").single();
     // Older production schemas required messages to contain at least 10 characters,
     // even though the franchise form correctly treats the field as optional. Keep
