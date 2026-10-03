@@ -28,18 +28,21 @@ export async function POST(request:Request){
     if(eventName.length<2) return NextResponse.json({error:"Enter the event name."},{status:400});
     if(!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)||!/^\d{2}:\d{2}$/.test(startTime)) return NextResponse.json({error:"Choose a valid event date and time."},{status:400});
     if(endTime && !/^\d{2}:\d{2}$/.test(endTime)) return NextResponse.json({error:"Choose a valid end time."},{status:400});
+    if(endTime && endTime === startTime) return NextResponse.json({error:"End time must be different from start time."},{status:400});
     if(!customerName && !customerPhone) return NextResponse.json({error:"Enter your name or phone number."},{status:400});
     if(customerEmail && !/^\S+@\S+\.\S+$/.test(customerEmail)) return NextResponse.json({error:"Enter a valid email address."},{status:400});
     const guestCount=body.guestCount ? Number(body.guestCount) : null;
     const order=proposedOrder(body.items);
+    const endsNextDay=Boolean(endTime && endTime < startTime);
+    const storedNotes=endsNextDay ? [`Ends next day at ${endTime}.`,notes].filter(Boolean).join("\n\n").slice(0,2000) : notes;
     const db=createAdminClient();
-    const {data,error}=await (db.from("event_booking_requests" as any) as any).insert({event_name:eventName,event_type:eventType,event_date:eventDate,start_time:startTime,end_time:endTime||null,customer_name:customerName,customer_phone:customerPhone,customer_email:customerEmail||null,guest_count:Number.isInteger(guestCount)?guestCount:null,notes,status:"new",proposed_order:order}).select("id,reference_code").single();
+    const {data,error}=await (db.from("event_booking_requests" as any) as any).insert({event_name:eventName,event_type:eventType,event_date:eventDate,start_time:startTime,end_time:endsNextDay?null:endTime||null,customer_name:customerName,customer_phone:customerPhone,customer_email:customerEmail||null,guest_count:Number.isInteger(guestCount)?guestCount:null,notes:storedNotes,status:"new",proposed_order:order}).select("id,reference_code").single();
     if(error) throw error;
     await (db.from("admin_notifications" as any) as any).insert({kind:"event_booking",title:"New event booking",message:`${eventName} · ${eventDate} ${startTime}`,target_view:"eventbookings",target_id:data.id}).then(()=>undefined).catch(()=>undefined);
     const {data:content}=await db.from("site_content").select("email").eq("singleton_key","main").maybeSingle();
     const to=content?.email||process.env.EVENT_BOOKING_TO_EMAIL?.trim()||"";
     let emailStatus="not_configured";
-    try { emailStatus=(await sendEventBookingEmail({id:data.id,referenceCode:data.reference_code,eventName,eventDate,startTime,customerName,customerPhone,customerEmail,guestCount:Number.isInteger(guestCount)?guestCount:null,notes,proposedOrder:order,to})).status; } catch (mailError) { console.error("Unable to email event booking:",mailError); emailStatus="failed"; }
+    try { emailStatus=(await sendEventBookingEmail({id:data.id,referenceCode:data.reference_code,eventName,eventDate,startTime,endTime,endsNextDay,customerName,customerPhone,customerEmail,guestCount:Number.isInteger(guestCount)?guestCount:null,notes,proposedOrder:order,to})).status; } catch (mailError) { console.error("Unable to email event booking:",mailError); emailStatus="failed"; }
     return NextResponse.json({received:true,referenceCode:data.reference_code,emailSent:emailStatus === "sent"},{status:201});
   }catch(error){ console.error("Unable to save event booking request:",error); return NextResponse.json({error:"Unable to submit your event request."},{status:500}); }
 }
