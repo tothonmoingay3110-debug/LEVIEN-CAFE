@@ -8,24 +8,37 @@
     "start": "next start",
     "lint": "next lint",
     "verify:production": "node scripts/verify-production.mjs",
-    "smoke:production": "node scripts/smoke-production.mjs"
+    "smoke:production": "node scripts/smoke-production.mjs",
+    "dev:vinext": "vite dev --port 3001",
+    "build:vinext": "vite build",
+    "start:vinext": "vite preview",
+    "deploy:vinext": "vinext-cloudflare deploy"
   },
   "dependencies": {
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
-    "next": "^16.3.2",
+    "@vinext/cloudflare": "^1.0.1",
+    "next": "^16.3.6",
     "qrcode": "^1.5.4",
     "react": "latest",
     "react-dom": "latest",
-    "stripe": "^22.5.0"
+    "react-server-dom-webpack": "^19.3.0",
+    "stripe": "^22.5.0",
+    "vinext": "^1.0.1"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^2.0.0-beta.sha-52b0dc0e9",
     "@types/node": "latest",
     "@types/qrcode": "^1.5.6",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@vitejs/plugin-rsc": "^0.5.35",
+    "cf": "^1.0.0-beta.12",
     "eslint": "latest",
-    "eslint-config-next": "^16.3.2",
-    "typescript": "latest"
-  }
+    "eslint-config-next": "^16.3.6",
+    "typescript": "latest",
+    "vite": "^8.3.0"
+  },
+  "type": "module"
 }
