@@ -100,10 +100,28 @@ if (healthResponse?.ok) {
 
 await request("/api/orders/track?token=invalid", 400);
 await request("/api/contact", 405);
+await request("/api/franchise", 405);
 await request("/api/admin/contact-messages", 401);
 await request("/api/gift-cards/balance", 405);
 await request("/api/admin/gift-cards", 401);
 await request("/api/account", 401);
+await request("/api/sales-promotions", 200);
+await request("/api/account/session", 200);
+await request("/api/member-lookup", 403, {
+  method: "POST",
+  body: "{}",
+  headers: { "User-Agent": "LEVIEN-CAFE-production-smoke-test", "Content-Type": "application/json" },
+});
+await request("/api/promotions/events", 403, {
+  method: "POST",
+  body: "{}",
+  headers: { "User-Agent": "LEVIEN-CAFE-production-smoke-test", "Content-Type": "application/json" },
+});
+await request("/api/event-bookings", 403, {
+  method: "POST",
+  body: "{}",
+  headers: { "User-Agent": "LEVIEN-CAFE-production-smoke-test", "Content-Type": "application/json" },
+});
 await request("/api/payments/stripe/webhook", 400, { method: "POST", body: "{}", headers: { "User-Agent": "LEVIEN-CAFE-production-smoke-test", "Content-Type": "application/json" } });
 
 const displayResponse = await request("/api/orders/display", 200);

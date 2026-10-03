@@ -921,7 +921,7 @@ create table if not exists public.contact_messages (
   constraint contact_messages_email_length check (length(trim(email)) between 3 and 254),
   constraint contact_messages_phone_length check (length(phone) <= 30),
   constraint contact_messages_subject_length check (length(trim(subject)) between 2 and 80),
-  constraint contact_messages_message_length check (length(trim(message)) between 10 and 2000),
+  constraint contact_messages_message_length check (message is null or length(trim(message)) between 1 and 2000),
   constraint contact_messages_note_length check (length(admin_note) <= 1000),
   constraint contact_messages_status_valid check (status in ('new', 'in_progress', 'resolved', 'archived'))
 );
