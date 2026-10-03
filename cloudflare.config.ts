@@ -5,6 +5,8 @@ export default defineConfig({
     name: "levien-cafe",
     entrypoint: "vinext/server/fetch-handler",
     domains: ["leviencafe.com"],
+    workersDev: true,
+    previewUrls: true,
     compatibilityDate: "2026-10-03",
     compatibilityFlags: ["nodejs_compat"],
     assets: { notFoundHandling: "none" },
