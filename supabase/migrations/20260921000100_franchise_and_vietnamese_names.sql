@@ -2,6 +2,9 @@ alter table public.products add column if not exists vietnamese_name text not nu
 
 alter table public.contact_messages alter column email drop not null;
 alter table public.contact_messages alter column message drop not null;
+alter table public.contact_messages drop constraint if exists contact_messages_message_length;
+alter table public.contact_messages add constraint contact_messages_message_length
+  check (message is null or length(trim(message)) between 1 and 2000);
 alter table public.contact_messages add column if not exists location text not null default '';
 alter table public.contact_messages add column if not exists franchise_model text not null default '';
 alter table public.contact_messages add column if not exists franchise_products text[] not null default '{}'::text[];

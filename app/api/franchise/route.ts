@@ -24,8 +24,17 @@ export async function POST(request: Request) {
     if (!models.has(franchiseModel)) return NextResponse.json({ error: "Please choose a franchise model." }, { status: 400 });
     if (!products.length) return NextResponse.json({ error: "Please choose at least one product." }, { status: 400 });
     const db = createAdminClient();
-    const { data: saved, error } = await db.from("contact_messages").insert({ name, phone, email: email || null, subject: "Franchise inquiry", message, location, franchise_model: franchiseModel, franchise_products: products, status: "new", admin_note: "", handled_by: null, handled_at: null }).select("id").single();
-    if (error) throw error;
+    const inquiry = { name, phone, email: email || null, subject: "Franchise inquiry", message: message || null, location, franchise_model: franchiseModel, franchise_products: products, status: "new", admin_note: "", handled_by: null, handled_at: null };
+    let { data: saved, error } = await db.from("contact_messages").insert(inquiry).select("id").single();
+    // Older production schemas required messages to contain at least 10 characters,
+    // even though the franchise form correctly treats the field as optional. Keep
+    // short notes in the subject until the accompanying migration is applied.
+    if (error?.code === "23514" && message.length > 0 && message.length < 10 && error.message.includes("contact_messages_message_length")) {
+      const retry = await db.from("contact_messages").insert({ ...inquiry, subject: `Franchise inquiry · ${message}`, message: null }).select("id").single();
+      saved = retry.data;
+      error = retry.error;
+    }
+    if (error || !saved) throw error || new Error("Unable to save franchise inquiry.");
     const { data: content } = await db.from("site_content").select("email").eq("singleton_key", "main").maybeSingle();
     const to = content?.email || process.env.CONTACT_TO_EMAIL?.trim() || "";
     let emailStatus = "not_configured";
