@@ -10,6 +10,8 @@ export default defineConfig({
     env: {
       ASSETS: bindings.assets(),
       NEXT_PUBLIC_SITE_URL: bindings.text("https://leviencafe.com"),
+      NEXT_PUBLIC_SUPABASE_URL: bindings.text("https://hvlsahxqfdinvgosegmo.supabase.co"),
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: bindings.text("sb_publishable_CW9aPggAnmGNEqAq-aOlog_tHKa5BOq"),
       NEXT_PUBLIC_ENABLE_ONLINE_GIFT_CARD_PURCHASE: bindings.text("false"),
       NEXT_PUBLIC_ENABLE_ONLINE_ORDER_PAYMENT: bindings.text("false"),
     },
