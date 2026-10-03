@@ -9,7 +9,7 @@ export default defineConfig({
     assets: { notFoundHandling: "none" },
     env: {
       ASSETS: bindings.assets(),
-      NEXT_PUBLIC_SITE_URL: bindings.text("https://levien-cafe.levien-cafe.workers.dev"),
+      NEXT_PUBLIC_SITE_URL: bindings.text("https://leviencafe.com"),
       NEXT_PUBLIC_ENABLE_ONLINE_GIFT_CARD_PURCHASE: bindings.text("false"),
       NEXT_PUBLIC_ENABLE_ONLINE_ORDER_PAYMENT: bindings.text("false"),
     },
