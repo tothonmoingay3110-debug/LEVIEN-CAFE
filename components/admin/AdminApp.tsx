@@ -52,6 +52,7 @@ type Promotion = { id: string; title: string; eyebrow: string; description: stri
 type Order = CustomerOrder;
 type Customer = {
   id: string;
+  profileId?: string;
   phone: string;
   firstName: string;
   lastName: string;
@@ -63,10 +64,11 @@ type Customer = {
   lastOrderAt: string;
   orderIds: string[];
   membershipNumber?: string;
+  verificationPending?: boolean;
   memberSince?: string;
   onlineAccess?: boolean;
 };
-type MemberProfile = { id: string; authUserId: string | null; email: string; firstName: string; lastName: string; phone: string; membershipNumber: string; memberSince: string; onlineAccess: boolean };
+type MemberProfile = { id: string; authUserId: string | null; email: string; firstName: string; lastName: string; phone: string; membershipNumber: string; verificationPending: boolean; memberSince: string; onlineAccess: boolean };
 type Employee = {
   id: string;
   email: string;
@@ -599,7 +601,7 @@ export default function AdminApp() {
       setDb({ ...parsed, orders: [] });
     }
     void fetch("/api/admin/session", { cache: "no-store" })
-      .then((response) => response.json())
+      .then((response) => response.json() as Promise<{authenticated?:boolean;staff?:StaffSessionSummary|null}>)
       .then((result: { authenticated?: boolean; staff?: StaffSessionSummary | null }) => {
         if (result.authenticated && result.staff) {
           setStaff(result.staff);
@@ -650,7 +652,7 @@ export default function AdminApp() {
       return;
     }
     void fetch("/api/admin/workspace", { cache: "no-store" })
-      .then((response) => response.json())
+      .then((response) => response.json() as Promise<{unreadCount?:number}>)
       .then((result: { unreadCount?: number }) => setUnreadNotifications(Number(result.unreadCount || 0)))
       .catch(() => setUnreadNotifications(0));
   }, [staff]);
@@ -845,7 +847,7 @@ export default function AdminApp() {
         {view === "aiinsights" && <AiBusinessInsights />}
         {view === "reports" && <StaffReports />}
         {view === "activity" && <ActivityLog />}
-         {view === "customers" && <Customers customers={filteredCustomers} allCustomers={customers} orders={db.orders} query={customerQuery} setQuery={setCustomerQuery} openModal={setModal} notify={setToast} />}
+         {view === "customers" && <Customers customers={filteredCustomers} allCustomers={customers} orders={db.orders} query={customerQuery} setQuery={setCustomerQuery} openModal={setModal} notify={setToast} canLinkEmail={staff.role === "owner" || staff.role === "manager"} />}
          {view === "loyalty" && <LoyaltyPrograms notify={setToast} />}
          {view === "giftcards" && <GiftCards notify={setToast} />}
         {view === "employees" && canManageStaff && <Employees currentStaff={staff} employees={employees} loading={employeesLoading} openEmployee={(employee) => setEmployeeModal({ employee })} refresh={refreshEmployees} showCredentials={(credentials) => setTemporaryCredentials(credentials)} notify={setToast} />}
@@ -1002,11 +1004,11 @@ function Orders({ db, orders, filter, setFilter, update, openModal }: { db: DB; 
 }
 function OrderRows({ orders }: { orders: Order[] }) { return <div className="adminOrderRows">{orders.map(o => <div key={o.id}><span className={`adminOrderDot status-${o.status.toLowerCase()}`}></span><div><strong>{o.id} · {o.customer}</strong><small>{o.items.map(orderItemLabel).join(", ")}</small></div><b>{money(o.total)}</b><em>{o.status}</em></div>)}</div>; }
 
-function Customers({ allCustomers, orders, query, setQuery, openModal, notify }: { customers: Customer[]; allCustomers: Customer[]; orders: Order[]; query: string; setQuery: (value: string) => void; openModal: (modal: { type: string; id?: string }) => void; notify:(message:string)=>void }) {
-  const [profiles,setProfiles]=useState<MemberProfile[]>([]); const [membershipFilter,setMembershipFilter]=useState<"all"|"member"|"guest">("all"); const [createOpen,setCreateOpen]=useState(false); const [loadingProfiles,setLoadingProfiles]=useState(true);
+function Customers({ allCustomers, orders, query, setQuery, openModal, notify, canLinkEmail }: { customers: Customer[]; allCustomers: Customer[]; orders: Order[]; query: string; setQuery: (value: string) => void; openModal: (modal: { type: string; id?: string }) => void; notify:(message:string)=>void; canLinkEmail: boolean }) {
+  const [profiles,setProfiles]=useState<MemberProfile[]>([]); const [membershipFilter,setMembershipFilter]=useState<"all"|"member"|"guest">("all"); const [createOpen,setCreateOpen]=useState(false); const [inviteProfile,setInviteProfile]=useState<MemberProfile|null>(null); const [loadingProfiles,setLoadingProfiles]=useState(true);
   const loadProfiles=useCallback(async()=>{setLoadingProfiles(true);try{const response=await fetch("/api/admin/customers",{cache:"no-store"});const result=await response.json() as {profiles?:MemberProfile[];error?:string};if(!response.ok)throw new Error(result.error||"Unable to load memberships");setProfiles(result.profiles||[])}finally{setLoadingProfiles(false)}},[]);
   useEffect(()=>{void loadProfiles()},[loadProfiles]);
-  const customers=useMemo(()=>{const merged=allCustomers.map((customer)=>{const profile=profiles.find((item)=>(item.email&&customer.email&&item.email.toLowerCase()===customer.email.toLowerCase())||(normalizePhone(item.phone)&&normalizePhone(item.phone)===normalizePhone(customer.phone)));return profile?{...customer,membershipNumber:profile.membershipNumber,memberSince:profile.memberSince,onlineAccess:profile.onlineAccess}:customer});for(const profile of profiles){if(!merged.some((customer)=>customer.membershipNumber===profile.membershipNumber))merged.push({id:normalizePhone(profile.phone)||profile.id,phone:profile.phone,firstName:profile.firstName,lastName:profile.lastName,email:profile.email,totalOrders:0,totalSpent:0,averageOrder:0,firstOrderAt:profile.memberSince,lastOrderAt:profile.memberSince,orderIds:[],membershipNumber:profile.membershipNumber,memberSince:profile.memberSince,onlineAccess:profile.onlineAccess})}const term=query.trim().toLowerCase();return merged.filter((customer)=>(membershipFilter==="all"||(membershipFilter==="member")===Boolean(customer.membershipNumber))&&(!term||`${customer.firstName} ${customer.lastName} ${customer.email} ${customer.phone} ${customer.membershipNumber||""}`.toLowerCase().includes(term))).sort((left,right)=>new Date(right.lastOrderAt).getTime()-new Date(left.lastOrderAt).getTime())},[allCustomers,profiles,query,membershipFilter]);
+  const customers=useMemo(()=>{const merged=allCustomers.map((customer)=>{const profile=profiles.find((item)=>(item.email&&customer.email&&item.email.toLowerCase()===customer.email.toLowerCase())||(normalizePhone(item.phone)&&normalizePhone(item.phone)===normalizePhone(customer.phone)));return profile?{...customer,profileId:profile.id,membershipNumber:profile.membershipNumber,verificationPending:profile.verificationPending,memberSince:profile.memberSince,onlineAccess:profile.onlineAccess}:customer});for(const profile of profiles){if(!merged.some((customer)=>customer.email&&profile.email&&customer.email.toLowerCase()===profile.email.toLowerCase()||normalizePhone(customer.phone)&&normalizePhone(customer.phone)===normalizePhone(profile.phone)))merged.push({id:normalizePhone(profile.phone)||profile.id,profileId:profile.id,phone:profile.phone,firstName:profile.firstName,lastName:profile.lastName,email:profile.email,totalOrders:0,totalSpent:0,averageOrder:0,firstOrderAt:profile.memberSince,lastOrderAt:profile.memberSince,orderIds:[],membershipNumber:profile.membershipNumber,verificationPending:profile.verificationPending,memberSince:profile.memberSince,onlineAccess:profile.onlineAccess})}const term=query.trim().toLowerCase();return merged.filter((customer)=>(membershipFilter==="all"||(membershipFilter==="member")===Boolean(customer.membershipNumber))&&(!term||`${customer.firstName} ${customer.lastName} ${customer.email} ${customer.phone} ${customer.membershipNumber||""}`.toLowerCase().includes(term))).sort((left,right)=>new Date(right.lastOrderAt).getTime()-new Date(left.lastOrderAt).getTime())},[allCustomers,profiles,query,membershipFilter]);
   return <div className="adminStack">
     <section className="adminToolbar customerToolbar">
       <div className="adminSearch"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, or email..." /></div>
@@ -1019,22 +1021,46 @@ function Customers({ allCustomers, orders, query, setQuery, openModal, notify }:
           const products = customerPurchasedProducts(customer, orders);
           const productPreview = products.slice(0, 3).map(([name, quantity]) => `${name} ×${quantity}`).join(" · ");
           return <tr key={customer.id}>
-            <td><strong>{customer.firstName} {customer.lastName}</strong><small>{customer.email || "No email"}</small></td><td>{customer.membershipNumber?<><span className="customerMemberBadge">Member</span><small>{customer.membershipNumber}</small></>:<span className="customerGuestBadge">Guest</span>}</td>
+            <td><strong>{customer.firstName} {customer.lastName}</strong><small>{customer.email || "No email"}</small></td><td>{customer.membershipNumber?<><span className="customerMemberBadge">Member</span><small>{customer.membershipNumber}</small></>:<span className="customerGuestBadge">{customer.verificationPending?"Pending verification":"Guest"}</span>}</td>
             <td>{formatCustomerPhone(customer.phone)}</td>
             <td className="customerProductsCell"><strong>{products.length} products</strong><small>{productPreview || "No product data"}{products.length > 3 ? ` · +${products.length - 3} more` : ""}</small></td>
             <td><strong>{customer.totalOrders}</strong></td>
             <td><strong>{money(customer.totalSpent)}</strong><small>Avg. {money(customer.averageOrder)}</small></td>
             <td>{customer.totalOrders?new Date(customer.lastOrderAt).toLocaleDateString():"—"}</td>
-            <td>{customer.totalOrders?<button className="adminIconAction" onClick={() => openModal({ type: "customer", id: customer.id })}>View</button>:<span className="adminHint">No orders</span>}</td>
+            <td>{customer.totalOrders?<button className="adminIconAction" onClick={() => openModal({ type: "customer", id: customer.id })}>View</button>:null}{canLinkEmail&&customer.profileId&&!customer.email&&!customer.membershipNumber?<button className="adminIconAction" onClick={()=>setInviteProfile(profiles.find((profile)=>profile.id===customer.profileId)||null)}>Add email</button>:null}{!customer.totalOrders&&!customer.profileId?<span className="adminHint">No orders</span>:null}</td>
           </tr>;
         })}
         {!customers.length && <tr><td colSpan={8}><div className="customerEmpty"><strong>No customers found</strong><span>Change the filter or create a customer membership.</span></div></td></tr>}
       </tbody></table></div>
-    </section>{loadingProfiles&&<span className="adminHint">Refreshing membership status…</span>}{createOpen&&<CreateCustomerModal close={()=>setCreateOpen(false)} saved={async(message)=>{setCreateOpen(false);await loadProfiles();setQuery("");notify(message)}}/>}
+    </section>{loadingProfiles&&<span className="adminHint">Refreshing membership status…</span>}{createOpen&&<CreateCustomerModal close={()=>setCreateOpen(false)} saved={async(message)=>{setCreateOpen(false);await loadProfiles();setQuery("");notify(message)}}/>}{inviteProfile&&<InviteExistingCustomerModal profile={inviteProfile} close={()=>setInviteProfile(null)} saved={async()=>{setInviteProfile(null);await loadProfiles();notify("Invitation sent · membership activates after email verification")}}/>}
   </div>;
 }
 
-function CreateCustomerModal({close,saved}:{close:()=>void;saved:(message:string)=>Promise<void>}){const[saving,setSaving]=useState(false);const[error,setError]=useState("");async function submit(event:React.FormEvent<HTMLFormElement>){event.preventDefault();const data=new FormData(event.currentTarget);setSaving(true);setError("");try{const response=await fetch("/api/admin/customers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({firstName:data.get("firstName"),lastName:data.get("lastName"),email:data.get("email"),phone:data.get("phone")})});const result=await response.json() as {membershipNumber?:string;invitationSent?:boolean;error?:string};if(!response.ok)throw new Error(result.error||"Unable to create customer");await saved(`${result.membershipNumber} created${result.invitationSent?" · activation email sent":" · counter-only membership"}`)}catch(submitError){setError(submitError instanceof Error?submitError.message:"Unable to create customer")}finally{setSaving(false)}}return <ModalShell title="Create customer" subtitle="Counter membership" close={close}><form className="adminForm" onSubmit={submit}><FormInput label="First name" name="firstName" defaultValue=""/><FormInput label="Last name" name="lastName" defaultValue=""/><label>Email <small>Optional for counter-only membership</small><input name="email" type="email" autoComplete="email"/></label><label>Phone <small>Required when email is empty</small><input name="phone" type="tel" autoComplete="tel"/></label><div className="adminNote wide"><strong>Customer security</strong><p>Staff never creates or sees the customer password. Customers with email receive an activation link and set their own password.</p></div>{error&&<div className="adminLoginError wide">{error}</div>}<div className="adminFormActions wide"><button className="adminSecondary" type="button" onClick={close}>Cancel</button><button className="adminPrimary" type="submit" disabled={saving}>{saving?"Creating…":"Create Customer"}</button></div></form></ModalShell>}
+function CreateCustomerModal({close,saved}:{close:()=>void;saved:(message:string)=>Promise<void>}){const[saving,setSaving]=useState(false);const[error,setError]=useState("");async function submit(event:React.FormEvent<HTMLFormElement>){event.preventDefault();const data=new FormData(event.currentTarget);setSaving(true);setError("");try{const response=await fetch("/api/admin/customers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({firstName:data.get("firstName"),lastName:data.get("lastName"),email:data.get("email"),phone:data.get("phone")})});const result=await response.json() as {invitationSent?:boolean;error?:string};if(!response.ok)throw new Error(result.error||"Unable to create customer");await saved("Customer invited · membership activates after email verification") }catch(submitError){setError(submitError instanceof Error?submitError.message:"Unable to create customer")}finally{setSaving(false)}}return <ModalShell title="Create customer" subtitle="Email verification required" close={close}><form className="adminForm" onSubmit={submit}><FormInput label="First name" name="firstName" defaultValue=""/><FormInput label="Last name" name="lastName" defaultValue=""/><label>Email <small>Required for membership</small><input name="email" type="email" autoComplete="email" required/></label><label>Phone <small>Optional</small><input name="phone" type="tel" autoComplete="tel"/></label><div className="adminNote wide"><strong>Customer security</strong><p>Staff never creates or sees the customer password. The customer must open the email link to activate membership and set their password.</p></div>{error&&<div className="adminLoginError wide">{error}</div>}<div className="adminFormActions wide"><button className="adminSecondary" type="button" onClick={close}>Cancel</button><button className="adminPrimary" type="submit" disabled={saving}>{saving?"Sending…":"Send invitation"}</button></div></form></ModalShell>}
+
+function InviteExistingCustomerModal({profile,close,saved}:{profile:MemberProfile;close:()=>void;saved:()=>Promise<void>}) {
+  const [saving,setSaving]=useState(false);
+  const [error,setError]=useState("");
+  async function submit(event:React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const email=String(new FormData(event.currentTarget).get("email")||"").trim();
+    setSaving(true);setError("");
+    try {
+      const response=await fetch("/api/admin/customers",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({profileId:profile.id,email})});
+      const result=await response.json() as {error?:string};
+      if(!response.ok)throw new Error(result.error||"Unable to send invitation");
+      await saved();
+    } catch(cause) {setError(cause instanceof Error?cause.message:"Unable to send invitation")} finally {setSaving(false)}
+  }
+  return <ModalShell title="Add verified email" subtitle={`${profile.firstName} ${profile.lastName} · ${profile.phone}`} close={close}>
+    <form className="adminForm" onSubmit={submit}>
+      <label>Email <small>Customer must verify this address</small><input name="email" type="email" autoComplete="email" maxLength={254} required/></label>
+      <div className="adminNote wide"><strong>Confirm customer identity first</strong><p>This invitation links the email to the existing customer, preserving purchase history. Membership activates only after the customer opens the email link.</p></div>
+      {error&&<div className="adminLoginError wide">{error}</div>}
+      <div className="adminFormActions wide"><button className="adminSecondary" type="button" onClick={close}>Cancel</button><button className="adminPrimary" type="submit" disabled={saving}>{saving?"Sending…":"Send verification email"}</button></div>
+    </form>
+  </ModalShell>;
+}
 
 function Employees({ currentStaff, employees, loading, openEmployee, refresh, showCredentials, notify }: {
   currentStaff: StaffSessionSummary;

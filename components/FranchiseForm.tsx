@@ -21,7 +21,7 @@ export function FranchiseForm() {
     payload.products = data.getAll("products");
     try {
       const response = await fetch("/api/franchise", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const result = await response.json();
+      const result = await response.json() as {error?:string};
       if (!response.ok) throw new Error(result.error || "Unable to send your franchise inquiry.");
       form.reset(); setState("sent");
     } catch (cause) { setState("idle"); setError(cause instanceof Error ? cause.message : "Unable to send your franchise inquiry."); }

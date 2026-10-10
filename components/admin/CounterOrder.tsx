@@ -42,7 +42,7 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
   useEffect(() => {
     void fetch("/api/admin/counter-orders", { cache: "no-store" })
       .then(async (response) => {
-        const data = await response.json();
+        const data = await response.json() as {error?:string;products?:Product[];toppings?:Topping[];categories?:Category[];customers?:Customer[];rewards?:Reward[];promotions?:Promotion[]};
         if (!response.ok) throw new Error(data.error);
         setProducts(data.products || []);
         setToppings(data.toppings || []);
@@ -74,7 +74,7 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
     setPromotionLoading(true);
     const items = lines.map((line,index) => { const product=productMap.get(line.productId)!; const selected=line.toppingIds.map(id=>toppingMap.get(id)).filter(Boolean) as Topping[]; return {lineId:`counter-quote-${index}`,itemType:"product",productId:line.productId,name:product.name,emoji:product.emoji||"",basePrice:product.price,unitPrice:product.price+selected.reduce((sum,item)=>sum+item.price,0),quantity:line.quantity,ice:line.ice,sugar:line.sugar,toppings:selected.map(item=>({id:item.id,name:item.name,price:item.price})),note:""}; });
     const controller=new AbortController();
-    void fetch("/api/sales-promotions/quote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items}),signal:controller.signal}).then(async response=>{const result=await response.json();if(response.ok)setPromotionQuote(result.quote||null)}).catch(()=>undefined).finally(()=>setPromotionLoading(false));
+    void fetch("/api/sales-promotions/quote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items}),signal:controller.signal}).then(async response=>{const result=await response.json() as {quote?:PromotionQuote};if(response.ok)setPromotionQuote(result.quote||null)}).catch(()=>undefined).finally(()=>setPromotionLoading(false));
     return()=>controller.abort();
   },[lines,products,productMap,toppingMap]);
 
@@ -125,7 +125,7 @@ export default function CounterOrder({ close, saved }: { close: () => void; save
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: lines, customerProfileId: customerId, loyaltyRewardId: rewardId || null, firstName: form.get("firstName"), lastName: form.get("lastName"), phone: form.get("phone"), payment: form.get("payment"), note: form.get("note") }),
       });
-      const data = await response.json();
+      const data = await response.json() as {error?:string;orderNumber?:string};
       if (!response.ok || !data.orderNumber) throw new Error(data.error || "Unable to create order");
       await saved(data.orderNumber);
     } catch (cause) {

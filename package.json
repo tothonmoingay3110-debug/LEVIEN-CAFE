@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit --incremental false",
     "verify:production": "node scripts/verify-production.mjs",
     "smoke:production": "node scripts/smoke-production.mjs",
     "dev:vinext": "vite dev --port 3001",

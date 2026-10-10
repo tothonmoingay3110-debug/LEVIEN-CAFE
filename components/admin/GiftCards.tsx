@@ -62,7 +62,7 @@ export default function GiftCards({ notify }: { notify: (message: string) => voi
 
   useEffect(() => {
     void loadCards();
-    void fetch("/api/admin/customers",{cache:"no-store"}).then((response)=>response.json()).then((result:{profiles?:Array<{id:string;firstName:string;lastName:string;email:string;phone:string;membershipNumber:string}>})=>setCustomers(result.profiles||[])).catch(()=>setCustomers([]));
+    void fetch("/api/admin/customers",{cache:"no-store"}).then((response)=>response.json() as Promise<{profiles?:Array<{id:string;firstName:string;lastName:string;email:string;phone:string;membershipNumber:string}>}>).then((result)=>setCustomers((result.profiles||[]).filter((profile)=>Boolean(profile.membershipNumber)))).catch(()=>setCustomers([]));
     const refresh = () => void loadCards(true);
     const timer = window.setInterval(refresh, 60000);
     window.addEventListener("focus", refresh);
