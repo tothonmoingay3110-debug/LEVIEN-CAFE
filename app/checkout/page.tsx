@@ -41,13 +41,14 @@ type AppliedGiftCard = {
 };
 
 type SalesPromotionQuote = { promotionId:string|null; name:string|null; badgeText:string|null; discount:number; discountedSubtotal:number; message:string|null; rewardChoices:Array<{id:string;name:string}> };
+type MemberLookup = {firstName:string;lastInitial:string;maskedEmail:string;membershipNumber:string;rewards:Array<{id:string;reward_name:string}>};
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { profile } = useCustomerSession();
   const { cart, subtotal, clearCart, ready } = useStore();
   const [type, setType] = useState<FulfillmentType | "Event">("Pickup");
-  const [memberLookup, setMemberLookup] = useState<{loading:boolean;found:boolean;message:string;member?:{firstName:string;lastInitial:string;maskedEmail:string;membershipNumber:string;rewards:Array<{id:string;reward_name:string}>}}>({loading:false,found:false,message:""});
+  const [memberLookup, setMemberLookup] = useState<{loading:boolean;found:boolean;message:string;member?:MemberLookup}>({loading:false,found:false,message:""});
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [giftCardInput, setGiftCardInput] = useState("");
@@ -94,12 +95,12 @@ export default function CheckoutPage() {
     setPromotionLoading(true);
     const controller = new AbortController();
     void fetch("/api/sales-promotions/quote", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({items:cart,rewardProductId:promotionRewardProductId||undefined}), signal:controller.signal })
-      .then(async response => { const result = await response.json(); if (response.ok) { setPromotionQuote(result.quote || null); const choices=result.quote?.rewardChoices||[]; if(choices.length&&!choices.some((choice:{id:string})=>choice.id===promotionRewardProductId))setPromotionRewardProductId(choices[0].id); if(!choices.length)setPromotionRewardProductId(""); } })
+      .then(async response => { const result = await response.json() as {quote?:SalesPromotionQuote}; if (response.ok) { setPromotionQuote(result.quote || null); const choices=result.quote?.rewardChoices||[]; if(choices.length&&!choices.some((choice)=>choice.id===promotionRewardProductId))setPromotionRewardProductId(choices[0].id); if(!choices.length)setPromotionRewardProductId(""); } })
       .catch(() => undefined).finally(()=>setPromotionLoading(false));
     return () => controller.abort();
   }, [cart,promotionRewardProductId]);
 
-  function lookupMember(phone:string){clearError("phone");const normalized=phone.replace(/\D/g,"");if(normalized.length<10){setMemberLookup({loading:false,found:false,message:""});return}setMemberLookup({loading:true,found:false,message:"Checking membership…"});window.clearTimeout((lookupMember as typeof lookupMember & {timer?:number}).timer);(lookupMember as typeof lookupMember & {timer?:number}).timer=window.setTimeout(()=>{void fetch("/api/member-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})}).then(async r=>{const x=await r.json();if(!r.ok)throw new Error(x.error);setMemberLookup(x.found?{loading:false,found:true,message:"Member found",member:x.member}:{loading:false,found:false,message:"No member account found. You can continue as a guest."})}).catch(e=>setMemberLookup({loading:false,found:false,message:e instanceof Error?e.message:"Unable to check membership."}))},450)}
+  function lookupMember(phone:string){clearError("phone");const normalized=phone.replace(/\D/g,"");if(normalized.length<10){setMemberLookup({loading:false,found:false,message:""});return}setMemberLookup({loading:true,found:false,message:"Checking membership…"});window.clearTimeout((lookupMember as typeof lookupMember & {timer?:number}).timer);(lookupMember as typeof lookupMember & {timer?:number}).timer=window.setTimeout(()=>{void fetch("/api/member-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone})}).then(async r=>{const x=await r.json() as {error?:string;found?:boolean;member?:MemberLookup};if(!r.ok)throw new Error(x.error);setMemberLookup(x.found&&x.member?{loading:false,found:true,message:"Member found",member:x.member}:{loading:false,found:false,message:"No member account found. You can continue as a guest."})}).catch(e=>setMemberLookup({loading:false,found:false,message:e instanceof Error?e.message:"Unable to check membership."}))},450)}
 
   async function applyGiftCard() {
     const code = giftCardInput.trim();
@@ -203,7 +204,7 @@ export default function CheckoutPage() {
     try {
       if(type==="Event"){
         const response=await fetch("/api/event-bookings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({eventName:data.get("eventName"),eventType:data.get("eventType"),eventDate:data.get("eventDate"),startTime:data.get("startTime"),endTime:data.get("endTime"),guestCount:data.get("guestCount"),customerName:`${firstName} ${lastName}`.trim(),customerPhone:phone,customerEmail:email,notes:data.get("eventNotes"),items:cart})});
-        const result=await response.json();if(!response.ok)throw new Error(result.error||"Unable to submit event request.");window.alert(`Event request ${result.referenceCode} received. Our team will contact you soon.`);router.push("/event-booking");return;
+        const result=await response.json() as {error?:string;referenceCode?:string};if(!response.ok)throw new Error(result.error||"Unable to submit event request.");window.alert(`Event request ${result.referenceCode} received. Our team will contact you soon.`);router.push("/event-booking");return;
       }
       if(!cart.length)throw new Error("Add at least one item before placing an order.");
       const orderDetails = {
