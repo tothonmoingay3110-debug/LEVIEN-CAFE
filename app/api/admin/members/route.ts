@@ -34,6 +34,7 @@ async function readMember(membershipNumber: string) {
     .from("customer_profiles")
     .select("id,first_name,last_name,email,phone,membership_number,created_at")
     .eq("membership_number", membershipNumber)
+    .not("email_verified_at", "is", null)
     .maybeSingle();
   if (profileError) throw profileError;
   if (!profile) return null;
@@ -158,7 +159,7 @@ export async function PATCH(request: Request) {
     if (!membershipNumber || !uuidPattern.test(rewardId)) return NextResponse.json({ error: "Invalid member or reward." }, { status: 400 });
 
     const db = createAdminClient();
-    const { data: profile, error: profileError } = await db.from("customer_profiles").select("id").eq("membership_number", membershipNumber).maybeSingle();
+    const { data: profile, error: profileError } = await db.from("customer_profiles").select("id").eq("membership_number", membershipNumber).not("email_verified_at", "is", null).maybeSingle();
     if (profileError) throw profileError;
     if (!profile) return NextResponse.json({ error: "Member not found." }, { status: 404 });
     const { data: reward, error: rewardError } = await db

@@ -42,7 +42,7 @@ export async function GET() {
     for (const item of triggerProducts.data || []) triggersByRule.set(item.rule_id, [...(triggersByRule.get(item.rule_id) || []), item.product_id]);
     for (const item of rewardProducts.data || []) rewardsByRule.set(item.rule_id, [...(rewardsByRule.get(item.rule_id) || []), item.product_id]);
     const profileIds = [...new Set((rewards.data || []).map((item) => item.customer_profile_id))];
-    const profiles = profileIds.length ? await db.from("customer_profiles").select("id,first_name,last_name,email,membership_number").in("id", profileIds) : { data: [], error: null };
+    const profiles = profileIds.length ? await db.from("customer_profiles").select("id,first_name,last_name,email,membership_number").in("id", profileIds).not("email_verified_at", "is", null) : { data: [], error: null };
     if (profiles.error) throw profiles.error;
     return NextResponse.json({
       rules: (rules.data || []).map((rule) => ({
@@ -51,7 +51,7 @@ export async function GET() {
         reward_product_ids: rewardsByRule.get(rule.id) || (rule.reward_product_id ? [rule.reward_product_id] : []),
       })),
       products: products.data || [],
-      physicalRewards: rewards.data || [],
+      physicalRewards: (rewards.data || []).filter((reward) => (profiles.data || []).some((profile) => profile.id === reward.customer_profile_id)),
       customers: profiles.data || [],
       rewardItems: rewardItems.data || [],
     }, { headers: { "Cache-Control": "no-store" } });
@@ -138,8 +138,11 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ rewardItem: data });
     }
     if (body.action === "fulfill") {
-      const reward = await db.from("loyalty_rewards").select("id,reward_code,reward_name").eq("id", id).maybeSingle();
+      const reward = await db.from("loyalty_rewards").select("id,reward_code,reward_name,customer_profile_id").eq("id", id).maybeSingle();
       if (reward.error) throw reward.error; if (!reward.data) return NextResponse.json({ error: "Reward is no longer available." }, { status: 409 });
+      const eligibleMember = await db.from("customer_profiles").select("id").eq("id", reward.data.customer_profile_id).not("email_verified_at", "is", null).maybeSingle();
+      if (eligibleMember.error) throw eligibleMember.error;
+      if (!eligibleMember.data) return NextResponse.json({ error: "Customer must verify their email before using membership rewards." }, { status: 409 });
       const { error } = await db.rpc("fulfill_physical_reward_v2", { p_reward_id: id, p_staff_id: auth.staff.legacy ? null : auth.staff.id });
       if (error) return NextResponse.json({ error: error.message.includes("stock") ? "This physical gift is out of stock." : "Reward is no longer available." }, { status: 409 });
       const data = reward.data;

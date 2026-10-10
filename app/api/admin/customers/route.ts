@@ -14,9 +14,9 @@ export async function GET() {
   try {
     const access = await authorize();
     if (access.response) return access.response;
-    const { data, error } = await createAdminClient().from("customer_profiles").select("id,auth_user_id,email,first_name,last_name,phone,membership_number,created_at").order("created_at", { ascending: false });
+    const { data, error } = await createAdminClient().from("customer_profiles").select("id,auth_user_id,email,first_name,last_name,phone,membership_number,email_verified_at,created_at").order("created_at", { ascending: false });
     if (error) throw error;
-    return NextResponse.json({ profiles: (data || []).map((profile) => ({ id: profile.id, authUserId: profile.auth_user_id, email: profile.email || "", firstName: profile.first_name, lastName: profile.last_name, phone: profile.phone, membershipNumber: profile.membership_number, memberSince: profile.created_at, onlineAccess: Boolean(profile.auth_user_id) })) }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ profiles: (data || []).map((profile) => ({ id: profile.id, authUserId: profile.auth_user_id, email: profile.email || "", firstName: profile.first_name, lastName: profile.last_name, phone: profile.phone, membershipNumber: profile.email && profile.email_verified_at ? profile.membership_number : "", verificationPending: Boolean(profile.email && !profile.email_verified_at), memberSince: profile.created_at, onlineAccess: Boolean(profile.auth_user_id && profile.email_verified_at) })) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Unable to load customer profiles:", error);
     return NextResponse.json({ error: "Unable to load customer membership data." }, { status: 500 });
@@ -35,8 +35,8 @@ export async function POST(request: Request) {
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const phone = typeof body.phone === "string" ? body.phone.trim() : "";
     const phoneDigits = phone.replace(/\D/g, "");
-    if (!firstName || (!email && !phoneDigits)) return NextResponse.json({ error: "Enter a first name and either an email or phone number." }, { status: 400 });
-    if (email && !/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
+    if (!firstName || !email) return NextResponse.json({ error: "Enter a first name and email address. Membership requires email verification." }, { status: 400 });
+    if (!/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
 
     const db = createAdminClient();
     if (email) {
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       profile = data;
     }
     await db.from("staff_audit_log").insert({ actor_id: access.staff.legacy ? null : access.staff.id, action: "customer_member_created", entity_type: "customer_profile", entity_id: profile.id, summary: `${firstName} ${lastName}`.trim(), metadata: { email: email || null, phone, onlineAccess: Boolean(authUserId), actorRole: access.staff.role } });
-    return NextResponse.json({ created: true, membershipNumber: "membership_number" in profile ? profile.membership_number : "", invitationSent: Boolean(email) }, { status: 201 });
+    return NextResponse.json({ created: true, verificationPending: true, invitationSent: true }, { status: 201 });
   } catch (error) {
     console.error("Unable to create customer member:", error);
     return NextResponse.json({ error: "Unable to create this customer. Check for duplicate contact information and try again." }, { status: 500 });

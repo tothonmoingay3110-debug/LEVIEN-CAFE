@@ -13,9 +13,9 @@ export async function POST(request: Request) {
   const phone = digits((await request.json() as { phone?: unknown }).phone);
   if (phone.length < 10) return NextResponse.json({ found: false });
   const db = createAdminClient();
-  const { data: customers, error } = await db.from("customer_profiles").select("id,first_name,last_name,email,phone,membership_number");
+  const { data: customers, error } = await db.from("customer_profiles").select("id,first_name,last_name,email,phone,membership_number,email_verified_at").not("email_verified_at", "is", null);
   if (error) return NextResponse.json({ error: "Unable to check membership." }, { status: 500 });
-  const customer = (customers || []).find((item) => digits(item.phone) === phone);
+  const customer = (customers || []).find((item) => item.email && digits(item.phone) === phone);
   if (!customer) return NextResponse.json({ found: false });
   const { data: rewards } = await db.from("loyalty_rewards").select("id,reward_name,expires_at").eq("customer_profile_id", customer.id).eq("status", "issued").eq("reward_type", "free_product").or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
   return NextResponse.json({ found: true, member: { firstName: customer.first_name, lastInitial: customer.last_name ? `${customer.last_name[0]}.` : "", maskedEmail: maskEmail(customer.email || ""), membershipNumber: customer.membership_number, rewards: rewards || [] } }, { headers: { "Cache-Control": "no-store" } });

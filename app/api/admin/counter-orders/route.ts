@@ -27,7 +27,7 @@ export async function GET() {
       db.from("toppings").select("id,name,price,image_url").eq("active", true).order("name"),
       db.from("product_toppings").select("product_id,topping_id"),
       db.from("categories").select("id,name").eq("active", true).order("sort_order").order("name"),
-      db.from("customer_profiles").select("id,first_name,last_name,email,phone,membership_number").order("first_name"),
+      db.from("customer_profiles").select("id,first_name,last_name,email,phone,membership_number").not("email_verified_at", "is", null).order("first_name"),
       db.from("loyalty_rewards").select("id,customer_profile_id,reward_code,reward_name,reward_type,reward_product_id,expires_at,status").eq("status", "issued").eq("reward_type", "free_product").or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).order("issued_at"),
       db.from("loyalty_reward_products").select("reward_id,product_id,position").order("position"),
       db.from("sales_promotions").select("id,name,badge_text,promotion_type,scope_type,target_ids,discount_value,buy_quantity,get_quantity,reward_product_id,reward_product_ids,reward_topping_id,minimum_subtotal,starts_on,ends_on").eq("active", true).lte("starts_on", new Date().toISOString().slice(0,10)).gte("ends_on", new Date().toISOString().slice(0,10)),
@@ -64,9 +64,10 @@ export async function POST(request: Request) {
     const [productResult, toppingResult, customerResult] = await Promise.all([
       db.from("products").select("id,name,price,emoji,active,sold_out").in("id", productIds),
       db.from("toppings").select("id,name,price,active"),
-      customerProfileId ? db.from("customer_profiles").select("id,first_name,last_name,email,phone").eq("id", customerProfileId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      customerProfileId ? db.from("customer_profiles").select("id,first_name,last_name,email,phone").eq("id", customerProfileId).not("email_verified_at", "is", null).maybeSingle() : Promise.resolve({ data: null, error: null }),
     ]);
     if (productResult.error) throw productResult.error; if (toppingResult.error) throw toppingResult.error; if (customerResult.error) throw customerResult.error;
+    if (customerProfileId && !customerResult.data) return NextResponse.json({ error: "Customer must verify their email before using membership." }, { status: 409 });
     const products = new Map((productResult.data || []).map((item) => [item.id, item]));
     const toppings = new Map((toppingResult.data || []).filter((item) => item.active).map((item) => [item.id, item]));
     const items: CartItem[] = rawItems.map((raw, index) => {

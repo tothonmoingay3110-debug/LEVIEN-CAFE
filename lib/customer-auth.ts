@@ -46,6 +46,7 @@ export async function getCustomerSession(options: { syncOrders?: boolean } = {})
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
+  if (!data.user.email || !data.user.email_confirmed_at) return null;
 
   const admin = createAdminClient();
   let { data: profile, error: profileError } = await admin
