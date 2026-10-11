@@ -1,10 +1,11 @@
-import { bindings, defineConfig, defineWorker } from "cf/config";
+import { bindings, defineConfig, defineWorker, triggers } from "cf/config";
 
 export default defineConfig({
   worker: defineWorker({
     name: "levien-cafe",
     entrypoint: "vinext/server/fetch-handler",
     domains: ["leviencafe.com"],
+    triggers: [triggers.fetch({ pattern: "leviencafe.com/*", zone: "leviencafe.com" })],
     workersDev: true,
     previewUrls: true,
     compatibilityDate: "2026-10-03",
@@ -17,6 +18,9 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: bindings.text("sb_publishable_CW9aPggAnmGNEqAq-aOlog_tHKa5BOq"),
       NEXT_PUBLIC_ENABLE_ONLINE_GIFT_CARD_PURCHASE: bindings.text("false"),
       NEXT_PUBLIC_ENABLE_ONLINE_ORDER_PAYMENT: bindings.text("false"),
+      EVENT_BOOKING_FROM_EMAIL: bindings.text("LEVIEN CAFE <notifications@leviencafe.com>"),
+      GIFT_CARD_FROM_EMAIL: bindings.text("LEVIEN CAFE <notifications@leviencafe.com>"),
+      NOTIFICATION_FROM_EMAIL: bindings.text("LEVIEN CAFE <notifications@leviencafe.com>"),
     },
   }),
 });
