@@ -6,7 +6,7 @@ import NormalizedProductImage from "@/components/NormalizedProductImage";
 import { useSiteData } from "@/components/SiteDataProvider";
 
 export function ComboCard() {
-  const { combos, products } = useSiteData();
+  const { combos, products, content } = useSiteData();
   const [selectedComboId, setSelectedComboId] = useState<string | null>(null);
   const [comboIndex, setComboIndex] = useState(0);
   useEffect(() => {
@@ -36,9 +36,9 @@ export function ComboCard() {
         <p>{combo.description}</p>
         {!!comboProducts.length && <div className="comboIncludes">{comboProducts.map((product) => <span key={product!.id}>{product!.emoji} {product!.name}</span>)}</div>}
         <div className="comboSavings"><span>Regular ${regularPrice.toFixed(2)}</span>{regularPrice > combo.price && <strong>Save ${(regularPrice - combo.price).toFixed(2)}</strong>}</div>
-        <div className="comboBottom"><strong>${Number(combo.price).toFixed(2)}</strong><button className="button gold" disabled={unavailable} onClick={() => setSelectedComboId(combo.id)}>{unavailable ? "Unavailable" : "Customize Combo"}</button></div>
+        <div className="comboBottom"><strong>${Number(combo.price).toFixed(2)}</strong>{content.onlineOrderingEnabled && <button className="button gold" disabled={unavailable} onClick={() => setSelectedComboId(combo.id)}>{unavailable ? "Unavailable" : "Customize Combo"}</button>}</div>
       </div>
     </article>
-    {selectedCombo && <ComboCustomizer combo={selectedCombo} products={products} close={() => setSelectedComboId(null)} />}
+    {content.onlineOrderingEnabled && selectedCombo && <ComboCustomizer combo={selectedCombo} products={products} close={() => setSelectedComboId(null)} />}
   </>;
 }

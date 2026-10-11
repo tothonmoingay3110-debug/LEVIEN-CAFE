@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useStore } from "@/components/StoreProvider";
+import { useSiteData } from "@/components/SiteDataProvider";
 import { saveOrder } from "@/lib/orders";
 import { useCustomerSession } from "@/components/CustomerSessionProvider";
 import type { CustomerAccountData, LoyaltyRewardView } from "@/types/account";
@@ -44,6 +45,7 @@ type SalesPromotionQuote = { promotionId:string|null; name:string|null; badgeTex
 type MemberLookup = {firstName:string;lastInitial:string;maskedEmail:string;membershipNumber:string;rewards:Array<{id:string;reward_name:string}>};
 
 export default function CheckoutPage() {
+  const { content } = useSiteData();
   const router = useRouter();
   const { profile } = useCustomerSession();
   const { cart, subtotal, clearCart, ready } = useStore();
@@ -270,6 +272,8 @@ export default function CheckoutPage() {
   }
 
   if (!ready) return null;
+
+  if (!content.onlineOrderingEnabled) return <><Header /><main className="checkoutPage"><section className="checkoutEmpty"><h1>Online ordering is closed</h1><p>You can still browse the menu. Please check back later to place an order.</p><Link className="button primary" href="/menu">View Menu</Link></section></main><Footer /></>;
 
   return <>
     <Header />

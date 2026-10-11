@@ -28,7 +28,7 @@ function recordPromotion(promotionId: string, eventType: "impression" | "click")
 }
 
 export function PromotionSlider() {
-  const { promotions } = useSiteData();
+  const { promotions, content } = useSiteData();
   const [active, setActive] = useState(0);
   const viewed = useRef(new Set<string>());
 
@@ -79,7 +79,7 @@ export function PromotionSlider() {
         <span className="eyebrow">{promotion.eyebrow}</span>
         <h1><span className="heroTitle">{promotion.title}</span><em>{promotion.priceText}</em></h1>
         <p>{promotion.description}</p>
-        <div className="heroActions"><a className="button gold" href={`/menu?promotion=${promotion.id}`} onClick={selectPromotion}>Order Now</a><a className="button ghost" href={`/menu?promotion=${promotion.id}`} onClick={selectPromotion}>View Menu</a></div>
+        <div className="heroActions">{content.onlineOrderingEnabled && <a className="button gold" href={`/menu?promotion=${promotion.id}`} onClick={selectPromotion}>Order Now</a>}<a className="button ghost" href={`/menu?promotion=${promotion.id}`} onClick={selectPromotion}>View Menu</a></div>
         <div className="heroTrust"><span>✓ Made to order</span><span>✓ Pickup & delivery</span></div>
       </div>
       <div className={`heroVisual ${promotion.image ? "hasUploadedPromotion" : ""}`} key={`visual-${promotion.id}`}>

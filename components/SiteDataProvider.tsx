@@ -20,6 +20,7 @@ type SiteContent = {
   hours: string;
   mapUrl: string;
   footerText: string;
+  onlineOrderingEnabled: boolean;
 };
 
 type SiteCategory = { id: string; name: string; icon: string; active: boolean };
@@ -52,6 +53,7 @@ const defaults: SiteContent = {
   hours: "Open daily • 7 AM – 9 PM",
   mapUrl: "https://www.google.com/maps/search/?api=1&query=600+Washington+Ave+Unit+18C+Philadelphia",
   footerText: "Made with care in Philadelphia",
+  onlineOrderingEnabled: true,
 };
 
 type SiteDataContextValue = {

@@ -26,6 +26,7 @@ export type Database = {
           opening_hours: string | null;
           map_url: string | null;
           footer_text: string | null;
+          online_ordering_enabled: boolean;
           created_at: string;
           updated_at: string;
         };

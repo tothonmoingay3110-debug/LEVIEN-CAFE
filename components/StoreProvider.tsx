@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { CartItem, Combo, ComboProductSelection, Product, ProductSelection } from "@/types";
+import { useSiteData } from "@/components/SiteDataProvider";
 
 const CART_STORAGE_KEY = "levien-cart-v1";
 
@@ -38,6 +39,7 @@ function comboSelectionKey(comboId: string, selections: ComboProductSelection[])
 }
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
+  const { content } = useSiteData();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [cartNotice, setCartNotice] = useState("");
@@ -70,6 +72,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addProduct = (product: Product, selection: ProductSelection = {}) => {
+    if (!content.onlineOrderingEnabled) return;
     if (product.soldOut) return;
     const quantity = Math.max(1, selection.quantity || 1);
     const toppings = selection.toppings || [];
@@ -100,6 +103,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addCombo = (combo: Combo, selections: ComboProductSelection[], quantity = 1) => {
+    if (!content.onlineOrderingEnabled) return;
     const safeQuantity = Math.max(1, quantity);
     const toppingTotal = selections.reduce(
       (total, selection) => total + selection.toppings.reduce((sum, topping) => sum + topping.price, 0),
@@ -137,10 +141,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
-  const value = useMemo(() => ({ cart, cartOpen, totalItems, subtotal, ready, addProduct, addCombo, changeQuantity, removeItem, clearCart, openCart: () => setCartOpen(true), closeCart: () => setCartOpen(false) }), [cart, cartOpen, totalItems, subtotal, ready]);
+  const value = useMemo(() => ({ cart, cartOpen, totalItems, subtotal, ready, addProduct, addCombo, changeQuantity, removeItem, clearCart, openCart: () => { if (content.onlineOrderingEnabled) setCartOpen(true); }, closeCart: () => setCartOpen(false) }), [cart, cartOpen, totalItems, subtotal, ready, content.onlineOrderingEnabled]);
   return <StoreContext.Provider value={value}>
     {children}
-    {cartNotice && <div className="cartNotice" role="status" aria-live="polite" aria-atomic="true">
+    {content.onlineOrderingEnabled && cartNotice && <div className="cartNotice" role="status" aria-live="polite" aria-atomic="true">
       <span className="cartNoticeCheck" aria-hidden="true">✓</span>
       <span className="cartNoticeCopy"><strong>Added to your order</strong><small>{cartNotice}</small></span>
       <button type="button" onClick={() => { setCartNotice(""); setCartOpen(true); }}>View order</button>

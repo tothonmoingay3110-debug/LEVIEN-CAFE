@@ -62,6 +62,7 @@ export async function GET() {
         aboutText: content.about_text || "", aboutImage: content.about_image_url || "",
         address: content.address || "", phone: content.phone || "", email: content.email || "",
         hours: content.opening_hours || "", mapUrl: content.map_url || "", footerText: content.footer_text || "",
+        onlineOrderingEnabled: content.online_ordering_enabled !== false,
       },
     } });
   } catch (error) {

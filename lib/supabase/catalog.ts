@@ -30,6 +30,7 @@ export type CatalogContent = {
   hours: string;
   mapUrl: string;
   footerText: string;
+  onlineOrderingEnabled: boolean;
 };
 
 export type SupabaseCatalog = {
@@ -169,6 +170,7 @@ export async function readSupabaseCatalog(): Promise<SupabaseCatalog | null> {
     hours: stringValue(contentRow.opening_hours),
     mapUrl: stringValue(contentRow.map_url),
     footerText: stringValue(contentRow.footer_text),
+    onlineOrderingEnabled: contentRow.online_ordering_enabled !== false,
   } : {};
 
   if (!categories.length || !products.length) return null;
