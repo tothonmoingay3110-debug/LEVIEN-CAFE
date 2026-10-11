@@ -1,11 +1,10 @@
-import { bindings, defineConfig, defineWorker, triggers } from "cf/config";
+import { bindings, defineConfig, defineWorker } from "cf/config";
 
 export default defineConfig({
   worker: defineWorker({
     name: "levien-cafe",
     entrypoint: "vinext/server/fetch-handler",
     domains: ["leviencafe.com"],
-    triggers: [triggers.fetch({ pattern: "leviencafe.com/*", zone: "leviencafe.com" })],
     workersDev: true,
     previewUrls: true,
     compatibilityDate: "2026-10-03",
