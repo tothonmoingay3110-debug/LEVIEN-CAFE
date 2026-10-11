@@ -30,6 +30,7 @@ create table if not exists public.site_content (
   opening_hours text,
   map_url text,
   footer_text text,
+  online_ordering_enabled boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

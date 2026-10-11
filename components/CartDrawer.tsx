@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useStore } from "@/components/StoreProvider";
+import { useSiteData } from "@/components/SiteDataProvider";
 
 export function CartDrawer() {
+  const { content } = useSiteData();
   const { cart, cartOpen, subtotal, closeCart, changeQuantity, removeItem } = useStore();
+  if (!content.onlineOrderingEnabled) return null;
   return (
     <div className={`cartOverlay ${cartOpen ? "open" : ""}`} aria-hidden={!cartOpen}>
       <button className="cartBackdrop" onClick={closeCart} aria-label="Close order drawer" />

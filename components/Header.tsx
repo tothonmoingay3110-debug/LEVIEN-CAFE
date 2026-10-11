@@ -55,10 +55,10 @@ export function Header() {
               <span aria-hidden="true">⌕</span>
               <input value={search} onChange={(event) => { const value=event.target.value; setSearch(value); if(pathname==="/menu") window.dispatchEvent(new CustomEvent("levien-menu-search",{detail:value})); }} placeholder="Search menu..." aria-label="Search the LEVIEN menu" />
             </form>
-            <button className="button primary orderButton" onClick={openCart} aria-label={`View order, ${totalItems} ${totalItems === 1 ? "item" : "items"}`} title="View Order">
+            {content.onlineOrderingEnabled && <button className="button primary orderButton" onClick={openCart} aria-label={`View order, ${totalItems} ${totalItems === 1 ? "item" : "items"}`} title="View Order">
               <svg className="orderCartIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 5h2l1.8 9.1a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 1.9-1.4L21 8H6.1"/><circle cx="9.5" cy="19" r="1.25"/><circle cx="17.5" cy="19" r="1.25"/></svg>
               <span className="orderCount">{totalItems}</span>
-            </button>
+            </button>}
             {authenticated ? <Link className="headerAccount" href="/account" aria-label="Open my LEVIEN account">
               <span aria-hidden="true">{(profile?.firstName?.[0] || "M").toUpperCase()}</span>
               <b>{profile?.firstName?.trim() || "My Account"}</b>

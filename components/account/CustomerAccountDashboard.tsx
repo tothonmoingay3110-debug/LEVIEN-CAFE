@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCustomerSession } from "@/components/CustomerSessionProvider";
+import { useSiteData } from "@/components/SiteDataProvider";
 import { onlineGiftCardPurchaseEnabled } from "@/lib/features";
 import type { CustomerAccountData } from "@/types/account";
 
@@ -11,6 +12,7 @@ const money = (value: number) => `$${value.toFixed(2)}`;
 const date = (value: string | null) => value ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value)) : "No expiry";
 
 export default function CustomerAccountDashboard() {
+  const { content } = useSiteData();
   const router = useRouter();
   const { signOut } = useCustomerSession();
   const [data, setData] = useState<CustomerAccountData | null>(null);
@@ -58,7 +60,7 @@ export default function CustomerAccountDashboard() {
   return <div className="accountDashboard">
     <section className="accountHero">
       <div><span className="sectionLabel accountHeroEyebrow">LEVIEN MEMBER</span><h1>Hi, {data.profile.firstName}.</h1><p>Orders, rewards and Gift Cards live together here.</p></div>
-      <div className="accountHeroActions"><Link className="button primary" href="/account/member-card">View Member Card</Link><Link className="button secondary" href="/menu">Order Now</Link><button className="button accountSignOut" onClick={async () => { await signOut(); router.replace("/"); }}>Sign out</button></div>
+      <div className="accountHeroActions"><Link className="button primary" href="/account/member-card">View Member Card</Link><Link className="button secondary" href="/menu">{content.onlineOrderingEnabled ? "Order Now" : "View Menu"}</Link><button className="button accountSignOut" onClick={async () => { await signOut(); router.replace("/"); }}>Sign out</button></div>
     </section>
     {error && <div className="customerAuthError" role="alert">{error}</div>}
 
