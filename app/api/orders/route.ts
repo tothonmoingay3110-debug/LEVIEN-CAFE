@@ -114,10 +114,9 @@ export async function POST(request: Request) {
   if (!isSameOriginRequest(request)) {
     return NextResponse.json({ error: "Cross-origin order requests are not allowed." }, { status: 403 });
   }
-  const ordering = await createAdminClient().from("site_content").select("online_ordering_enabled").eq("singleton_key", "main").single();
-  // An older database stays open until the additive migration is applied.
-  if (ordering.error && ordering.error.code !== "42703") return NextResponse.json({ error: "Online ordering is temporarily unavailable." }, { status: 503 });
-  if (!ordering.error && !ordering.data) return NextResponse.json({ error: "Online ordering is temporarily unavailable." }, { status: 503 });
+  // Selecting the existing row keeps an older database open until the additive migration is applied.
+  const ordering = await createAdminClient().from("site_content").select("*").eq("singleton_key", "main").single();
+  if (ordering.error || !ordering.data) return NextResponse.json({ error: "Online ordering is temporarily unavailable." }, { status: 503 });
   if (ordering.data?.online_ordering_enabled === false) return NextResponse.json({ error: "Online ordering is currently closed. You can still browse our menu." }, { status: 503 });
   if (requestBodyExceeds(request, 256 * 1024)) {
     return NextResponse.json({ error: "Order request is too large." }, { status: 413 });
