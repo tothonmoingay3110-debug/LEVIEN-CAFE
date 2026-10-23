@@ -2743,6 +2743,8 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .adminProfileCard>.adminEyebrow{display:block}
 .orderToolbarActions{align-items:center}
 .orderToolbarActions .adminPrimary,.orderToolbarActions .orderDisplayAdminLink{display:inline-flex;min-height:46px;padding:0 16px;align-items:center;justify-content:center;border-radius:12px;font-size:12px;line-height:1}
+.orderDayFilter{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:4px 0 18px}.orderDayFilter label{font-size:12px;font-weight:800;color:#25483b}.orderDayFilter label span{font-weight:500;color:#6b8178}.orderDayFilter input,.orderDayFilter button{min-height:42px;border:1px solid #d6e1dc;border-radius:11px;background:#fff;padding:0 12px;color:#234b3d;font:inherit;font-size:12px}.orderDayFilter button{cursor:pointer;font-weight:750}.orderDayFilter button.active{background:var(--accent-green);border-color:var(--accent-green);color:#fff}
+@media(max-width:650px){.orderDayFilter label{width:100%}.orderDayFilter input{flex:1;min-width:150px}}
 .scheduleWelcomeActions .adminSecondary:first-child{min-height:46px;padding:0 18px;border-color:var(--gold);background:var(--gold);color:var(--dark);box-shadow:0 8px 18px rgba(0,0,0,.14)}
 .customerToolbarActions{gap:12px}
 .customerToolbarActions>.adminTabs{padding-right:12px;border-right:1px solid #dfe5e1}
