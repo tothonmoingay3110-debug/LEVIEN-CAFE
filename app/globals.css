@@ -3514,7 +3514,7 @@ button,input,textarea,select{font-family:var(--font-ui)}
   }
 
   .fullAdvertisementLink img {
-    object-fit:cover;
+    object-fit:contain;
   }
 }
 
