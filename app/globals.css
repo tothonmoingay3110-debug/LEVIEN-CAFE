@@ -3124,6 +3124,11 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .productGrid .productCard:nth-child(4n+3) .productImage,.menuProductGrid .productCard:nth-child(4n+3) .productImage{background:linear-gradient(145deg,#f0e8f4,#dfd1e8)}
 .productGrid .productCard:nth-child(4n+4) .productImage,.menuProductGrid .productCard:nth-child(4n+4) .productImage{background:linear-gradient(145deg,#faf4d8,#f1e4ad)}
 .productGrid .drinkProductStage,.menuProductGrid .drinkProductStage{background:inherit}
+/* Keep the original transparent drink photo untouched; decorate only behind it. */
+.productCard .productImage.drinkProductStage.coffeeDrinkStage{background:#f6eadb url('/generated/drink-backdrops/coffee-v1.png') center/cover no-repeat}
+.productCard .productImage.drinkProductStage.botanicalDrinkStage{background:#f6f0e4 url('/generated/drink-backdrops/botanical-v1.png') center/cover no-repeat}
+.drinkProductStage>.drinkStageLogo{display:none}
+.productImage.drinkProductStage:before{display:none}
 .homePromotionProductGrid{grid-template-columns:repeat(4,minmax(0,1fr))}.homePromotionProductGrid .productCard{height:100%}.homePromotionProductGrid .productBody{display:flex;min-height:285px;flex-direction:column}.homePromotionProductGrid .productAddButton{margin-top:auto}.homePromotionProductGrid .productImage{height:270px}
 
 /* Bright storefront surfaces: customer requested light, modern pastel instead of dark green panels. */

@@ -17,12 +17,13 @@ export function ProductCard({ product }: { product: Product }) {
   const [customizing, setCustomizing] = useState(false);
   const hasCustomization = Boolean(product.allowIce || product.allowSugar || (product.allowToppings && product.toppings?.length));
   const isDrink = /(coffee|tea|matcha|smoothie|shake|drink)/i.test(product.category);
+  const isCoffee = /coffee/i.test(product.category);
   const add = () => { if (content.onlineOrderingEnabled) hasCustomization ? setCustomizing(true) : addProduct(product); };
 
   return (
     <>
       <article className="productCard">
-        <div className={`productImage ${isDrink ? "drinkProductStage" : ""}`}>
+        <div className={`productImage ${isDrink ? `drinkProductStage ${isCoffee ? "coffeeDrinkStage" : "botanicalDrinkStage"}` : ""}`}>
           {isDrink&&content.logo&&<img className="drinkStageLogo" src={content.logo} alt="" aria-hidden="true"/>}
           <div className="badges">{product.badges.map((badge) => <span className={`badge ${badge}`} key={badge}>{badgeNames[badge]}</span>)}</div>
           {offers.length>0&&<div className="promotionBadge">{offers[0].badge_text}</div>}
