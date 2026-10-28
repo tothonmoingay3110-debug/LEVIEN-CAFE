@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Product } from "@/types";
 import { useStore } from "@/components/StoreProvider";
 import { ProductCustomizer } from "@/components/ProductCustomizer";
 import NormalizedProductImage from "@/components/NormalizedProductImage";
 import { useSiteData } from "@/components/SiteDataProvider";
 import { useSalesPromotions } from "@/components/SalesPromotionProvider";
+import { recordWebEngagement } from "@/lib/web-engagement";
 
 const badgeNames = { "best-seller": "BEST SELLER", "must-try": "MUST TRY", featured: "FEATURED", new: "NEW" };
 
@@ -15,14 +16,40 @@ export function ProductCard({ product }: { product: Product }) {
   const { content } = useSiteData();
   const offers = useSalesPromotions().forProduct(product.id, product.categoryId);
   const [customizing, setCustomizing] = useState(false);
+  const cardRef = useRef<HTMLElement>(null);
   const hasCustomization = Boolean(product.allowIce || product.allowSugar || (product.allowToppings && product.toppings?.length));
   const isDrink = /(coffee|tea|matcha|smoothie|shake|drink)/i.test(product.category);
   const isCoffee = /coffee/i.test(product.category);
-  const add = () => { if (content.onlineOrderingEnabled) hasCustomization ? setCustomizing(true) : addProduct(product); };
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card || typeof IntersectionObserver === "undefined") return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let recorded = false;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.5 && !recorded) {
+        timer = setTimeout(() => {
+          recorded = true;
+          recordWebEngagement("product_view", product.id);
+          observer.disconnect();
+        }, 700);
+      } else if (timer) {
+        clearTimeout(timer);
+        timer = undefined;
+      }
+    }, { threshold: 0.5 });
+    observer.observe(card);
+    return () => { if (timer) clearTimeout(timer); observer.disconnect(); };
+  }, [product.id]);
+
+  const add = () => {
+    if (!content.onlineOrderingEnabled || product.soldOut) return;
+    recordWebEngagement("product_click", product.id);
+    hasCustomization ? setCustomizing(true) : addProduct(product);
+  };
 
   return (
     <>
-      <article className="productCard">
+      <article className="productCard" ref={cardRef}>
         <div className={`productImage ${isDrink ? `drinkProductStage ${isCoffee ? "coffeeDrinkStage" : "botanicalDrinkStage"}` : ""}`}>
           {isDrink&&content.logo&&<img className="drinkStageLogo" src={content.logo} alt="" aria-hidden="true"/>}
           <div className="badges">{product.badges.map((badge) => <span className={`badge ${badge}`} key={badge}>{badgeNames[badge]}</span>)}</div>

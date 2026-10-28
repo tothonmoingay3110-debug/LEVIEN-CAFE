@@ -3518,6 +3518,14 @@ button,input,textarea,select{font-family:var(--font-ui)}
   }
 }
 
+/* Website engagement report. */
+.webEngagementMetrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.webEngagementReport .intelligenceToolbar>div:first-child{max-width:520px}
+.webEngagementReport .intelligenceToolbar h2{margin:5px 0 8px;font:700 26px var(--font-display)}
+.webEngagementReport .intelligenceToolbar small{color:#6c7972;line-height:1.45}
+@media(max-width:1100px){.webEngagementMetrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){.webEngagementMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}.webEngagementReport .reportsDateRange{flex-wrap:wrap}.webEngagementReport .adminMetric{padding:14px}}
+
 /* Receipt and per-item label printing controls. */
 .orderPrintActions {
   display:grid;

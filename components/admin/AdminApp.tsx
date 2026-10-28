@@ -7,6 +7,7 @@ import TimeOffWorkspace from "@/components/admin/TimeOffWorkspace";
 import WorkforceWorkspace from "@/components/admin/WorkforceWorkspace";
 import StaffReports from "@/components/admin/StaffReports";
 import ReportCenter from "@/components/admin/ReportCenter";
+import WebEngagementReport from "@/components/admin/WebEngagementReport";
 import {
   AiBusinessInsights,
   CampaignAnalytics,
@@ -37,7 +38,7 @@ import {
 import type { CustomerOrder, OrderStatus } from "@/types";
 import { formatPickupTime } from "@/lib/pickup-time";
 
-type AdminView = "dashboard" | "orders" | "memberscan" | "messages" | "eventbookings" | "workspace" | "schedule" | "timeoff" | "reportcenter" | "kpidashboard" | "customeranalytics" | "productanalytics" | "campaignanalytics" | "aiinsights" | "reports" | "activity" | "customers" | "loyalty" | "giftcards" | "employees" | "products" | "categories" | "toppings" | "combos" | "combosuggestions" | "salespromotions" | "promotions" | "content" | "qrcode" | "account";
+type AdminView = "dashboard" | "orders" | "memberscan" | "messages" | "eventbookings" | "workspace" | "schedule" | "timeoff" | "reportcenter" | "webanalytics" | "kpidashboard" | "customeranalytics" | "productanalytics" | "campaignanalytics" | "aiinsights" | "reports" | "activity" | "customers" | "loyalty" | "giftcards" | "employees" | "products" | "categories" | "toppings" | "combos" | "combosuggestions" | "salespromotions" | "promotions" | "content" | "qrcode" | "account";
 type AdminIconName = AdminView | "external" | "logout" | "arrow";
 const categoryIconOptions = ["🍟","🥖","🍜","🥪","🍚","☕","🧋","🍹","🥤","🍵","🍰","🍱","🍗","🥗","🍳"];
 type Category = { id: string; name: string; icon: string; active: boolean };
@@ -122,10 +123,10 @@ const seed: DB = {
 };
 
 const viewLabels: Record<AdminView, string> = {
-  dashboard: "Dashboard", orders: "Orders", memberscan: "Scan Member", messages: "Franchise Messages", eventbookings: "Event Bookings", workspace: "My Workspace", schedule: "Schedule", timeoff: "Time Off", reportcenter: "Report Center", kpidashboard: "KPI Dashboard", customeranalytics: "Customer Analytics", productanalytics: "Product Analytics", campaignanalytics: "Promotion & Combo Analytics", aiinsights: "AI Business Insights", reports: "Staff Reports", activity: "Activity Log", customers: "Customers", loyalty: "Loyalty Programs", giftcards: "Gift Cards", employees: "Employees", products: "Products", categories: "Categories",
+  dashboard: "Dashboard", orders: "Orders", memberscan: "Scan Member", messages: "Franchise Messages", eventbookings: "Event Bookings", workspace: "My Workspace", schedule: "Schedule", timeoff: "Time Off", reportcenter: "Report Center", webanalytics: "Website Engagement", kpidashboard: "KPI Dashboard", customeranalytics: "Customer Analytics", productanalytics: "Product Analytics", campaignanalytics: "Promotion & Combo Analytics", aiinsights: "AI Business Insights", reports: "Staff Reports", activity: "Activity Log", customers: "Customers", loyalty: "Loyalty Programs", giftcards: "Gift Cards", employees: "Employees", products: "Products", categories: "Categories",
   toppings: "Toppings", combos: "Combos", combosuggestions: "Combo Suggestions", salespromotions: "Promotions", promotions: "Homepage Content", content: "Website Content", qrcode: "QR Landing", account: "My Account",
 };
-const adminViewOrder: AdminView[] = ["dashboard", "orders", "memberscan", "messages", "eventbookings", "workspace", "schedule", "timeoff", "reportcenter", "kpidashboard", "customeranalytics", "productanalytics", "campaignanalytics", "aiinsights", "reports", "activity", "customers", "loyalty", "giftcards", "employees", "products", "categories", "toppings", "combos", "combosuggestions", "salespromotions", "promotions", "content", "qrcode", "account"];
+const adminViewOrder: AdminView[] = ["dashboard", "orders", "memberscan", "messages", "eventbookings", "workspace", "schedule", "timeoff", "reportcenter", "webanalytics", "kpidashboard", "customeranalytics", "productanalytics", "campaignanalytics", "aiinsights", "reports", "activity", "customers", "loyalty", "giftcards", "employees", "products", "categories", "toppings", "combos", "combosuggestions", "salespromotions", "promotions", "content", "qrcode", "account"];
 const viewPermissions: Partial<Record<AdminView, StaffPermission>> = {
   dashboard: "view_dashboard",
   orders: "manage_orders",
@@ -136,6 +137,7 @@ const viewPermissions: Partial<Record<AdminView, StaffPermission>> = {
   schedule: "view_own_schedule",
   timeoff: "view_own_schedule",
   reportcenter: "view_sales_reports",
+  webanalytics: "view_sales_reports",
   kpidashboard: "view_sales_reports",
   customeranalytics: "view_sales_reports",
   productanalytics: "view_sales_reports",
@@ -174,7 +176,7 @@ type AdminNavGroup = { id: AdminNavGroupId; label: string; shortLabel: string; i
 const adminNavGroups: AdminNavGroup[] = [
   { id: "overview", label: "Overview", shortLabel: "Overview", icon: "dashboard", views: ["dashboard", "orders", "memberscan", "messages", "eventbookings"] },
   { id: "staff", label: "Staff & Schedule", shortLabel: "Staff", icon: "workspace", views: ["workspace", "schedule", "timeoff", "employees"] },
-  { id: "planning", label: "Reports", shortLabel: "Reports", icon: "reports", views: ["reportcenter", "kpidashboard", "customeranalytics", "productanalytics", "campaignanalytics", "aiinsights", "reports", "activity"] },
+  { id: "planning", label: "Reports", shortLabel: "Reports", icon: "reports", views: ["reportcenter", "webanalytics", "kpidashboard", "customeranalytics", "productanalytics", "campaignanalytics", "aiinsights", "reports", "activity"] },
   { id: "store", label: "Customers & Store", shortLabel: "Store", icon: "products", views: ["customers", "loyalty", "giftcards", "products", "categories", "toppings", "combos", "combosuggestions", "salespromotions", "promotions", "content", "qrcode"] },
 ];
 
@@ -840,6 +842,7 @@ export default function AdminApp() {
         {view === "schedule" && <ScheduleWorkspace staff={staff} notify={setToast} />}
         {view === "timeoff" && <TimeOffWorkspace staff={staff} notify={setToast} />}
         {view === "reportcenter" && <ReportCenter />}
+        {view === "webanalytics" && <WebEngagementReport />}
         {view === "kpidashboard" && <KpiDashboard />}
         {view === "customeranalytics" && <CustomerAnalytics />}
         {view === "productanalytics" && <ProductAnalytics />}
@@ -1629,6 +1632,7 @@ function AdminIcon({ name }: { name: AdminIconName }) {
     workspace: <><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/><path d="M7 13h4M7 17h7"/><circle cx="17" cy="15" r="2.5"/></>,
     timeoff: <><path d="M4 5h16v15H4z"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="m9 15 2 2 4-5"/></>,
     reportcenter: <><path d="M4 20V10M10 20V6M16 20v-8M22 20V3"/><path d="M2 20h22"/><path d="m4 7 6-3 6 5 6-8"/></>,
+    webanalytics: <><circle cx="9" cy="9" r="5"/><path d="M14 14l6 6M9 6v6M6 9h6"/></>,
     kpidashboard: <><path d="M4 20V12M10 20V7M16 20v-5M22 20V3"/><path d="M2 20h20"/><path d="m4 9 6-5 6 7 6-9"/></>,
     customeranalytics: <><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 19v-5M19 19v-8M22 19v-3"/></>,
     productanalytics: <><path d="M3 20h18M5 17V9M10 17V4M15 17v-6M20 17V7"/><path d="m5 6 5-4 5 6 5-4"/></>,
