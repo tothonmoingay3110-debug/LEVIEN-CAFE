@@ -100,6 +100,22 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      web_engagement_events: {
+        Row: {
+          id: string;
+          event_type: "page_view" | "module_click" | "product_view" | "product_click";
+          module_key: string | null;
+          product_id: string | null;
+          session_key: string;
+          created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["web_engagement_events"]["Row"], "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
       staff_profiles: {
         Row: {
           id: string;
@@ -738,6 +754,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      web_engagement_report: { Args: { p_from: string; p_to: string }; Returns: Json };
       increment_sales_promotion_usage: { Args: { promotion_id: string }; Returns: undefined };
       fulfill_physical_reward_v2: {
         Args: { p_reward_id: string; p_staff_id: string | null };
