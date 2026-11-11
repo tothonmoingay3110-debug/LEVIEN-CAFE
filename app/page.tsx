@@ -5,6 +5,7 @@ import { ComboCard } from "@/components/ComboCard";
 import { HomePromotions } from "@/components/HomePromotions";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { HolidayShowcase } from "@/components/HolidayShowcase";
 import { MapSection } from "@/components/MapSection";
 import { ProductCard } from "@/components/ProductCard";
 import { PromotionSlider } from "@/components/PromotionSlider";
@@ -18,6 +19,7 @@ export default function HomePage() {
     <>
       <Header />
       <main id="home">
+        <HolidayShowcase />
         <div className="heroWrap"><PromotionSlider /></div>
         <HomePromotions />
 
