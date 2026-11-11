@@ -403,6 +403,12 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["customer_favorites"]["Insert"]>;
         Relationships: [];
       };
+      order_feedback: {
+        Row: { id: string; order_id: string; customer_profile_id: string; rating: number; comment: string; created_at: string; updated_at: string };
+        Insert: { id?: string; order_id: string; customer_profile_id: string; rating: number; comment?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["order_feedback"]["Insert"]>;
+        Relationships: [];
+      };
       contact_messages: {
         Row: {
           id: string;
