@@ -20,6 +20,12 @@ function storeDate(date: Date) {
   return `${read("year")}-${read("month")}-${read("day")}`;
 }
 
+function daysBefore(date: string, days: number) {
+  const day = new Date(`${date}T12:00:00Z`);
+  day.setUTCDate(day.getUTCDate() - days);
+  return day.toISOString().slice(0, 10);
+}
+
 function csvCell(value: string | number) {
   const text = String(value);
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
@@ -55,7 +61,7 @@ const number = (value: number) => new Intl.NumberFormat("en-US").format(value);
 
 export default function WebEngagementReport() {
   const today = storeDate(new Date());
-  const [from, setFrom] = useState(storeDate(new Date(Date.now() - 29 * 86_400_000)));
+  const [from, setFrom] = useState(daysBefore(today, 29));
   const [to, setTo] = useState(today);
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,10 +83,15 @@ export default function WebEngagementReport() {
 
   useEffect(() => { void load(); }, [load]);
 
+  const setPreset = (days: number) => {
+    setFrom(daysBefore(today, days - 1));
+    setTo(today);
+  };
+
   return <div className="adminStack webEngagementReport">
     <section className="adminToolbar intelligenceToolbar">
       <div><span className="adminEyebrow">Website engagement</span><h2>Visits, modules & products</h2><small>Reporting dates use Philadelphia time. Tracking starts when this feature is deployed; historical visits cannot be recovered.</small></div>
-      <div className="reportsDateRange"><label>From<input type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} /></label><label>To<input type="date" value={to} min={from} max={today} onChange={(event) => setTo(event.target.value)} /></label><button className="adminSecondary" type="button" disabled={loading} onClick={() => void load()}>{loading ? "Loading…" : "Refresh"}</button><button className="adminPrimary" type="button" disabled={!report || loading} onClick={() => report && downloadReport(report, from, to)}>Export CSV</button></div>
+      <div className="reportsDateRange"><div className="reportsPresets" aria-label="Quick date ranges">{([ [1, "Today"], [7, "Last 7 days"], [30, "Last 30 days"] ] as const).map(([days, label]) => <button key={days} type="button" aria-pressed={from === daysBefore(today, days - 1) && to === today} onClick={() => setPreset(days)}>{label}</button>)}</div><label>From<input type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} /></label><label>To<input type="date" value={to} min={from} max={today} onChange={(event) => setTo(event.target.value)} /></label><button className="adminSecondary" type="button" disabled={loading} onClick={() => void load()}>{loading ? "Loading…" : "Refresh"}</button><button className="adminPrimary" type="button" disabled={!report || loading} onClick={() => report && downloadReport(report, from, to)}>Export CSV</button></div>
     </section>
     {error && <div className="scheduleError"><strong>Report unavailable</strong><span>{error}</span><button type="button" onClick={() => void load()}>Try again</button></div>}
     {loading && <section className="adminCard intelligenceLoading">Loading website activity…</section>}
