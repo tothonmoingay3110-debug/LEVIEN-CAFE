@@ -7,18 +7,72 @@ import { useCustomerSession } from "@/components/CustomerSessionProvider";
 import { useSiteData } from "@/components/SiteDataProvider";
 import { onlineGiftCardPurchaseEnabled } from "@/lib/features";
 import type { CustomerAccountData } from "@/types/account";
+import type { CartItem, ProductSelection } from "@/types";
+import { useStore } from "@/components/StoreProvider";
 
 const money = (value: number) => `$${value.toFixed(2)}`;
 const date = (value: string | null) => value ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value)) : "No expiry";
 
 export default function CustomerAccountDashboard() {
-  const { content } = useSiteData();
+  const { content, products, combos, ready: catalogReady } = useSiteData();
+  const { addProduct, addCombo, openCart } = useStore();
   const router = useRouter();
-  const { signOut } = useCustomerSession();
+  const { signOut, favorites, removeFavorite } = useCustomerSession();
   const [data, setData] = useState<CustomerAccountData | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
+  const [orderNotice, setOrderNotice] = useState("");
+
+  function addCurrentItem(item: CartItem) {
+    if (item.itemType === "combo") {
+      const combo = combos.find((entry) => entry.id === (item.comboId || item.productId) && entry.active);
+      if (!combo || !item.comboItems || item.comboItems.length !== combo.productIds.length ||
+        [...item.comboItems.map((entry) => entry.productId)].sort().join("|") !== [...combo.productIds].sort().join("|")) return false;
+      const selections = item.comboItems.map((entry) => {
+        const product = products.find((candidate) => candidate.id === entry.productId && !candidate.soldOut);
+        if (!product || !combo.productIds.includes(product.id)) return null;
+        const toppings = product.allowToppings ? (product.toppings || []).filter((topping) => entry.toppings.some((saved) => saved.id === topping.id)) : [];
+        if (toppings.length !== entry.toppings.length) return null;
+        return { productId: product.id, name: product.name, emoji: product.emoji,
+          ice: product.allowIce ? entry.ice : undefined, sugar: product.allowSugar ? entry.sugar : undefined,
+          note: entry.note, toppings };
+      });
+      if (selections.some((entry) => !entry)) return false;
+      addCombo(combo, selections as NonNullable<typeof selections[number]>[], item.quantity);
+      return true;
+    }
+    const product = products.find((entry) => entry.id === item.productId && !entry.soldOut);
+    if (!product) return false;
+    const toppings = product.allowToppings ? (product.toppings || []).filter((topping) => item.toppings.some((saved) => saved.id === topping.id)) : [];
+    if (toppings.length !== item.toppings.length) return false;
+    addProduct(product, { quantity: item.quantity, ice: product.allowIce ? item.ice : undefined,
+      sugar: product.allowSugar ? item.sugar : undefined, note: item.note,
+      toppings });
+    return true;
+  }
+
+  function orderAgain(items: CartItem[]) {
+    if (!content.onlineOrderingEnabled || !catalogReady) return;
+    const added = items.filter(addCurrentItem).length;
+    const skipped = items.length - added;
+    setOrderNotice(added ? `${added} item${added === 1 ? "" : "s"} added using current prices.${skipped ? ` ${skipped} unavailable item${skipped === 1 ? " was" : "s were"} skipped.` : ""} Review your cart before checkout.` : "These items are no longer available on the current menu.");
+    if (added) openCart();
+  }
+
+  function addFavorite(productId: string, selection: { ice?: string; sugar?: string; toppingIds?: string[]; note?: string }) {
+    if (!content.onlineOrderingEnabled || !catalogReady) return;
+    const product = products.find((item) => item.id === productId && !item.soldOut);
+    if (!product) { setOrderNotice("This favorite is not available on the current menu."); return; }
+    const toppings = product.allowToppings ? (product.toppings || []).filter((item) => selection.toppingIds?.includes(item.id)) : [];
+    if (toppings.length !== (selection.toppingIds || []).length) { setOrderNotice("Some saved toppings are no longer available. Edit this favorite before ordering."); return; }
+    const options: ProductSelection = { quantity: 1, ice: product.allowIce ? selection.ice : undefined,
+      sugar: product.allowSugar ? selection.sugar : undefined, note: selection.note,
+      toppings };
+    addProduct(product, options);
+    setOrderNotice(`${product.name} added using the current menu price. Review your cart before checkout.`);
+    openCart();
+  }
 
   const load = useCallback(async () => {
     const response = await fetch("/api/account", { cache: "no-store" });
@@ -63,6 +117,7 @@ export default function CustomerAccountDashboard() {
       <div className="accountHeroActions"><Link className="button primary" href="/account/member-card">View Member Card</Link><Link className="button secondary" href="/menu">{content.onlineOrderingEnabled ? "Order Now" : "View Menu"}</Link><button className="button accountSignOut" onClick={async () => { await signOut(); router.replace("/"); }}>Sign out</button></div>
     </section>
     {error && <div className="customerAuthError" role="alert">{error}</div>}
+    {orderNotice && <div className="accountOrderNotice" role="status">{orderNotice}</div>}
 
     <div className="accountStatGrid">
       <article><small>MEMBER NUMBER</small><strong>{data.profile.membershipNumber}</strong><span>Member since {date(data.profile.memberSince)}</span></article>
@@ -104,10 +159,20 @@ export default function CustomerAccountDashboard() {
     </section>
 
     <section className="accountPanel accountWidePanel">
+      <div className="accountPanelHead"><div><span className="sectionLabel">SAVED FOR LATER</span><h2>Your favorites</h2></div><Link href="/menu">Browse menu</Link></div>
+      {!favorites.length ? <p className="accountEmpty">Save a favorite from any menu card to keep your usual options here.</p> : <div className="accountFavorites">{favorites.map((favorite) => {
+        const product = products.find((item) => item.id === favorite.productId);
+        const unavailable = !product || product.soldOut;
+        return <article key={favorite.productId}><div><strong>{product?.name || "No longer on menu"}</strong><span>{[favorite.selection.ice && `Ice ${favorite.selection.ice}`, favorite.selection.sugar && `Sugar ${favorite.selection.sugar}`, ...(favorite.selection.toppingIds || []).map((id) => product?.toppings?.find((topping) => topping.id === id)?.name).filter(Boolean)].filter(Boolean).join(" · ") || "Regular"}</span></div><div><button type="button" disabled={unavailable || !content.onlineOrderingEnabled || !catalogReady} onClick={() => addFavorite(favorite.productId, favorite.selection)}>Add to cart</button><button type="button" onClick={() => void removeFavorite(favorite.productId).catch((cause) => setError(cause instanceof Error ? cause.message : "Unable to remove favorite."))}>Remove</button></div></article>;
+      })}</div>}
+    </section>
+
+    <section className="accountPanel accountWidePanel">
       <div className="accountPanelHead"><div><span className="sectionLabel">HISTORY</span><h2>Your orders</h2></div></div>
       {!data.orders.length ? <p className="accountEmpty">No linked orders yet.</p> : <div className="accountOrders">{data.orders.map((order) => <article key={order.id}>
         <div><strong>{order.id}</strong><span>{date(order.createdAt)} · {order.type}</span></div><div><b>{money(order.total)}</b><span className={`orderStatus ${order.status.replace(/\s/g, "").toLowerCase()}`}>{order.status}</span></div>
         {order.trackingToken && <Link href={`/order/track?order=${encodeURIComponent(order.id)}&token=${encodeURIComponent(order.trackingToken)}`}>Track order</Link>}
+        <button type="button" disabled={!content.onlineOrderingEnabled || !catalogReady || !order.items.length} onClick={() => orderAgain(order.items)}>Order again</button>
       </article>)}</div>}
     </section>
   </div>;

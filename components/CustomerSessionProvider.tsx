@@ -4,10 +4,15 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { createClient } from "@/lib/supabase/client";
 import type { CustomerProfileView } from "@/types/account";
 
+export type FavoriteItem = { productId: string; selection: { ice?: string; sugar?: string; toppingIds?: string[]; note?: string }; updatedAt: string };
+
 type CustomerSessionContextValue = {
   loading: boolean;
   authenticated: boolean;
   profile: CustomerProfileView | null;
+  favorites: FavoriteItem[];
+  saveFavorite: (productId: string, selection: FavoriteItem["selection"]) => Promise<void>;
+  removeFavorite: (productId: string) => Promise<void>;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -17,6 +22,14 @@ const CustomerSessionContext = createContext<CustomerSessionContextValue | null>
 export function CustomerSessionProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<CustomerProfileView | null>(null);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+
+  const refreshFavorites = useCallback(async () => {
+    const response = await fetch("/api/account/favorites", { cache: "no-store" });
+    if (!response.ok) { setFavorites([]); return; }
+    const result = await response.json() as { favorites: FavoriteItem[] };
+    setFavorites(result.favorites || []);
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -39,6 +52,22 @@ export function CustomerSessionProvider({ children }: { children: React.ReactNod
     return () => data.subscription.unsubscribe();
   }, [refresh]);
 
+  useEffect(() => {
+    if (profile) void refreshFavorites(); else setFavorites([]);
+  }, [profile?.id, refreshFavorites]);
+
+  const saveFavorite = useCallback(async (productId: string, selection: FavoriteItem["selection"]) => {
+    const response = await fetch("/api/account/favorites", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId, selection }) });
+    if (!response.ok) throw new Error(((await response.json()) as { error?: string }).error || "Unable to save favorite.");
+    await refreshFavorites();
+  }, [refreshFavorites]);
+
+  const removeFavorite = useCallback(async (productId: string) => {
+    const response = await fetch(`/api/account/favorites?productId=${encodeURIComponent(productId)}`, { method: "DELETE" });
+    if (!response.ok) throw new Error(((await response.json()) as { error?: string }).error || "Unable to remove favorite.");
+    await refreshFavorites();
+  }, [refreshFavorites]);
+
   const signOut = useCallback(async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -49,9 +78,12 @@ export function CustomerSessionProvider({ children }: { children: React.ReactNod
     loading,
     authenticated: Boolean(profile),
     profile,
+    favorites,
+    saveFavorite,
+    removeFavorite,
     refresh,
     signOut,
-  }), [loading, profile, refresh, signOut]);
+  }), [loading, profile, favorites, refresh, signOut, saveFavorite, removeFavorite]);
 
   return <CustomerSessionContext.Provider value={value}>{children}</CustomerSessionContext.Provider>;
 }
