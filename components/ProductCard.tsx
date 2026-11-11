@@ -8,12 +8,14 @@ import NormalizedProductImage from "@/components/NormalizedProductImage";
 import { useSiteData } from "@/components/SiteDataProvider";
 import { useSalesPromotions } from "@/components/SalesPromotionProvider";
 import { recordWebEngagement } from "@/lib/web-engagement";
+import { useCustomerSession } from "@/components/CustomerSessionProvider";
 
 const badgeNames = { "best-seller": "BEST SELLER", "must-try": "MUST TRY", featured: "FEATURED", new: "NEW" };
 
 export function ProductCard({ product }: { product: Product }) {
   const { addProduct } = useStore();
   const { content } = useSiteData();
+  const { authenticated, favorites } = useCustomerSession();
   const offers = useSalesPromotions().forProduct(product.id, product.categoryId);
   const [customizing, setCustomizing] = useState(false);
   const cardRef = useRef<HTMLElement>(null);
@@ -54,12 +56,13 @@ export function ProductCard({ product }: { product: Product }) {
           {isDrink&&content.logo&&<img className="drinkStageLogo" src={content.logo} alt="" aria-hidden="true"/>}
           <div className="badges">{product.badges.map((badge) => <span className={`badge ${badge}`} key={badge}>{badgeNames[badge]}</span>)}</div>
           {offers.length>0&&<div className="promotionBadge">{offers[0].badge_text}</div>}
+          {authenticated && <button type="button" className={`productFavoriteButton ${favorites.some((item) => item.productId === product.id) ? "saved" : ""}`} onClick={() => setCustomizing(true)} aria-label={`${favorites.some((item) => item.productId === product.id) ? "Edit favorite" : "Save favorite"} ${product.name}`} title="Choose your favorite options">♥</button>}
           {product.image ? <NormalizedProductImage src={product.image} alt={product.name} normalize={isDrink} /> : <div className={`drinkIllustration drink${product.id}`}><span>{product.emoji}</span><small>LEVIEN</small></div>}
           {content.onlineOrderingEnabled && <button className="quickAdd" disabled={product.soldOut} onClick={add} aria-label={`${hasCustomization ? "Customize" : "Add"} ${product.name}`} title={hasCustomization ? "Customize product" : "Add to order"}>{product.soldOut ? "×" : <span aria-hidden="true">+</span>}</button>}
         </div>
         <div className="productBody"><div className="productMeta"><span>{product.vietnameseName || product.category}</span><strong>${product.price.toFixed(2)}</strong></div><h3>{product.name}</h3><p>{product.description}</p>{offers.length>0&&<div className="productPromotionSummary"><span>{offers[0].description||offers[0].name}</span></div>}{content.onlineOrderingEnabled && <button className="productAddButton" disabled={product.soldOut} onClick={add}>{product.soldOut ? "Sold Out" : hasCustomization ? "Customize & Add" : "Add to Order"}</button>}</div>
       </article>
-      {content.onlineOrderingEnabled && customizing && <ProductCustomizer product={product} close={() => setCustomizing(false)} />}
+      {customizing && <ProductCustomizer product={product} close={() => setCustomizing(false)} />}
     </>
   );
 }

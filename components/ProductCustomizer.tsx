@@ -3,17 +3,24 @@
 import { useMemo, useState } from "react";
 import type { Product, ProductTopping } from "@/types";
 import { useStore } from "@/components/StoreProvider";
+import { useCustomerSession } from "@/components/CustomerSessionProvider";
+import { useSiteData } from "@/components/SiteDataProvider";
 
 const iceLevels = ["100%", "70%", "50%", "30%", "No Ice"];
 const sugarLevels = ["100%", "70%", "50%", "30%", "No Sugar"];
 
 export function ProductCustomizer({ product, close }: { product: Product; close: () => void }) {
   const { addProduct } = useStore();
-  const [ice, setIce] = useState("100%");
-  const [sugar, setSugar] = useState("100%");
-  const [selected, setSelected] = useState<ProductTopping[]>([]);
+  const { authenticated, favorites, saveFavorite } = useCustomerSession();
+  const { content } = useSiteData();
+  const saved = favorites.find((item) => item.productId === product.id)?.selection;
+  const [ice, setIce] = useState(saved?.ice || "100%");
+  const [sugar, setSugar] = useState(saved?.sugar || "100%");
+  const [selected, setSelected] = useState<ProductTopping[]>(() => (product.toppings || []).filter((item) => saved?.toppingIds?.includes(item.id)));
   const [quantity, setQuantity] = useState(1);
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(saved?.note || "");
+  const [favoriteMessage, setFavoriteMessage] = useState("");
+  const [savingFavorite, setSavingFavorite] = useState(false);
 
   const unitPrice = useMemo(() => product.price + selected.reduce((sum, item) => sum + item.price, 0), [product.price, selected]);
   const total = unitPrice * quantity;
@@ -31,6 +38,22 @@ export function ProductCustomizer({ product, close }: { product: Product; close:
       note,
     });
     close();
+  }
+
+  async function saveThisFavorite() {
+    setSavingFavorite(true);
+    setFavoriteMessage("");
+    try {
+      await saveFavorite(product.id, {
+        ice: product.allowIce ? ice : undefined,
+        sugar: product.allowSugar ? sugar : undefined,
+        toppingIds: product.allowToppings ? selected.map((item) => item.id) : [],
+        note,
+      });
+      setFavoriteMessage("Saved to your favorites.");
+    } catch (error) {
+      setFavoriteMessage(error instanceof Error ? error.message : "Unable to save favorite.");
+    } finally { setSavingFavorite(false); }
   }
 
   return (
@@ -62,7 +85,8 @@ export function ProductCustomizer({ product, close }: { product: Product; close:
           </div>
         </div>
 
-        <footer className="customizerFooter"><div><span>Total</span><strong>${total.toFixed(2)}</strong></div><button className="button primary" onClick={submit}>Add to Order</button></footer>
+        {favoriteMessage && <p className="favoriteMessage" role="status">{favoriteMessage}</p>}
+        <footer className="customizerFooter"><div><span>Total</span><strong>${total.toFixed(2)}</strong></div>{authenticated && <button type="button" className="button secondary" disabled={savingFavorite} onClick={() => void saveThisFavorite()}>{savingFavorite ? "Saving…" : favorites.some((item) => item.productId === product.id) ? "Update favorite" : "Save favorite"}</button>}{content.onlineOrderingEnabled && <button className="button primary" onClick={submit}>Add to Order</button>}</footer>
       </section>
     </div>
   );

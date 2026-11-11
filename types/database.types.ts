@@ -397,6 +397,12 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["customer_profiles"]["Insert"]>;
         Relationships: [];
       };
+      customer_favorites: {
+        Row: { id: string; customer_profile_id: string; product_id: string; selection: Json; created_at: string; updated_at: string };
+        Insert: { id?: string; customer_profile_id: string; product_id: string; selection?: Json; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["customer_favorites"]["Insert"]>;
+        Relationships: [];
+      };
       contact_messages: {
         Row: {
           id: string;
