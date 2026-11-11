@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/components/StoreProvider";
 import { useSiteData } from "@/components/SiteDataProvider";
 import { useCustomerSession } from "@/components/CustomerSessionProvider";
-import { HolidayMotif } from "@/components/HolidayMotif";
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -35,7 +34,6 @@ export function Header() {
         <span>{shortAddress}</span>
       </div>
       <header className="siteHeader">
-        <div className="holidayHeaderTrim" aria-hidden="true"><HolidayMotif theme={content.holidayTheme} /><span /><HolidayMotif theme={content.holidayTheme} /></div>
         <div className="navWrap">
           <Link className="brand" href="/">
             <span className={`logo ${content.logo ? "hasUploadedLogo" : ""}`}>
