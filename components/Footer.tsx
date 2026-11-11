@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useSiteData } from "@/components/SiteDataProvider";
+import { HolidayMotif } from "@/components/HolidayMotif";
 
 export function Footer() {
   const { content, combos } = useSiteData();
   return (
     <footer className="siteFooter">
+      <div className="holidayFooterTrim" aria-hidden="true"><HolidayMotif theme={content.holidayTheme} /><span /><HolidayMotif theme={content.holidayTheme} /></div>
       <div className="footerGrid">
         <div className="footerBrand">
           <span className={`logo footerLogo ${content.logo ? "hasUploadedLogo" : ""}`}>{content.logo ? <img src={content.logo} alt={`${content.storeName} logo`} /> : <b>LV</b>}</span>

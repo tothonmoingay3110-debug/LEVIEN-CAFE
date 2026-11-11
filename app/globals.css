@@ -3684,3 +3684,29 @@ html[data-holiday-theme]:not([data-holiday-theme="default"]) .footerBottom{color
 .holidayShowcase[data-theme="halloween"]{--scene-bg:radial-gradient(circle at 80% 20%,#714c67,#30243b 53%,#1b172b);--scene-accent:#ffb661}.holidayShowcase[data-theme="halloween"] .holidayShowcaseArt{background:#ee9950;box-shadow:0 0 0 12px rgba(238,153,80,.09),0 0 50px rgba(238,153,80,.22)}
 .holidayShowcase[data-theme="thanksgiving"]{--scene-bg:linear-gradient(115deg,#633b2a,#a96539 55%,#cb9955);--scene-accent:#ffe4a5}.holidayShowcase[data-theme="thanksgiving"] .holidayShowcaseArt{background:radial-gradient(circle,#dca568,#8d4b31)}
 @media(max-width:700px){.holidayShowcase{grid-template-columns:1fr;min-height:220px;margin:12px 12px 0;padding:39px 18px 22px;border-radius:21px}.holidayShowcaseArt{position:absolute;top:55%;width:74px;height:74px;font-size:38px;opacity:.48}.holidayShowcaseArt.left{left:-25px}.holidayShowcaseArt.right{right:-25px}.holidayShowcaseText h2{font-size:clamp(29px,8vw,42px)}.holidayShowcaseText p{max-width:300px;margin:auto;font-size:12px}.holidayShowcaseGarland span{font-size:13px}.holidayShowcaseSparkles span:nth-child(2),.holidayShowcaseSparkles span:nth-child(3){display:none}}
+
+/* Seasonal line-art repeats across the storefront without covering products or promotions. */
+.holidayMotif{display:block;width:100%;height:100%;color:inherit;flex:none}
+.holidayHeaderTrim,.holidayFooterTrim{display:none}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .holidayHeaderTrim,html[data-holiday-theme]:not([data-holiday-theme="default"]) .holidayFooterTrim{display:flex;align-items:center;justify-content:center;gap:12px;height:23px;color:var(--holiday-accent);pointer-events:none}
+.holidayHeaderTrim .holidayMotif,.holidayFooterTrim .holidayMotif{width:16px;height:16px}
+.holidayHeaderTrim span,.holidayFooterTrim span{width:min(75%,900px);height:1px;background:linear-gradient(90deg,transparent,currentColor 18%,currentColor 82%,transparent);opacity:.45}
+.holidayFooterTrim{padding-top:8px;color:#f5d995}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) #home>.section,html[data-holiday-theme]:not([data-holiday-theme="default"]) #home>.fullWidthSection{position:relative}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) #home>.section::before,html[data-holiday-theme]:not([data-holiday-theme="default"]) #home>.fullWidthSection::before{content:"";position:absolute;top:0;left:50%;width:min(88%,800px);height:1px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,var(--holiday-accent),transparent);opacity:.32;pointer-events:none}
+.holidaySectionMotif{width:34px;height:34px;color:var(--holiday-accent);opacity:.8}
+.storyCopy>.holidaySectionMotif{width:50px;height:50px;margin-bottom:12px}
+.holidayShowcase{min-height:218px;grid-template-columns:1fr 2.8fr 1fr;padding:30px 48px;box-shadow:0 18px 42px rgba(27,44,37,.1)}
+.holidayShowcase::before{opacity:.12;background-size:40px 40px}
+.holidayShowcaseArt{width:120px;height:120px;padding:22px;border:0;border-radius:0;background:none;box-shadow:none;color:var(--scene-accent);opacity:.85}
+.holidayShowcaseArt.right{transform:rotate(18deg)}
+.holidayShowcaseRule{position:absolute;top:18px;left:15%;right:15%;display:flex;align-items:center;gap:12px;color:var(--scene-accent);opacity:.8}
+.holidayShowcaseRule.bottom{top:auto;bottom:18px;transform:rotate(180deg)}
+.holidayShowcaseRule span{height:1px;flex:1;background:currentColor;opacity:.45}
+.holidayShowcaseRule .holidayMotif{width:20px;height:20px}
+.holidayShowcaseText h2{font-size:clamp(30px,4vw,50px)}
+.holidayShowcase[data-theme="valentines"] .holidayShowcaseArt,.holidayShowcase[data-theme="easter"] .holidayShowcaseArt,.holidayShowcase[data-theme="halloween"] .holidayShowcaseArt,.holidayShowcase[data-theme="thanksgiving"] .holidayShowcaseArt{border-radius:0;background:none;box-shadow:none;color:var(--scene-accent)}
+.holidayShowcase[data-theme="new-year"] .holidayShowcaseArt{box-shadow:none}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .menuHero{position:relative;overflow:hidden}
+.holidayMenuMotif{position:absolute;right:25%;bottom:-20px;width:140px;height:140px;color:var(--holiday-accent);opacity:.15;pointer-events:none}
+@media(max-width:700px){.holidayShowcase{min-height:190px;padding:37px 24px 31px}.holidayShowcaseArt{top:50%;width:96px;height:96px;padding:17px;opacity:.2}.holidayShowcaseArt.left{left:-37px}.holidayShowcaseArt.right{right:-37px}.holidayShowcaseRule{left:12%;right:12%;top:12px}.holidayShowcaseRule.bottom{top:auto;bottom:12px}.holidaySectionMotif{width:25px;height:25px}.holidayMenuMotif{right:-25px;width:100px;height:100px}}
