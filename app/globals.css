@@ -3771,6 +3771,15 @@ html[data-holiday-theme]:not([data-holiday-theme="default"]) .holidayShowcase{mi
 .holidayShowcaseFigure{right:3%;bottom:0;width:36%;height:100%}
 html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard{--card-corner-size:58px;background:linear-gradient(160deg,#fff,var(--holiday-soft) 210%);border-color:var(--holiday-frame)}
 html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard .productImage{border-bottom:2px solid var(--holiday-frame)}
-html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard .productBody{position:relative;padding-bottom:64px}
-html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard .productBody::after{content:"";position:absolute;right:13px;bottom:7px;width:var(--card-corner-size);height:48px;background:var(--holiday-figure) right bottom/contain no-repeat;filter:drop-shadow(0 3px 3px rgba(0,0,0,.12));pointer-events:none}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard .productBody{position:relative;padding-bottom:56px}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard .productBody::before{content:"";position:absolute;left:17px;right:17px;bottom:28px;height:1px;background:linear-gradient(90deg,var(--holiday-frame),transparent 55%,var(--holiday-frame));opacity:.65;pointer-events:none}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard .productBody::after{content:"";position:absolute;right:13px;bottom:4px;width:var(--card-corner-size);height:54px;background:var(--holiday-figure) right bottom/contain no-repeat;filter:drop-shadow(0 3px 3px rgba(0,0,0,.12));pointer-events:none}
+html[data-holiday-theme="christmas"] .productCard{--holiday-card-trim:repeating-linear-gradient(135deg,#a8393b 0 10px,#f3eee3 10px 20px,#1b6549 20px 30px,#f3eee3 30px 40px)}
+html[data-holiday-theme="new-year"] .productCard{--holiday-card-trim:repeating-linear-gradient(135deg,#152747 0 15px,#caa75d 15px 20px,#152747 20px 35px,#e6d39d 35px 40px)}
+html[data-holiday-theme="valentines"] .productCard{--holiday-card-trim:repeating-linear-gradient(135deg,#aa506d 0 14px,#f8d9e0 14px 28px)}
+html[data-holiday-theme="easter"] .productCard{--holiday-card-trim:repeating-linear-gradient(135deg,#a8cbb6 0 12px,#e9d3e8 12px 24px,#f5df9a 24px 36px)}
+html[data-holiday-theme="independence-day"] .productCard{--holiday-card-trim:repeating-linear-gradient(135deg,#b93540 0 12px,#fff 12px 24px,#2e5487 24px 36px,#fff 36px 48px)}
+html[data-holiday-theme="halloween"] .productCard{--holiday-card-trim:repeating-linear-gradient(135deg,#36243e 0 12px,#ee9b49 12px 24px)}
+html[data-holiday-theme="thanksgiving"] .productCard{--holiday-card-trim:repeating-linear-gradient(135deg,#8e5131 0 12px,#e3b46d 12px 24px,#6b563b 24px 36px)}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard{border:3px solid transparent;background:linear-gradient(160deg,#fff,var(--holiday-soft) 210%) padding-box,var(--holiday-card-trim) border-box}
 @media(max-width:700px){html[data-holiday-theme]:not([data-holiday-theme="default"]) .holidayShowcase{display:flex;align-items:center;min-height:210px;padding:20px 18px}.holidayShowcaseText{width:62%;max-width:62%;text-align:left}.holidayShowcaseText h2{font-size:clamp(27px,7vw,34px)}.holidayShowcaseText p{margin:0;font-size:11px}.holidayShowcaseFigure{right:0;bottom:0;width:39%;height:84%}html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard{--card-corner-size:52px}}
