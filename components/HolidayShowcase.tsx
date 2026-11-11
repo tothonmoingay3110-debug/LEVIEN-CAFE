@@ -2,7 +2,6 @@
 
 import { useSiteData } from "@/components/SiteDataProvider";
 import { type HolidayTheme } from "@/lib/holiday-theme";
-import { HolidayMotif } from "@/components/HolidayMotif";
 
 const scenes: Partial<Record<HolidayTheme, { kicker: string; title: string; subtitle: string }>> = {
   christmas: { kicker: "THE HOLIDAY SEASON", title: "Merry Christmas", subtitle: "Warm wishes from the LEVIEN CAFE family." },
@@ -20,10 +19,6 @@ export function HolidayShowcase() {
   if (!scene) return null;
 
   return <section className="holidayShowcase" data-theme={content.holidayTheme} aria-label={scene.title}>
-    <div className="holidayShowcaseRule" aria-hidden="true"><span /><HolidayMotif theme={content.holidayTheme} /><span /></div>
-    <HolidayMotif theme={content.holidayTheme} className="holidayShowcaseArt left" />
     <div className="holidayShowcaseText"><span>{scene.kicker}</span><h2>{scene.title}</h2><p>{scene.subtitle}</p></div>
-    <HolidayMotif theme={content.holidayTheme} className="holidayShowcaseArt right" />
-    <div className="holidayShowcaseRule bottom" aria-hidden="true"><span /><HolidayMotif theme={content.holidayTheme} /><span /></div>
   </section>;
 }

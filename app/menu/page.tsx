@@ -4,11 +4,10 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { MenuExplorer } from "@/components/MenuExplorer";
 import { useSiteData } from "@/components/SiteDataProvider";
-import { HolidayMotif } from "@/components/HolidayMotif";
 
 export default function MenuPage() {
   const { content } = useSiteData();
   return (
-    <><Header /><main><section className="menuHero"><div><span className="sectionLabel">{content.onlineOrderingEnabled ? "Made to order" : "Browse our menu"}</span><h1>Explore the {content.storeName} Menu</h1><p>{content.onlineOrderingEnabled ? "Vietnamese coffee, handcrafted drinks, fresh bánh mì and savory favorites." : "Online ordering is closed right now. You can still explore everything we serve."}</p></div><HolidayMotif theme={content.holidayTheme} className="holidayMenuMotif" /><div className="menuHeroArt"><span>☕</span><span>🧋</span><span>🥖</span></div></section><section className="section menuPageSection"><MenuExplorer /></section></main><Footer /></>
+    <><Header /><main><section className="menuHero"><div><span className="sectionLabel">{content.onlineOrderingEnabled ? "Made to order" : "Browse our menu"}</span><h1>Explore the {content.storeName} Menu</h1><p>{content.onlineOrderingEnabled ? "Vietnamese coffee, handcrafted drinks, fresh bánh mì and savory favorites." : "Online ordering is closed right now. You can still explore everything we serve."}</p></div><div className="menuHeroArt"><span>☕</span><span>🧋</span><span>🥖</span></div></section><section className="section menuPageSection"><MenuExplorer /></section></main><Footer /></>
   );
 }
