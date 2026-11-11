@@ -3764,3 +3764,13 @@ html[data-holiday-theme]:not([data-holiday-theme="default"]) .holidayShowcase{ju
 html[data-holiday-theme]:not([data-holiday-theme="default"]) .menuHero{background-image:var(--holiday-figure),linear-gradient(135deg,var(--holiday-soft),var(--holiday-light));background-size:auto 110%,cover;background-position:95% center,center;background-repeat:no-repeat}
 html[data-holiday-theme]:not([data-holiday-theme="default"]) .menuHeroArt{visibility:hidden}
 @media(max-width:700px){html[data-holiday-theme]:not([data-holiday-theme="default"]) .holidayShowcase{display:block;min-height:440px;padding:28px 24px}.holidayShowcaseText{max-width:100%;text-align:center}.holidayShowcaseText h2{font-size:clamp(34px,9vw,47px)}.holidayShowcaseText p{margin:auto;font-size:13px}.holidayShowcaseFigure{right:8%;bottom:1%;width:84%;height:55%}html[data-holiday-theme]:not([data-holiday-theme="default"]) .menuHero{padding-bottom:225px;background-size:auto 205px,cover;background-position:center calc(100% - 10px),center}}
+
+/* Keep the holiday greeting compact; the product cards carry the recurring decor. */
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .holidayShowcase{min-height:205px;padding:22px 5%}
+.holidayShowcaseText h2{font-size:clamp(30px,3.5vw,46px)}
+.holidayShowcaseFigure{right:3%;bottom:0;width:36%;height:100%}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard{--card-corner-size:58px;background:linear-gradient(160deg,#fff,var(--holiday-soft) 210%);border-color:var(--holiday-frame)}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard .productImage{border-bottom:2px solid var(--holiday-frame)}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard .productBody{position:relative;padding-bottom:64px}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard .productBody::after{content:"";position:absolute;right:13px;bottom:7px;width:var(--card-corner-size);height:48px;background:var(--holiday-figure) right bottom/contain no-repeat;filter:drop-shadow(0 3px 3px rgba(0,0,0,.12));pointer-events:none}
+@media(max-width:700px){html[data-holiday-theme]:not([data-holiday-theme="default"]) .holidayShowcase{display:flex;align-items:center;min-height:210px;padding:20px 18px}.holidayShowcaseText{width:62%;max-width:62%;text-align:left}.holidayShowcaseText h2{font-size:clamp(27px,7vw,34px)}.holidayShowcaseText p{margin:0;font-size:11px}.holidayShowcaseFigure{right:0;bottom:0;width:39%;height:84%}html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard{--card-corner-size:52px}}
