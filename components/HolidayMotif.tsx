@@ -1,0 +1,15 @@
+import { type HolidayTheme } from "@/lib/holiday-theme";
+
+export function HolidayMotif({ theme, className = "" }: { theme: HolidayTheme; className?: string }) {
+  if (theme === "default") return null;
+
+  return <svg className={`holidayMotif ${className}`} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    {theme === "christmas" && <><path d="M50 10 18 54h17L22 72h56L65 54h17L50 10Z" fill="currentColor" opacity=".18"/><path d="M50 10 18 54h17L22 72h56L65 54h17L50 10ZM50 72v16M39 88h22" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/><path d="m50 3 2 5 5 1-4 3 1 5-4-3-4 3 1-5-4-3 5-1 2-5Z" fill="currentColor"/><circle cx="39" cy="48" r="3" fill="currentColor"/><circle cx="61" cy="58" r="3" fill="currentColor"/></>}
+    {theme === "new-year" && <><circle cx="50" cy="48" r="7" fill="currentColor" opacity=".3"/><path d="M50 4v25m0 38v25M6 48h25m38 0h25M19 17l18 18m26 26 18 18M81 17 63 35M37 61 19 79" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/><path d="m50 34 4 10 10 4-10 4-4 10-4-10-10-4 10-4 4-10Z" fill="currentColor"/><circle cx="21" cy="52" r="2" fill="currentColor"/><circle cx="78" cy="71" r="2" fill="currentColor"/></>}
+    {theme === "valentines" && <><path d="M50 84 15 51C-2 34 22 8 43 28l7 7 7-7C78 8 102 34 85 51L50 84Z" fill="currentColor" opacity=".18" stroke="currentColor" strokeWidth="4"/><path d="M50 69 27 47M70 38l4 4" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/><path d="m16 11 2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5Z" fill="currentColor"/></>}
+    {theme === "easter" && <><path d="M72 57c0 22-10 33-22 33S28 79 28 57C28 37 37 12 50 12s22 25 22 45Z" fill="currentColor" opacity=".16" stroke="currentColor" strokeWidth="4"/><path d="M30 50c14 8 26-8 40 0M29 65c14 8 28-8 42 0" stroke="currentColor" strokeWidth="3"/><circle cx="50" cy="37" r="4" fill="currentColor"/><path d="m14 36 3-8 3 8 8 3-8 3-3 8-3-8-8-3 8-3Z" stroke="currentColor" strokeWidth="2"/></>}
+    {theme === "independence-day" && <><path d="m50 8 9 27 28 1-22 17 8 27-23-16-23 16 8-27-22-17 28-1 9-27Z" fill="currentColor" opacity=".18" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/><path d="M12 87c23-9 53-9 76 0M18 95c20-7 44-7 64 0" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/><circle cx="50" cy="49" r="8" fill="currentColor"/></>}
+    {theme === "halloween" && <><path d="M50 25c-20-13-38 1-38 26 0 22 16 37 38 37s38-15 38-37c0-25-18-39-38-26Z" fill="currentColor" opacity=".2" stroke="currentColor" strokeWidth="3"/><path d="M50 26c-2-11 2-17 14-18M50 25c-9 14-9 48 0 63M50 25c9 14 9 48 0 63" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/><path d="m27 53 11-7-2 12-9-5Zm46 0-11-7 2 12 9-5ZM36 70c9 8 19 8 28 0" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/></>}
+    {theme === "thanksgiving" && <><path d="M15 68C15 33 40 18 83 15c-3 43-18 68-53 68-10 0-15-5-15-15Z" fill="currentColor" opacity=".17" stroke="currentColor" strokeWidth="3"/><path d="M13 87C30 61 52 42 82 17M31 65l-7-25M45 52l-4-24M60 39l16 7M46 52l20 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></>}
+  </svg>;
+}
