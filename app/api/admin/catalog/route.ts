@@ -3,6 +3,7 @@ import { isSameOriginRequest, requestBodyExceeds } from "@/lib/request-security"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffAccess } from "@/lib/staff-auth";
 import type { Json } from "@/types/database.types";
+import { normalizeHolidayTheme } from "@/lib/holiday-theme";
 
 async function authorizeCatalog() {
   const access = await getStaffAccess("manage_catalog");
@@ -63,6 +64,7 @@ export async function GET() {
         address: content.address || "", phone: content.phone || "", email: content.email || "",
         hours: content.opening_hours || "", mapUrl: content.map_url || "", footerText: content.footer_text || "",
         onlineOrderingEnabled: content.online_ordering_enabled !== false,
+        holidayTheme: normalizeHolidayTheme(content.holiday_theme),
       },
     } });
   } catch (error) {

@@ -27,6 +27,7 @@ export type Database = {
           map_url: string | null;
           footer_text: string | null;
           online_ordering_enabled: boolean;
+          holiday_theme: string;
           created_at: string;
           updated_at: string;
         };

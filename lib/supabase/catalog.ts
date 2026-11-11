@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Combo, Product, Promotion } from "@/types";
+import { normalizeHolidayTheme, type HolidayTheme } from "@/lib/holiday-theme";
 
 export type CatalogCategory = {
   id: string;
@@ -31,6 +32,7 @@ export type CatalogContent = {
   mapUrl: string;
   footerText: string;
   onlineOrderingEnabled: boolean;
+  holidayTheme: HolidayTheme;
 };
 
 export type SupabaseCatalog = {
@@ -171,6 +173,7 @@ export async function readSupabaseCatalog(): Promise<SupabaseCatalog | null> {
     mapUrl: stringValue(contentRow.map_url),
     footerText: stringValue(contentRow.footer_text),
     onlineOrderingEnabled: contentRow.online_ordering_enabled !== false,
+    holidayTheme: normalizeHolidayTheme(contentRow.holiday_theme),
   } : {};
 
   if (!categories.length || !products.length) return null;

@@ -5,6 +5,7 @@ import { products as fallbackProducts, promotions as fallbackPromotions } from "
 import { readSupabaseCatalog, type SupabaseCatalog } from "@/lib/supabase/catalog";
 import { createClient } from "@/lib/supabase/client";
 import type { Combo, Product, Promotion } from "@/types";
+import { normalizeHolidayTheme, type HolidayTheme } from "@/lib/holiday-theme";
 
 type SiteContent = {
   storeName: string;
@@ -21,6 +22,7 @@ type SiteContent = {
   mapUrl: string;
   footerText: string;
   onlineOrderingEnabled: boolean;
+  holidayTheme: HolidayTheme;
 };
 
 type SiteCategory = { id: string; name: string; icon: string; active: boolean };
@@ -54,6 +56,7 @@ const defaults: SiteContent = {
   mapUrl: "https://www.google.com/maps/search/?api=1&query=600+Washington+Ave+Unit+18C+Philadelphia",
   footerText: "Made with care in Philadelphia",
   onlineOrderingEnabled: true,
+  holidayTheme: "default",
 };
 
 type SiteDataContextValue = {
@@ -208,6 +211,12 @@ export function SiteDataProvider({ children }: { children: React.ReactNode }) {
       unsubscribeRealtime();
     };
   }, [refresh]);
+
+  useEffect(() => {
+    const theme = normalizeHolidayTheme(catalog?.content.holidayTheme);
+    document.documentElement.dataset.holidayTheme = theme;
+    return () => { delete document.documentElement.dataset.holidayTheme; };
+  }, [catalog?.content.holidayTheme]);
 
   const value = useMemo<SiteDataContextValue>(() => ({
     content: { ...defaults, ...(catalog?.content || {}) },

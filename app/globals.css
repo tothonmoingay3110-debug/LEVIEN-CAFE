@@ -3651,3 +3651,25 @@ button,input,textarea,select{font-family:var(--font-ui)}
 .franchiseRedirectNote{display:block;margin-top:13px;color:#83918b;font-size:11px}
 @keyframes franchiseSuccessIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
 @media(max-width:600px){.franchiseSuccessModal{padding:30px 22px;border-radius:22px}.franchiseSuccessModal h2{font-size:29px}}
+
+/* Holiday themes only decorate the storefront shell; product and promotion imagery is untouched. */
+.holidayThemeSettings{grid-column:1/-1}.holidayThemeGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}.holidayThemeOption{display:grid;justify-items:start;gap:7px;min-height:125px;padding:16px;border:1px solid #d9e3dd;border-radius:16px;background:#fbfdfb;color:#23392e;text-align:left}.holidayThemeOption:hover:not(:disabled),.holidayThemeOption:focus-visible{border-color:#4f8b78;box-shadow:0 0 0 3px rgba(79,139,120,.12)}.holidayThemeOption[aria-pressed="true"]{border:2px solid #3e806a;background:#edf6f1}.holidayThemeOption:disabled{cursor:wait;opacity:.7}.holidayThemeOption strong{font-size:13px}.holidayThemeOption small{color:#66776f;font-size:10px;line-height:1.4}.holidayThemeSwatch{display:grid;width:34px;height:34px;place-items:center;border-radius:50%;background:#e0ebe5;color:#345f4c;font-size:20px}.holidayThemeOption[data-theme="christmas"] .holidayThemeSwatch{background:#cce2d5;color:#ac3446}.holidayThemeOption[data-theme="new-year"] .holidayThemeSwatch{background:#e4e9f6;color:#b58b3c}.holidayThemeOption[data-theme="valentines"] .holidayThemeSwatch{background:#f8dce7;color:#a73661}.holidayThemeOption[data-theme="easter"] .holidayThemeSwatch{background:#e9dffa;color:#5d8d75}.holidayThemeOption[data-theme="independence-day"] .holidayThemeSwatch{background:#e3eafa;color:#be4451}.holidayThemeOption[data-theme="halloween"] .holidayThemeSwatch{background:#e8def1;color:#c7762d}.holidayThemeOption[data-theme="thanksgiving"] .holidayThemeSwatch{background:#f7e2c8;color:#984b37}
+@media(max-width:900px){.holidayThemeGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:550px){.holidayThemeGrid{grid-template-columns:1fr 1fr;gap:8px}.holidayThemeOption{min-height:120px;padding:12px}}
+
+html[data-holiday-theme="christmas"]{--holiday-dark:#164b38;--holiday-soft:#e9f1eb;--holiday-light:#f8e9e8;--holiday-accent:#aa3446;--holiday-symbol:"❄"}
+html[data-holiday-theme="new-year"]{--holiday-dark:#182c50;--holiday-soft:#e9edf6;--holiday-light:#f7f0df;--holiday-accent:#a47b27;--holiday-symbol:"✦"}
+html[data-holiday-theme="valentines"]{--holiday-dark:#72344f;--holiday-soft:#faebf0;--holiday-light:#fff4f4;--holiday-accent:#bd496f;--holiday-symbol:"♥"}
+html[data-holiday-theme="easter"]{--holiday-dark:#486b61;--holiday-soft:#edf2e9;--holiday-light:#f4edfa;--holiday-accent:#8468a7;--holiday-symbol:"✿"}
+html[data-holiday-theme="independence-day"]{--holiday-dark:#173c63;--holiday-soft:#e7edf6;--holiday-light:#f9e9eb;--holiday-accent:#bd4350;--holiday-symbol:"★"}
+html[data-holiday-theme="halloween"]{--holiday-dark:#392744;--holiday-soft:#f0eaf4;--holiday-light:#f9ebdd;--holiday-accent:#bd6c27;--holiday-symbol:"✦"}
+html[data-holiday-theme="thanksgiving"]{--holiday-dark:#69402d;--holiday-soft:#f4eadc;--holiday-light:#f7e9e5;--holiday-accent:#a45135;--holiday-symbol:"✦"}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .announcement{background:var(--holiday-dark);color:#fff}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .announcement::before,html[data-holiday-theme]:not([data-holiday-theme="default"]) .announcement::after{content:var(--holiday-symbol);color:#f4d58c}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .siteHeader{background:var(--holiday-soft)}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .heroSlider:not(.fullAdvertisement){background:radial-gradient(circle at 15% 12%,var(--holiday-light),transparent 36%),radial-gradient(circle at 85% 25%,var(--holiday-soft),transparent 42%),#fff;border-color:var(--holiday-soft)}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .heroSlider:not(.fullAdvertisement) .eyebrow,html[data-holiday-theme]:not([data-holiday-theme="default"]) .heroSlider:not(.fullAdvertisement) .heroCopy h1 em,html[data-holiday-theme]:not([data-holiday-theme="default"]) .heroSlider:not(.fullAdvertisement) .promoInfoCard span{color:var(--holiday-accent)}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .menuHero{background:linear-gradient(135deg,var(--holiday-soft),var(--holiday-light))}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .siteFooter{background:var(--holiday-dark);color:#fff}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .siteFooter h3{color:#f5d995}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .siteFooter p,html[data-holiday-theme]:not([data-holiday-theme="default"]) .siteFooter a{color:#fff;opacity:.82}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .footerBottom{color:#fff;border-color:rgba(255,255,255,.2);opacity:.8}
