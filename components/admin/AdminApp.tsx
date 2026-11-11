@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { holidayThemes, normalizeHolidayTheme, type HolidayTheme } from "@/lib/holiday-theme";
 import ScheduleWorkspace from "@/components/admin/ScheduleWorkspace";
 import TimeOffWorkspace from "@/components/admin/TimeOffWorkspace";
 import WorkforceWorkspace from "@/components/admin/WorkforceWorkspace";
@@ -84,7 +85,7 @@ type Employee = {
   createdAt: string;
   avatarUrl: string;
 };
-type Content = { storeName: string; tagline: string; logo: string; announcement: string; aboutTitle: string; aboutText: string; aboutImage: string; address: string; phone: string; email: string; hours: string; mapUrl: string; footerText: string; onlineOrderingEnabled: boolean };
+type Content = { storeName: string; tagline: string; logo: string; announcement: string; aboutTitle: string; aboutText: string; aboutImage: string; address: string; phone: string; email: string; hours: string; mapUrl: string; footerText: string; onlineOrderingEnabled: boolean; holidayTheme: HolidayTheme };
 type DB = { categories: Category[]; toppings: Topping[]; products: Product[]; combos: Combo[]; promotions: Promotion[]; orders: Order[]; content: Content };
 
 const seed: DB = {
@@ -118,7 +119,7 @@ const seed: DB = {
     storeName: "LEVIEN CAFE", tagline: "CAFE & EATERY", logo: "", announcement: "Fresh Vietnamese coffee and bánh mì every day.",
     aboutTitle: "From Vietnam to Philadelphia.", aboutText: "Every cup carries a little piece of Vietnamese coffee culture, served with warmth in our Philadelphia neighborhood.", aboutImage: "",
     address: "600 Washington Ave Unit 18C, Philadelphia, PA", phone: "+1 215-305-4047", email: "hello@leviencafe.com",
-    hours: "Open daily • 7 AM – 9 PM", footerText: "Made with care in Philadelphia", mapUrl: "https://www.google.com/maps/search/?api=1&query=600+Washington+Ave+Unit+18C+Philadelphia", onlineOrderingEnabled: true,
+    hours: "Open daily • 7 AM – 9 PM", footerText: "Made with care in Philadelphia", mapUrl: "https://www.google.com/maps/search/?api=1&query=600+Washington+Ave+Unit+18C+Philadelphia", onlineOrderingEnabled: true, holidayTheme: "default",
   },
 };
 
@@ -861,7 +862,7 @@ export default function AdminApp() {
         {view === "combosuggestions" && <ComboSuggestions products={db.products} combos={db.combos} orders={db.orders} createDraft={createSuggestedCombo} />}
         {view === "salespromotions" && <SalesPromotions catalog={{products:db.products,categories:db.categories,combos:db.combos,toppings:db.toppings}} notify={setToast} />}
         {view === "promotions" && <Promotions db={db} openModal={setModal} update={update} />}
-        {view === "content" && <WebsiteContent db={db} openModal={setModal} orderingChanged={(enabled) => { setDb((current) => ({ ...current, content: { ...current.content, onlineOrderingEnabled: enabled } })); setToast(enabled ? "Online ordering is open" : "Online ordering is closed · menu remains visible"); }} />}
+        {view === "content" && <WebsiteContent db={db} openModal={setModal} orderingChanged={(enabled) => { setDb((current) => ({ ...current, content: { ...current.content, onlineOrderingEnabled: enabled } })); setToast(enabled ? "Online ordering is open" : "Online ordering is closed · menu remains visible"); }} themeChanged={(theme) => { setDb((current) => ({ ...current, content: { ...current.content, holidayTheme: theme } })); setToast(`${holidayThemes.find((item) => item.id === theme)?.name || "Original"} theme is live`); window.dispatchEvent(new Event("levien-admin-updated")); }} />}
         {view === "qrcode" && <QrLanding notify={setToast} />}
         {view === "account" && <StaffAccount staff={staff} passwordChanged={handlePasswordChanged} avatarChanged={(avatarUrl) => setStaff((current) => current ? { ...current, avatarUrl } : current)} notify={setToast} />}
       </main>
@@ -1336,10 +1337,27 @@ function Promotions({ db, openModal, update }: { db: DB; openModal: (m: { type: 
 function EntityPage({ title, eyebrow, button, onAdd, children }: { title: string; eyebrow: string; button: string; onAdd: () => void; children: React.ReactNode }) { return <section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">{eyebrow}</span><h3>{title}</h3></div><button className="adminPrimary" onClick={onAdd}>＋ {button}</button></div><div className="adminEntityList">{children}</div></section>; }
 function EntityRow({ icon, title, subtitle, active, edit, toggle }: { icon: React.ReactNode; title: string; subtitle: string; active: boolean; edit: () => void; toggle: () => void }) { return <div className="adminEntityRow"><span className="adminEntityIcon">{icon}</span><div><strong>{title}</strong><small>{subtitle}</small></div><span className={active ? "adminState live" : "adminState hidden"}>{active ? "Active" : "Hidden"}</span><button className="adminTextButton" onClick={edit}>Edit</button><button className="adminTextButton muted" onClick={toggle}>{active ? "Hide" : "Show"}</button></div>; }
 
-function WebsiteContent({ db, openModal, orderingChanged }: { db: DB; openModal: (m: { type: string; id?: string }) => void; orderingChanged: (enabled: boolean) => void }) {
+function WebsiteContent({ db, openModal, orderingChanged, themeChanged }: { db: DB; openModal: (m: { type: string; id?: string }) => void; orderingChanged: (enabled: boolean) => void; themeChanged: (theme: HolidayTheme) => void }) {
   const c = db.content;
   const [savingOrdering, setSavingOrdering] = useState(false);
   const [orderingError, setOrderingError] = useState("");
+  const [savingTheme, setSavingTheme] = useState(false);
+  const [themeError, setThemeError] = useState("");
+  async function setTheme(theme: HolidayTheme) {
+    if (savingTheme || theme === normalizeHolidayTheme(c.holidayTheme)) return;
+    setSavingTheme(true);
+    setThemeError("");
+    try {
+      const response = await fetch("/api/admin/holiday-theme", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ theme }) });
+      const result = await response.json() as { error?: string; theme?: HolidayTheme };
+      if (!response.ok || result.theme !== theme) throw new Error(result.error || "Unable to update the holiday theme.");
+      themeChanged(theme);
+    } catch (error) {
+      setThemeError(error instanceof Error ? error.message : "Unable to update the holiday theme.");
+    } finally {
+      setSavingTheme(false);
+    }
+  }
   async function setOrdering(enabled: boolean) {
     if (savingOrdering) return;
     setSavingOrdering(true);
@@ -1356,6 +1374,7 @@ function WebsiteContent({ db, openModal, orderingChanged }: { db: DB; openModal:
     }
   }
   return <div className="adminContentGrid">
+    <section className="adminCard holidayThemeSettings"><div className="adminCardHead"><div><span className="adminEyebrow">U.S. holidays</span><h3>Website theme</h3></div><span className="customerMemberBadge">{holidayThemes.find((item) => item.id === normalizeHolidayTheme(c.holidayTheme))?.name}</span></div><p>Choose a theme to update the storefront colors and small decorative details. Product photos and promotions stay unchanged. Switch back to Original any time.</p><div className="holidayThemeGrid">{holidayThemes.map((theme) => <button key={theme.id} type="button" className="holidayThemeOption" data-theme={theme.id} aria-pressed={normalizeHolidayTheme(c.holidayTheme) === theme.id} disabled={savingTheme} onClick={() => void setTheme(theme.id)}><span className="holidayThemeSwatch" aria-hidden="true">{theme.symbol}</span><strong>{theme.name}</strong><small>{theme.detail}</small></button>)}</div>{savingTheme && <p role="status">Applying theme…</p>}{themeError && <div className="adminLoginError" role="alert">{themeError}</div>}</section>
     <section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Customer ordering</span><h3>Online ordering</h3></div><span className={c.onlineOrderingEnabled ? "customerMemberBadge" : "customerGuestBadge"}>{c.onlineOrderingEnabled ? "Open" : "Closed"}</span></div><p>When closed, customers can browse the menu but cannot add items to cart or place online orders. Staff counter orders remain available.</p><button type="button" className={c.onlineOrderingEnabled ? "adminSecondary" : "adminPrimary"} disabled={savingOrdering} onClick={() => void setOrdering(!c.onlineOrderingEnabled)}>{savingOrdering ? "Saving…" : c.onlineOrderingEnabled ? "Close online ordering" : "Open online ordering"}</button>{orderingError && <div className="adminLoginError">{orderingError}</div>}</section>
     <section className="adminCard adminContentPreview"><div className="adminCardHead"><div><span className="adminEyebrow">Brand preview</span><h3>Store identity</h3></div><button className="adminPrimary" onClick={()=>openModal({type:"content"})}>Edit content</button></div><div className="adminBrandPreview"><div className="adminLogoPreview">{c.logo?<img src={c.logo} alt=""/>:"LV"}</div><h2>{c.storeName}</h2><p>{c.aboutTitle}</p><span>{c.announcement}</span></div></section>
     <section className="adminCard"><div className="adminCardHead"><div><span className="adminEyebrow">Published details</span><h3>Contact & location</h3></div></div><dl className="adminDetails"><div><dt>Address</dt><dd>{c.address}</dd></div><div><dt>Phone</dt><dd>{c.phone}</dd></div><div><dt>Email</dt><dd>{c.email}</dd></div><div><dt>Hours</dt><dd>{c.hours}</dd></div><div><dt>Google Maps</dt><dd><a href={c.mapUrl} target="_blank">Open map ↗</a></dd></div></dl></section>
