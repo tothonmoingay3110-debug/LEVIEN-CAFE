@@ -12,6 +12,7 @@ import { useStore } from "@/components/StoreProvider";
 
 const money = (value: number) => `$${value.toFixed(2)}`;
 const date = (value: string | null) => value ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value)) : "No expiry";
+type OrderFeedback = { orderNumber: string; rating: number; comment: string; updatedAt: string };
 
 export default function CustomerAccountDashboard() {
   const { content, products, combos, ready: catalogReady } = useSiteData();
@@ -23,6 +24,8 @@ export default function CustomerAccountDashboard() {
   const [saving, setSaving] = useState(false);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [orderNotice, setOrderNotice] = useState("");
+  const [feedbackByOrder, setFeedbackByOrder] = useState<Record<string, OrderFeedback>>({});
+  const [savingFeedback, setSavingFeedback] = useState<string | null>(null);
 
   function addCurrentItem(item: CartItem) {
     if (item.itemType === "combo") {
@@ -83,6 +86,32 @@ export default function CustomerAccountDashboard() {
   }, [router]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/account/feedback", { cache: "no-store" }).then(async (response) => {
+      if (!response.ok || !active) return;
+      const result = await response.json() as { feedback?: OrderFeedback[] };
+      if (active) setFeedbackByOrder(Object.fromEntries((result.feedback || []).map((item) => [item.orderNumber, item])));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  async function submitFeedback(event: FormEvent<HTMLFormElement>, orderNumber: string) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const rating = Number(form.get("rating"));
+    const comment = String(form.get("comment") || "").trim();
+    setSavingFeedback(orderNumber); setError("");
+    try {
+      const response = await fetch("/api/account/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderNumber, rating, comment }) });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Unable to save feedback.");
+      setFeedbackByOrder((current) => ({ ...current, [orderNumber]: { orderNumber, rating, comment, updatedAt: new Date().toISOString() } }));
+      setOrderNotice(`Thanks for rating order ${orderNumber}.`);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to save feedback."); }
+    finally { setSavingFeedback(null); }
+  }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -173,6 +202,7 @@ export default function CustomerAccountDashboard() {
         <div><strong>{order.id}</strong><span>{date(order.createdAt)} · {order.type}</span></div><div><b>{money(order.total)}</b><span className={`orderStatus ${order.status.replace(/\s/g, "").toLowerCase()}`}>{order.status}</span></div>
         {order.trackingToken && <Link href={`/order/track?order=${encodeURIComponent(order.id)}&token=${encodeURIComponent(order.trackingToken)}`}>Track order</Link>}
         <button type="button" disabled={!content.onlineOrderingEnabled || !catalogReady || !order.items.length} onClick={() => orderAgain(order.items)}>Order again</button>
+        {order.status === "Completed" && <details className="accountFeedback"><summary>{feedbackByOrder[order.id] ? `Your rating: ${feedbackByOrder[order.id].rating}/5` : "Rate this order"}</summary><form key={`${order.id}-${feedbackByOrder[order.id]?.updatedAt || "new"}`} onSubmit={(event) => void submitFeedback(event, order.id)}><label>Rating <select name="rating" defaultValue={feedbackByOrder[order.id]?.rating || ""} required><option value="" disabled>Choose</option>{[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} / 5</option>)}</select></label><label>Private feedback for LEVIEN <textarea name="comment" maxLength={1000} rows={3} defaultValue={feedbackByOrder[order.id]?.comment || ""} placeholder="What went well? What should we improve?" /></label><button type="submit" disabled={savingFeedback === order.id}>{savingFeedback === order.id ? "Saving…" : "Save feedback"}</button></form></details>}
       </article>)}</div>}
     </section>
   </div>;
