@@ -20,5 +20,6 @@ export function HolidayShowcase() {
 
   return <section className="holidayShowcase" data-theme={content.holidayTheme} aria-label={scene.title}>
     <div className="holidayShowcaseText"><span>{scene.kicker}</span><h2>{scene.title}</h2><p>{scene.subtitle}</p></div>
+    <img className="holidayShowcaseFigure" src={`/generated/holiday-scenes/${content.holidayTheme}.webp`} alt="" aria-hidden="true" fetchPriority="high" />
   </section>;
 }

@@ -3737,3 +3737,30 @@ html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard:hover{
 html[data-holiday-theme]:not([data-holiday-theme="default"]) .categoryCard{border-color:var(--holiday-frame);box-shadow:0 0 0 3px var(--holiday-soft)}
 html[data-holiday-theme]:not([data-holiday-theme="default"]) .menuHero{border:2px solid var(--holiday-frame)}
 @media(max-width:700px){html[data-holiday-theme]:not([data-holiday-theme="default"]) .holidayShowcase{min-height:240px;margin:12px 12px 0;padding:25px 14px;background-position:center}.holidayShowcaseText{padding:16px 19px}.holidayShowcaseText h2{font-size:clamp(29px,8vw,39px)}html[data-holiday-theme]:not([data-holiday-theme="default"]) .productCard{margin:5px}}
+
+/* Each holiday gets a recognizable scene, not just a recolored frame. */
+html[data-holiday-theme="christmas"]{--holiday-figure:url('/generated/holiday-scenes/christmas.webp')}
+html[data-holiday-theme="new-year"]{--holiday-figure:url('/generated/holiday-scenes/new-year.webp')}
+html[data-holiday-theme="valentines"]{--holiday-figure:url('/generated/holiday-scenes/valentines.webp')}
+html[data-holiday-theme="easter"]{--holiday-figure:url('/generated/holiday-scenes/easter.webp')}
+html[data-holiday-theme="independence-day"]{--holiday-figure:url('/generated/holiday-scenes/independence-day.webp')}
+html[data-holiday-theme="halloween"]{--holiday-figure:url('/generated/holiday-scenes/halloween.webp')}
+html[data-holiday-theme="thanksgiving"]{--holiday-figure:url('/generated/holiday-scenes/thanksgiving.webp')}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .holidayShowcase{justify-content:flex-start;min-height:390px;padding:50px 6%;background:radial-gradient(circle at 76% 44%,rgba(255,255,255,.18),transparent 42%),var(--holiday-dark);border-color:var(--holiday-frame)}
+.holidayShowcaseText{z-index:2;max-width:54%;padding:0;border:0;border-radius:0;background:none!important;backdrop-filter:none;text-align:left}
+.holidayShowcaseText h2{font-size:clamp(40px,5vw,68px);line-height:1.02}
+.holidayShowcaseText p{max-width:440px;font-size:16px}
+.holidayShowcaseFigure{position:absolute;right:1%;bottom:-3%;z-index:1;width:48%;height:105%;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 18px 22px rgba(0,0,0,.2));pointer-events:none}
+.holidayShowcase[data-theme="valentines"],.holidayShowcase[data-theme="easter"]{color:#2d302e!important}
+.holidayShowcase[data-theme="valentines"] .holidayShowcaseText,.holidayShowcase[data-theme="easter"] .holidayShowcaseText{color:#2d302e}
+.holidayShowcase[data-theme="valentines"] .holidayShowcaseText>span,.holidayShowcase[data-theme="easter"] .holidayShowcaseText>span{color:var(--holiday-accent)}
+.holidayShowcase[data-theme="valentines"]{background:linear-gradient(110deg,#f9e4e8,#e9beca)}
+.holidayShowcase[data-theme="easter"]{background:linear-gradient(110deg,#f2f3e8,#d9d9ed)}
+.holidayShowcase[data-theme="christmas"]{background:radial-gradient(circle at 79% 40%,#37654a,#0e3d31 66%)}
+.holidayShowcase[data-theme="new-year"]{background:radial-gradient(circle at 79% 40%,#324a78,#0b1b36 66%)}
+.holidayShowcase[data-theme="independence-day"]{background:radial-gradient(circle at 79% 40%,#41699a,#15395e 66%)}
+.holidayShowcase[data-theme="halloween"]{background:radial-gradient(circle at 79% 40%,#563852,#231a31 66%)}
+.holidayShowcase[data-theme="thanksgiving"]{background:radial-gradient(circle at 79% 40%,#a06e41,#51372b 66%)}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .menuHero{background-image:var(--holiday-figure),linear-gradient(135deg,var(--holiday-soft),var(--holiday-light));background-size:auto 110%,cover;background-position:95% center,center;background-repeat:no-repeat}
+html[data-holiday-theme]:not([data-holiday-theme="default"]) .menuHeroArt{visibility:hidden}
+@media(max-width:700px){html[data-holiday-theme]:not([data-holiday-theme="default"]) .holidayShowcase{display:block;min-height:440px;padding:28px 24px}.holidayShowcaseText{max-width:100%;text-align:center}.holidayShowcaseText h2{font-size:clamp(34px,9vw,47px)}.holidayShowcaseText p{margin:auto;font-size:13px}.holidayShowcaseFigure{right:8%;bottom:-3%;width:84%;height:57%}html[data-holiday-theme]:not([data-holiday-theme="default"]) .menuHero{background-size:auto 72%,cover;background-position:105% bottom,center}}
